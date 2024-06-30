@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"log"
@@ -26,15 +27,17 @@ func makeMenu(u *UI) *fyne.MainMenu {
 					return
 				}
 				defer reader.Close()
-				progress := binding.NewFloat()
+				infoText := binding.NewString()
 				c := container.NewVBox(
-					widget.NewLabel("Loading file. Please wait..."),
-					widget.NewProgressBarWithData(progress),
+					widget.NewLabelWithData(infoText),
+					widget.NewProgressBarWithData(u.document.Progress),
 				)
 				d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 				d2.Show()
-				data := loadFile(reader)
-				u.setData(data, progress)
+				infoText.Set("Loading file... Please Wait.")
+				data, n := loadFile(reader)
+				infoText.Set("Parsing file... Please Wait.")
+				u.setData(data, n)
 				d2.Hide()
 				u.setTitle(reader.URI().Name())
 			}, u.window)
@@ -52,7 +55,7 @@ func makeMenu(u *UI) *fyne.MainMenu {
 	return main
 }
 
-func loadFile(reader fyne.URIReadCloser) any {
+func loadFile(reader fyne.URIReadCloser) (any, int) {
 	dat, err := io.ReadAll(reader)
 	if err != nil {
 		log.Fatalf("Failed to read file: %s", err)
@@ -62,5 +65,7 @@ func loadFile(reader fyne.URIReadCloser) any {
 		log.Fatalf("failed to unmarshal JSON: %s", err)
 	}
 	log.Printf("Read and unmarshaled JSON file")
-	return data
+	n := bytes.Count(dat, []byte{'\n'})
+	log.Printf("File has %d LOC", n)
+	return data, n
 }
