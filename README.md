@@ -1,5 +1,13 @@
 # JSON Viewer
 
-This is a desktop app to view large JSON files.
+This is a desktop app to view large JSON file. It runs on Windows 10/11, Mac OS X and Linux.
 
-This app is currently WIP and not yet released.
+If your system is configured to run [Fyne](https://fyne.io/) apps, you can start this app directly from the command line with:
+
+```sh
+go run github.com/ErikKalkoken/jsonviewer@latest
+```
+
+For more information on how to configure your system for Fyne please see: [Getting Started](https://docs.fyne.io/started/).
+
+This app is currently under development. Use at your own risk.

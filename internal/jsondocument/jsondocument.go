@@ -1,3 +1,4 @@
+// Package jsondocument contains the logic for processing large JSON documents.
 package jsondocument
 
 import (
