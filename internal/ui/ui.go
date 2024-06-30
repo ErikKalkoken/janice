@@ -24,7 +24,11 @@ import (
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 )
 
-const appTitle = "JSON Viewer"
+const (
+	appTitle     = "JSON Viewer"
+	windowWidth  = "main-window-width"
+	windowHeight = "main-window-height"
+)
 
 // UI represents the user interface of this app.
 type UI struct {
@@ -37,13 +41,17 @@ type UI struct {
 
 // NewUI returns a new UI object.
 func NewUI() (*UI, error) {
-	u := &UI{app: app.New(), statusbar: widget.NewLabel("")}
-	x, err := jsondocument.NewJSONDocument()
+	a := app.NewWithID("com.github.ErikKalkoken.jsonviewer")
+	u := &UI{
+		app:       a,
+		statusbar: widget.NewLabel(""),
+		window:    a.NewWindow(appTitle),
+	}
+	d, err := jsondocument.NewJSONDocument()
 	if err != nil {
 		return nil, err
 	}
-	u.document = x
-	u.window = u.app.NewWindow(appTitle)
+	u.document = d
 	u.treeWidget = makeTree(u)
 	tb := widget.NewToolbar(
 		widget.NewToolbarSpacer(),
@@ -59,9 +67,18 @@ func NewUI() (*UI, error) {
 		u.treeWidget,
 	)
 	u.window.SetContent(c)
-	u.window.Resize(fyne.Size{Width: 800, Height: 600})
 	u.window.SetMainMenu(makeMenu(u))
 	u.window.SetMaster()
+	s := fyne.Size{
+		Width:  float32(a.Preferences().FloatWithFallback(windowWidth, 800)),
+		Height: float32(a.Preferences().FloatWithFallback(windowHeight, 600)),
+	}
+	u.window.Resize(s)
+
+	u.window.SetOnClosed(func() {
+		a.Preferences().SetFloat(windowWidth, float64(u.window.Canvas().Size().Width))
+		a.Preferences().SetFloat(windowHeight, float64(u.window.Canvas().Size().Height))
+	})
 	return u, nil
 }
 
