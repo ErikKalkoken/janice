@@ -1,4 +1,4 @@
-package main
+package jsontree
 
 import (
 	"fmt"

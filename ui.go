@@ -7,19 +7,21 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+
+	"example/jsonviewer/internal/jsontree"
 )
 
 type ui struct {
 	app        fyne.App
 	treeWidget *widget.Tree
-	treeData   *JSONTree
+	treeData   *jsontree.JSONTree
 	window     fyne.Window
 }
 
 func newUI() *ui {
 	u := &ui{
 		app:      app.New(),
-		treeData: NewJSONTree(),
+		treeData: jsontree.NewJSONTree(),
 	}
 	u.window = u.app.NewWindow("JSON Viewer")
 	u.treeWidget = makeTree(u)
