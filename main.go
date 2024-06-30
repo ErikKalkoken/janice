@@ -1,8 +1,9 @@
 package main
 
 import (
-	"example/jsonviewer/internal/ui"
 	"log"
+
+	"github.com/ErikKalkoken/jsonviewer/internal/ui"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module example/jsonviewer
+module github.com/ErikKalkoken/jsonviewer
 
 go 1.22.4
 

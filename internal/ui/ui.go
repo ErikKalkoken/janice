@@ -20,7 +20,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
-	"example/jsonviewer/internal/jsondocument"
+	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 )
 
 const appTitle = "JSON Viewer"
