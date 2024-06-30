@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"example/jsonviewer/internal/jsondocument"
@@ -31,7 +32,7 @@ func NewUI() (*UI, error) {
 	u.document = x
 	u.window = u.app.NewWindow("JSON Viewer")
 	u.treeWidget = makeTree(u)
-	b1 := widget.NewButton("Collapse All", func() {
+	b1 := widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
 		u.treeWidget.CloseAllBranches()
 	})
 	c := container.NewBorder(
