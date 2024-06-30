@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"log"
@@ -11,15 +11,15 @@ import (
 	"example/jsonviewer/internal/jsontree"
 )
 
-type ui struct {
+type UI struct {
 	app        fyne.App
 	treeWidget *widget.Tree
 	treeData   *jsontree.JSONTree
 	window     fyne.Window
 }
 
-func newUI() *ui {
-	u := &ui{
+func NewUI() *UI {
+	u := &UI{
 		app:      app.New(),
 		treeData: jsontree.NewJSONTree(),
 	}
@@ -34,7 +34,21 @@ func newUI() *ui {
 	return u
 }
 
-func makeTree(u *ui) *widget.Tree {
+func (u *UI) ShowAndRun() {
+	u.window.ShowAndRun()
+}
+
+func (u *UI) SetData(data any) error {
+	id, err := u.treeData.Set(data)
+	if err != nil {
+		return err
+	}
+	log.Printf("Loaded JSON file into tree with %d nodes", id)
+	u.treeWidget.Refresh()
+	return nil
+}
+
+func makeTree(u *UI) *widget.Tree {
 	tree := widget.NewTree(
 		func(id widget.TreeNodeID) []widget.TreeNodeID {
 			return u.treeData.ChildUIDs(id)
@@ -54,18 +68,4 @@ func makeTree(u *ui) *widget.Tree {
 		u.treeWidget.UnselectAll()
 	}
 	return tree
-}
-
-func (u *ui) showAndRun() {
-	u.window.ShowAndRun()
-}
-
-func (u *ui) setData(data any) error {
-	id, err := u.treeData.Set(data)
-	if err != nil {
-		return err
-	}
-	log.Printf("Loaded JSON file into tree with %d nodes", id)
-	u.treeWidget.Refresh()
-	return nil
 }

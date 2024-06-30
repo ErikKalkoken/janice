@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+
+	"example/jsonviewer/internal/ui"
 )
 
 func main() {
-	u := newUI()
 	path := ".temp/meta.json"
 	dat, err := os.ReadFile(path)
 	if err != nil {
@@ -18,8 +19,9 @@ func main() {
 		log.Fatalf("failed to unmarshal JSON: %s", err)
 	}
 	log.Printf("Read and unmarshaled JSON file %s", path)
-	if err := u.setData(data); err != nil {
+	u := ui.NewUI()
+	if err := u.SetData(data); err != nil {
 		log.Fatal(err)
 	}
-	u.showAndRun()
+	u.ShowAndRun()
 }
