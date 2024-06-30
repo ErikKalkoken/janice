@@ -7,12 +7,13 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"example/jsonviewer/internal/jsondocument"
 )
+
+const appTitle = "JSON Viewer"
 
 // UI represents the user interface of this app.
 type UI struct {
@@ -30,16 +31,16 @@ func NewUI() (*UI, error) {
 		return nil, err
 	}
 	u.document = x
-	u.window = u.app.NewWindow("JSON Viewer")
+	u.window = u.app.NewWindow(appTitle)
 	u.treeWidget = makeTree(u)
-	b1 := widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
-		u.treeWidget.CloseAllBranches()
-	})
+	tb := widget.NewToolbar(
+		widget.NewToolbarSpacer(),
+		widget.NewToolbarAction(theme.NewThemedResource(resourceUnfoldlessSvg), func() {
+			u.treeWidget.CloseAllBranches()
+		}),
+	)
 	c := container.NewBorder(
-		container.NewVBox(
-			container.NewHBox(layout.NewSpacer(), b1),
-			widget.NewSeparator(),
-		),
+		container.NewVBox(tb, widget.NewSeparator()),
 		nil,
 		nil,
 		nil,
@@ -68,9 +69,11 @@ func (u *UI) setData(data any, sizeEstimate int) error {
 }
 
 func (u *UI) setTitle(fileName string) {
-	s := "JSON Viewer"
+	var s string
 	if fileName != "" {
-		s += fmt.Sprintf(" [%s]", fileName)
+		s = fmt.Sprintf("%s - %s", fileName, appTitle)
+	} else {
+		s = appTitle
 	}
 	u.window.SetTitle(s)
 }
