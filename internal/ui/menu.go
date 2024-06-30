@@ -7,6 +7,8 @@ import (
 	"net/url"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
@@ -24,10 +26,15 @@ func makeMenu(u *UI) *fyne.MainMenu {
 					return
 				}
 				defer reader.Close()
-				d2 := dialog.NewCustomWithoutButtons("Loading", widget.NewLabel("Loading file. Please wait..."), u.window)
+				progress := binding.NewFloat()
+				c := container.NewVBox(
+					widget.NewLabel("Loading file. Please wait..."),
+					widget.NewProgressBarWithData(progress),
+				)
+				d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 				d2.Show()
 				data := loadFile(reader)
-				u.setData(data)
+				u.setData(data, progress)
 				d2.Hide()
 				u.setTitle(reader.URI().Name())
 			}, u.window)

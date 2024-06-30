@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
@@ -51,7 +52,7 @@ func (u *UI) ShowAndRun() {
 	u.window.ShowAndRun()
 }
 
-func (u *UI) setData(data any) error {
+func (u *UI) setData(data any, progress binding.Float) error {
 	id, err := u.treeData.Set(data)
 	if err != nil {
 		return err

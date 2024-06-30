@@ -10,12 +10,13 @@ import (
 type JSONTree struct {
 	ids    map[widget.TreeNodeID][]widget.TreeNodeID
 	values map[widget.TreeNodeID]string
+	id     int
 }
 
 // Returns a new jsonTree object.
 func NewJSONTree() JSONTree {
 	t := JSONTree{}
-	t.initialize()
+	t.reset()
 	return t
 }
 
@@ -39,23 +40,25 @@ func (t *JSONTree) Value(uid widget.TreeNodeID) string {
 
 // Set replaces the complete tree with the given data and returns the number of nodes.
 func (t *JSONTree) Set(data any) (int, error) {
-	t.initialize()
+	t.reset()
 	switch v := data.(type) {
 	case map[string]any:
-		return t.addObject("", v, 0), nil
+		t.addObject("", v)
 	case []any:
-		return t.addSlice("", v, 0), nil
+		t.addSlice("", v)
 	default:
 		return 0, fmt.Errorf("unrecognized format")
 	}
+	return t.id, nil
 }
 
-func (t *JSONTree) initialize() {
+func (t *JSONTree) reset() {
 	t.values = make(map[widget.TreeNodeID]string)
 	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
+	t.id = 0
 }
 
-func (t *JSONTree) addObjectWithList(parentUID widget.TreeNodeID, data map[string][]any, id int) int {
+func (t *JSONTree) addObjectWithList(parentUID widget.TreeNodeID, data map[string][]any) {
 	var uid string
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -63,13 +66,12 @@ func (t *JSONTree) addObjectWithList(parentUID widget.TreeNodeID, data map[strin
 	}
 	slices.Sort(keys)
 	for _, k := range keys {
-		uid, id = t.add(parentUID, id, k)
-		id = t.addSlice(uid, data[k], id)
+		uid = t.add(parentUID, k)
+		t.addSlice(uid, data[k])
 	}
-	return id
 }
 
-func (t *JSONTree) addObject(parentUID widget.TreeNodeID, data map[string]any, id int) int {
+func (t *JSONTree) addObject(parentUID widget.TreeNodeID, data map[string]any) {
 	var uid string
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -80,44 +82,42 @@ func (t *JSONTree) addObject(parentUID widget.TreeNodeID, data map[string]any, i
 		v := data[k]
 		switch v2 := v.(type) {
 		case []any:
-			uid, id = t.add(parentUID, id, k)
-			id = t.addSlice(uid, v2, id)
+			uid = t.add(parentUID, k)
+			t.addSlice(uid, v2)
 		case string:
-			_, id = t.add(uid, id, fmt.Sprintf("%s: \"%s\"", k, v2))
+			t.add(uid, fmt.Sprintf("%s: \"%s\"", k, v2))
 		default:
-			_, id = t.add(uid, id, fmt.Sprintf("%s: %s", k, formatValue(v2)))
+			t.add(uid, fmt.Sprintf("%s: %s", k, formatValue(v2)))
 		}
 	}
-	return id
 }
 
-func (t *JSONTree) addSlice(parentUID string, a []any, id int) int {
+func (t *JSONTree) addSlice(parentUID string, a []any) {
 	var uid string
 	for i, v := range a {
 		switch v2 := v.(type) {
 		case []any:
-			uid, id = t.add(parentUID, id, formatArrayIndex(i))
-			id = t.addSlice(uid, v2, id)
+			uid = t.add(parentUID, formatArrayIndex(i))
+			t.addSlice(uid, v2)
 		case map[string][]any:
-			uid, id = t.add(parentUID, id, formatArrayIndex(i))
-			id = t.addObjectWithList(uid, v2, id)
+			uid = t.add(parentUID, formatArrayIndex(i))
+			t.addObjectWithList(uid, v2)
 		case map[string]any:
-			uid, id = t.add(parentUID, id, formatArrayIndex(i))
-			id = t.addObject(uid, v2, id)
+			uid = t.add(parentUID, formatArrayIndex(i))
+			t.addObject(uid, v2)
 		case string:
-			_, id = t.add(parentUID, id, fmt.Sprintf("%s: \"%s\"", formatArrayIndex(i), v2))
+			t.add(parentUID, fmt.Sprintf("%s: \"%s\"", formatArrayIndex(i), v2))
 		default:
-			_, id = t.add(parentUID, id, fmt.Sprintf("%s: %s", formatArrayIndex(i), formatValue(v2)))
+			t.add(parentUID, fmt.Sprintf("%s: %s", formatArrayIndex(i), formatValue(v2)))
 		}
 	}
-	return id
 }
 
 // add adds a node to the tree and returns the UID.
 // Nodes will be rendered in the same order they are added.
 // Use "" as parentUID for adding nodes at the top level.
 // Returns the generated UID for this node and the incremented ID
-func (t *JSONTree) add(parentUID widget.TreeNodeID, id int, value string) (widget.TreeNodeID, int) {
+func (t *JSONTree) add(parentUID widget.TreeNodeID, value string) widget.TreeNodeID {
 	if parentUID != "" {
 		_, found := t.values[parentUID]
 		if !found {
@@ -128,15 +128,15 @@ func (t *JSONTree) add(parentUID widget.TreeNodeID, id int, value string) (widge
 	if parentUID == "" {
 		s = "ID"
 	}
-	uid := fmt.Sprintf("%s-%d-%s", s, id, value)
+	uid := fmt.Sprintf("%s-%d-%s", s, t.id, value)
 	_, found := t.values[uid]
 	if found {
 		panic(fmt.Sprintf("UID for this node already exists: %v", uid))
 	}
 	t.ids[parentUID] = append(t.ids[parentUID], uid)
 	t.values[uid] = value
-	id++
-	return uid, id
+	t.id++
+	return uid
 }
 
 func formatArrayIndex(v int) string {
