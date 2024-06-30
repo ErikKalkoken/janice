@@ -1,13 +1,13 @@
 package ui
 
 import (
-	"encoding/json"
+	"fmt"
 	"log"
-	"os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"example/jsonviewer/internal/jsontree"
@@ -27,16 +27,23 @@ func NewUI() *UI {
 	}
 	u.window = u.app.NewWindow("JSON Viewer")
 	u.treeWidget = makeTree(u)
-	b1 := widget.NewButton("Close All", func() {
+	b1 := widget.NewButton("Collapse All", func() {
 		u.treeWidget.CloseAllBranches()
 	})
-	b2 := widget.NewButton("Load", func() {
-		data := loadData()
-		u.setData(data)
-	})
-	c := container.NewBorder(container.NewHBox(b1, b2), nil, nil, nil, u.treeWidget)
+	c := container.NewBorder(
+		container.NewVBox(
+			container.NewHBox(layout.NewSpacer(), b1),
+			widget.NewSeparator(),
+		),
+		nil,
+		nil,
+		nil,
+		u.treeWidget,
+	)
 	u.window.SetContent(c)
 	u.window.Resize(fyne.Size{Width: 800, Height: 600})
+	u.window.SetMainMenu(makeMenu(u))
+	u.window.SetMaster()
 	return u
 }
 
@@ -52,6 +59,14 @@ func (u *UI) setData(data any) error {
 	log.Printf("Loaded JSON file into tree with %d nodes", id)
 	u.treeWidget.Refresh()
 	return nil
+}
+
+func (u *UI) setTitle(fileName string) {
+	s := "JSON Viewer"
+	if fileName != "" {
+		s += fmt.Sprintf(" [%s]", fileName)
+	}
+	u.window.SetTitle(s)
 }
 
 func makeTree(u *UI) *widget.Tree {
@@ -74,18 +89,4 @@ func makeTree(u *UI) *widget.Tree {
 		u.treeWidget.UnselectAll()
 	}
 	return tree
-}
-
-func loadData() any {
-	path := ".temp/meta.json"
-	dat, err := os.ReadFile(path)
-	if err != nil {
-		log.Fatalf("Failed to read file %s: %s", path, err)
-	}
-	var data any
-	if err := json.Unmarshal(dat, &data); err != nil {
-		log.Fatalf("failed to unmarshal JSON: %s", err)
-	}
-	log.Printf("Read and unmarshaled JSON file %s", path)
-	return data
 }
