@@ -21,17 +21,34 @@ func NewJSONTree() *JSONTree {
 	return t
 }
 
-func (t *JSONTree) childUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
+// ChildUIDs returns the child UIDs for a given node.
+// This can be used directly in the tree widget childUIDs() function.
+func (t *JSONTree) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
 	return t.ids[uid]
 }
 
-func (t *JSONTree) isBranch(uid widget.TreeNodeID) bool {
+// IsBranch reports wether a node is a branch.
+// This can be used directly in the tree widget isBranch() function.
+func (t *JSONTree) IsBranch(uid widget.TreeNodeID) bool {
 	_, found := t.ids[uid]
 	return found
 }
 
-func (t *JSONTree) value(uid widget.TreeNodeID) string {
+// Value returns the value of a node
+func (t *JSONTree) Value(uid widget.TreeNodeID) string {
 	return t.values[uid]
+}
+
+// Set replaces the complete tree with the given data and returns the number of nodes.
+func (t *JSONTree) Set(data any) (int, error) {
+	switch v := data.(type) {
+	case map[string]any:
+		return t.addObject("", v, 0), nil
+	case []any:
+		return t.addSlice("", v, 0), nil
+	default:
+		return 0, fmt.Errorf("unrecognized format")
+	}
 }
 
 func (t *JSONTree) addObjectWithList(parentUID widget.TreeNodeID, data map[string][]any, id int) int {
