@@ -13,11 +13,9 @@ type JSONTree struct {
 }
 
 // Returns a new jsonTree object.
-func NewJSONTree() *JSONTree {
-	t := &JSONTree{
-		values: make(map[widget.TreeNodeID]string),
-		ids:    make(map[widget.TreeNodeID][]widget.TreeNodeID),
-	}
+func NewJSONTree() JSONTree {
+	t := JSONTree{}
+	t.initialize()
 	return t
 }
 
@@ -41,6 +39,7 @@ func (t *JSONTree) Value(uid widget.TreeNodeID) string {
 
 // Set replaces the complete tree with the given data and returns the number of nodes.
 func (t *JSONTree) Set(data any) (int, error) {
+	t.initialize()
 	switch v := data.(type) {
 	case map[string]any:
 		return t.addObject("", v, 0), nil
@@ -49,6 +48,11 @@ func (t *JSONTree) Set(data any) (int, error) {
 	default:
 		return 0, fmt.Errorf("unrecognized format")
 	}
+}
+
+func (t *JSONTree) initialize() {
+	t.values = make(map[widget.TreeNodeID]string)
+	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
 }
 
 func (t *JSONTree) addObjectWithList(parentUID widget.TreeNodeID, data map[string][]any, id int) int {

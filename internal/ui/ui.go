@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"encoding/json"
 	"log"
+	"os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -14,7 +16,7 @@ import (
 type UI struct {
 	app        fyne.App
 	treeWidget *widget.Tree
-	treeData   *jsontree.JSONTree
+	treeData   jsontree.JSONTree
 	window     fyne.Window
 }
 
@@ -28,7 +30,11 @@ func NewUI() *UI {
 	b1 := widget.NewButton("Close All", func() {
 		u.treeWidget.CloseAllBranches()
 	})
-	c := container.NewBorder(container.NewHBox(b1), nil, nil, nil, u.treeWidget)
+	b2 := widget.NewButton("Load", func() {
+		data := loadData()
+		u.setData(data)
+	})
+	c := container.NewBorder(container.NewHBox(b1, b2), nil, nil, nil, u.treeWidget)
 	u.window.SetContent(c)
 	u.window.Resize(fyne.Size{Width: 800, Height: 600})
 	return u
@@ -38,7 +44,7 @@ func (u *UI) ShowAndRun() {
 	u.window.ShowAndRun()
 }
 
-func (u *UI) SetData(data any) error {
+func (u *UI) setData(data any) error {
 	id, err := u.treeData.Set(data)
 	if err != nil {
 		return err
@@ -68,4 +74,18 @@ func makeTree(u *UI) *widget.Tree {
 		u.treeWidget.UnselectAll()
 	}
 	return tree
+}
+
+func loadData() any {
+	path := ".temp/meta.json"
+	dat, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatalf("Failed to read file %s: %s", path, err)
+	}
+	var data any
+	if err := json.Unmarshal(dat, &data); err != nil {
+		log.Fatalf("failed to unmarshal JSON: %s", err)
+	}
+	log.Printf("Read and unmarshaled JSON file %s", path)
+	return data
 }
