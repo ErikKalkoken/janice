@@ -31,8 +31,8 @@ type JSONDocument struct {
 }
 
 // Returns a new JSONDocument object.
-func NewJSONDocument() (JSONDocument, error) {
-	t := JSONDocument{Progress: binding.NewFloat()}
+func NewJSONDocument() (*JSONDocument, error) {
+	t := &JSONDocument{Progress: binding.NewFloat()}
 	if err := t.Reset(); err != nil {
 		return t, err
 	}
@@ -73,8 +73,8 @@ func (t *JSONDocument) Load(data any, sizeEstimate int) error {
 	}
 	t.ids2 = t.ids
 	t.values2 = t.values
-	t.ids = nil
-	t.values = nil
+	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
+	t.values = make(map[widget.TreeNodeID]string)
 	return nil
 }
 
@@ -117,6 +117,9 @@ func (t *JSONDocument) addObject(parentUID widget.TreeNodeID, data map[string]an
 	for _, k := range keys {
 		v := data[k]
 		switch v2 := v.(type) {
+		case map[string]any:
+			uid = t.add(parentUID, k)
+			t.addObject(uid, v2)
 		case []any:
 			uid = t.add(parentUID, k)
 			t.addSlice(uid, v2)

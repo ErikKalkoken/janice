@@ -37,7 +37,7 @@ const (
 // UI represents the user interface of this app.
 type UI struct {
 	app        fyne.App
-	document   jsondocument.JSONDocument
+	document   *jsondocument.JSONDocument
 	fileMenu   *fyne.Menu
 	statusbar  *widget.Label
 	treeWidget *widget.Tree
