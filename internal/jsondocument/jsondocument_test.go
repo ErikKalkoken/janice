@@ -6,18 +6,21 @@ import (
 	"io"
 	"testing"
 
+	"fyne.io/fyne/v2/data/binding"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestJsonDocument(t *testing.T) {
+	i1 := binding.NewInt()
+	i2 := binding.NewInt()
 	t.Run("can load object", func(t *testing.T) {
 		// given
 		j := jsondocument.NewJSONDocument()
 		data := map[string]any{
 			"alpha": map[string]any{"sub": "one"}}
 		// when
-		err := j.Load(makeDataReader(data), nil)
+		err := j.Load(makeDataReader(data), i1, i2)
 		// then
 		if assert.NoError(t, err) {
 			ids := j.ChildUIDs("")

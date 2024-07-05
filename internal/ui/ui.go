@@ -277,18 +277,19 @@ func (u *UI) showAboutDialog() {
 
 func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	defer reader.Close()
-	text1 := widget.NewLabel("Loading file 1 / 2. Please wait...")
+	loadStep := binding.NewInt()
+	loadStep.Set(1)
+	t := binding.IntToStringWithFormat(loadStep, "Loading file. Step %d / 3. Please wait...")
 	text2 := widget.NewLabel("")
 	pb := widget.NewProgressBarInfinite()
 	pb.Start()
-	c := container.NewVBox(text1, container.NewStack(pb, text2))
+	c := container.NewVBox(widget.NewLabelWithData(t), container.NewStack(pb, text2))
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
 	defer d2.Hide()
-	text1.SetText("Loading file 2 / 2. Please wait...")
-	currentSize := binding.NewInt()
-	currentSize.AddListener(binding.NewDataListener(func() {
-		v, err := currentSize.Get()
+	elementsCount := binding.NewInt()
+	elementsCount.AddListener(binding.NewDataListener(func() {
+		v, err := elementsCount.Get()
 		if err != nil {
 			slog.Error("Failed to retrieve value for current size", "err", err)
 			return
@@ -297,7 +298,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 		t := p.Sprintf("%d elements loaded", v)
 		text2.SetText(t)
 	}))
-	if err := u.document.Load(reader, currentSize); err != nil {
+	if err := u.document.Load(reader, loadStep, elementsCount); err != nil {
 		return err
 	}
 	p := message.NewPrinter(language.English)

@@ -12,6 +12,12 @@ For more information on how to configure your system for Fyne please see: [Getti
 
 This app is currently under development. Use at your own risk.
 
+## Performance
+
+We tested JSON Viewer with large files. Here is what we found so far:
+
+- 350MB with 20M elements => works and uses about 6.5 GB RAM
+
 ## Attributions
 
 - [Json icons created by LAB Design Studio - Flaticon](https://www.flaticon.com/free-icons/json)

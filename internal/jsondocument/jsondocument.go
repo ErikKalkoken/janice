@@ -41,7 +41,7 @@ var Empty = struct{}{}
 
 // JSONDocument represents a JSON document which can be rendered by a Fyne tree widget.
 type JSONDocument struct {
-	infoText binding.Int
+	elementsCount binding.Int
 
 	mu     sync.RWMutex
 	ids    map[widget.TreeNodeID][]widget.TreeNodeID
@@ -89,15 +89,15 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 }
 
 // Load loads a new tree from a reader.
-func (t *JSONDocument) Load(reader io.Reader, infoText binding.Int) error {
-	data, err := loadFile(reader)
+func (t *JSONDocument) Load(reader io.Reader, loadStep binding.Int, elementsCount binding.Int) error {
+	data, err := loadFile(reader, loadStep)
 	if err != nil {
 		return err
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.reset()
-	t.infoText = infoText
+	t.elementsCount = elementsCount
 	switch v := data.(type) {
 	case map[string]any:
 		t.addObject("", v)
@@ -186,7 +186,7 @@ func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value an
 	t.values[uid] = Node{Key: key, Value: value, Type: typ}
 	t.n++
 	if t.n%progressUpdateTick == 0 {
-		t.infoText.Set(t.n)
+		t.elementsCount.Set(t.n)
 	}
 	return uid
 }
@@ -198,15 +198,17 @@ func (t *JSONDocument) reset() {
 	t.n = 0
 }
 
-func loadFile(reader io.Reader) (any, error) {
+func loadFile(reader io.Reader, loadStep binding.Int) (any, error) {
 	dat, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %s", err)
 	}
+	loadStep.Set(2)
 	var data any
 	if err := json.Unmarshal(dat, &data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
 	}
 	slog.Info("Read and unmarshaled JSON file")
+	loadStep.Set(3)
 	return data, nil
 }
