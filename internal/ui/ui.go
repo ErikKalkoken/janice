@@ -170,18 +170,8 @@ func makeTree(u *UI) *widget.Tree {
 			value := hbox.Objects[1].(*widget.Label)
 			var text string
 			var importance widget.Importance
-			if node.Value == jsondocument.Object {
-				importance = widget.HighImportance
-				if branch {
-					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
-						text = ""
-					} else {
-						text = "{...}"
-					}
-				} else {
-					text = "{}"
-				}
-			} else if node.Value == jsondocument.Array {
+			switch v := node.Value; node.Type {
+			case jsondocument.Array:
 				importance = widget.HighImportance
 				if branch {
 					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
@@ -192,23 +182,31 @@ func makeTree(u *UI) *widget.Tree {
 				} else {
 					text = "[]"
 				}
-			} else {
-				switch v := node.Value.(type) {
-				case string:
-					text = fmt.Sprintf("\"%s\"", v)
-					importance = widget.WarningImportance
-				case float64:
-					text = fmt.Sprintf("%v", v)
-					importance = widget.SuccessImportance
-				case bool:
-					text = fmt.Sprintf("%v", v)
-					importance = widget.DangerImportance
-				case nil:
-					text = "null"
-					importance = widget.DangerImportance
-				default:
-					text = fmt.Sprintf("%v", v)
+			case jsondocument.Object:
+				importance = widget.HighImportance
+				if branch {
+					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
+						text = ""
+					} else {
+						text = "{...}"
+					}
+				} else {
+					text = "{}"
 				}
+			case jsondocument.String:
+				importance = widget.WarningImportance
+				text = fmt.Sprintf("\"%s\"", v)
+			case jsondocument.Number:
+				importance = widget.SuccessImportance
+				text = fmt.Sprintf("%v", v)
+			case jsondocument.Boolean:
+				importance = widget.DangerImportance
+				text = fmt.Sprintf("%v", v)
+			case jsondocument.Null:
+				importance = widget.DangerImportance
+				text = "null"
+			default:
+				text = fmt.Sprintf("%v", v)
 			}
 			value.Text = text
 			value.Importance = importance

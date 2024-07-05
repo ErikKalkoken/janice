@@ -1,4 +1,4 @@
-// Package jsondocument contains the logic for processing large JSON documents.
+// Package jsondocument contains the logic for building a Fyne tree from a JSON document.
 package jsondocument
 
 import (
@@ -15,28 +15,35 @@ const (
 	progressUpdateTick = 10_000
 )
 
+type JSONType uint
+
+const (
+	Unknown JSONType = iota
+	Array
+	Boolean
+	Null
+	Number
+	Object
+	String
+)
+
 type Node struct {
 	Key   string
 	Value any
+	Type  JSONType
 }
 
-type special uint
+// This singleton represents an empty value in a Node.
+var Empty = struct{}{}
 
-const (
-	Object special = iota
-	Array
-)
-
-// JSONDocument represents a JSON document.
-//
-// The purpose of this type is to compose a formatted string tree from a nested data structure,
-// so it can be rendered directly with a Fyne tree widget.
+// JSONDocument represents a JSON document which can be rendered by a Fyne tree widget.
 type JSONDocument struct {
 	infoText binding.Int
-	ids      map[widget.TreeNodeID][]widget.TreeNodeID
-	values   map[widget.TreeNodeID]Node
-	n        int
-	mu       sync.RWMutex
+
+	mu     sync.RWMutex
+	ids    map[widget.TreeNodeID][]widget.TreeNodeID
+	values map[widget.TreeNodeID]Node
+	n      int
 }
 
 // Returns a new JSONDocument object.
@@ -50,6 +57,8 @@ func NewJSONDocument() *JSONDocument {
 // This can be used directly in the tree widget childUIDs() function.
 func (t *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
 	if !t.mu.TryRLock() {
+		// This method can be called by another goroutine from the Fyne library while a new tree is loaded.
+		// This can not block, or it would block the whole Fyne app.
 		return []widget.TreeNodeID{}
 	}
 	defer t.mu.RUnlock()
@@ -86,7 +95,7 @@ func (t *JSONDocument) Load(data any, infoText binding.Int) error {
 	case map[string]any:
 		t.addObject("", v)
 	case []any:
-		t.addSlice("", v)
+		t.addArray("", v)
 	default:
 		return fmt.Errorf("unrecognized format")
 	}
@@ -102,12 +111,7 @@ func (t *JSONDocument) Size() int {
 	return t.n
 }
 
-func (t *JSONDocument) reset() {
-	t.values = make(map[widget.TreeNodeID]Node)
-	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
-	t.n = 0
-}
-
+// addObject adds a JSON object to the tree.
 func (t *JSONDocument) addObject(parentUID widget.TreeNodeID, data map[string]any) {
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -120,23 +124,33 @@ func (t *JSONDocument) addObject(parentUID widget.TreeNodeID, data map[string]an
 	}
 }
 
-func (t *JSONDocument) addSlice(parentUID string, a []any) {
+// addArray adds a JSON array to the tree.
+func (t *JSONDocument) addArray(parentUID string, a []any) {
 	for i, v := range a {
 		k := fmt.Sprintf("[%d]", i)
 		t.addValue(parentUID, k, v)
 	}
 }
 
+// addValue adds a JSON value to the tree.
 func (t *JSONDocument) addValue(parentUID widget.TreeNodeID, k string, v any) {
 	switch v2 := v.(type) {
 	case map[string]any:
-		uid := t.addNode(parentUID, k, Object)
+		uid := t.addNode(parentUID, k, Empty, Object)
 		t.addObject(uid, v2)
 	case []any:
-		uid := t.addNode(parentUID, k, Array)
-		t.addSlice(uid, v2)
+		uid := t.addNode(parentUID, k, Empty, Array)
+		t.addArray(uid, v2)
+	case string:
+		t.addNode(parentUID, k, v2, String)
+	case float64:
+		t.addNode(parentUID, k, v2, Number)
+	case bool:
+		t.addNode(parentUID, k, v2, Boolean)
+	case nil:
+		t.addNode(parentUID, k, v2, Null)
 	default:
-		t.addNode(parentUID, k, v2)
+		t.addNode(parentUID, k, v2, Unknown)
 	}
 }
 
@@ -144,7 +158,7 @@ func (t *JSONDocument) addValue(parentUID widget.TreeNodeID, k string, v any) {
 // Nodes will be rendered in the same order they are added.
 // Use "" as parentUID for adding nodes at the top level.
 // Returns the generated UID for this node and the incremented ID
-func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value any) widget.TreeNodeID {
+func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value any, typ JSONType) widget.TreeNodeID {
 	if parentUID != "" {
 		_, found := t.values[parentUID]
 		if !found {
@@ -161,10 +175,17 @@ func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value an
 		panic(fmt.Sprintf("UID for this node already exists: %v", uid))
 	}
 	t.ids[parentUID] = append(t.ids[parentUID], uid)
-	t.values[uid] = Node{Key: key, Value: value}
+	t.values[uid] = Node{Key: key, Value: value, Type: typ}
 	t.n++
 	if t.n%progressUpdateTick == 0 {
 		t.infoText.Set(t.n)
 	}
 	return uid
+}
+
+// reset re-initializes the tree so a new tree can be build.
+func (t *JSONDocument) reset() {
+	t.values = make(map[widget.TreeNodeID]Node)
+	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
+	t.n = 0
 }
