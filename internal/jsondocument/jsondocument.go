@@ -4,7 +4,7 @@ package jsondocument
 import (
 	"fmt"
 	"slices"
-	"sync/atomic"
+	"sync"
 
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
@@ -27,11 +27,11 @@ var Empty = struct{}{}
 // The purpose of this type is to compose a formatted string tree from a nested data structure,
 // so it can be rendered directly with a Fyne tree widget.
 type JSONDocument struct {
-	infoText  binding.Int
-	ids       map[widget.TreeNodeID][]widget.TreeNodeID
-	values    map[widget.TreeNodeID]Node
-	n         int
-	isLoading atomic.Bool
+	infoText binding.Int
+	ids      map[widget.TreeNodeID][]widget.TreeNodeID
+	values   map[widget.TreeNodeID]Node
+	n        int
+	mu       sync.RWMutex
 }
 
 // Returns a new JSONDocument object.
@@ -44,34 +44,37 @@ func NewJSONDocument() *JSONDocument {
 // ChildUIDs returns the child UIDs for a given node.
 // This can be used directly in the tree widget childUIDs() function.
 func (t *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
-	if t.isLoading.Load() {
+	if !t.mu.TryRLock() {
 		return []widget.TreeNodeID{}
 	}
+	defer t.mu.RUnlock()
 	return t.ids[uid]
 }
 
 // IsBranch reports wether a node is a branch.
 // This can be used directly in the tree widget isBranch() function.
 func (t *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
-	if t.isLoading.Load() {
+	if !t.mu.TryRLock() {
 		return false
 	}
+	defer t.mu.RUnlock()
 	_, found := t.ids[uid]
 	return found
 }
 
 // Value returns the value of a node
 func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
-	if t.isLoading.Load() {
+	if !t.mu.TryRLock() {
 		return Node{}
 	}
+	defer t.mu.RUnlock()
 	return t.values[uid]
 }
 
 // Load loads a new tree from data.
 func (t *JSONDocument) Load(data any, infoText binding.Int) error {
-	t.isLoading.Store(true)
-	defer t.isLoading.Store(false)
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.reset()
 	t.infoText = infoText
 	switch v := data.(type) {
@@ -87,9 +90,10 @@ func (t *JSONDocument) Load(data any, infoText binding.Int) error {
 
 // Size returns the number of nodes.
 func (t *JSONDocument) Size() int {
-	if t.isLoading.Load() {
+	if !t.mu.TryRLock() {
 		return 0
 	}
+	defer t.mu.RUnlock()
 	return t.n
 }
 
