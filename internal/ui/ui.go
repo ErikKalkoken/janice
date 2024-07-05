@@ -172,11 +172,39 @@ func makeTree(u *UI) *widget.Tree {
 			return u.document.IsBranch(id)
 		},
 		func(branch bool) fyne.CanvasObject {
-			return widget.NewLabel("Leaf template")
+			return container.NewHBox(
+				widget.NewLabel("Key template"), widget.NewLabel("Value template"))
 		},
-		func(uid widget.TreeNodeID, branch bool, o fyne.CanvasObject) {
-			text := u.document.Value(uid)
-			o.(*widget.Label).SetText(text)
+		func(uid widget.TreeNodeID, branch bool, co fyne.CanvasObject) {
+			node := u.document.Value(uid)
+			hbox := co.(*fyne.Container)
+			key := hbox.Objects[0].(*widget.Label)
+			key.SetText(fmt.Sprintf("%s :", node.Key))
+			value := hbox.Objects[1].(*widget.Label)
+			var t string
+			var i widget.Importance
+			if node.Value == jsondocument.Empty {
+				t = ""
+			} else {
+				switch v := node.Value.(type) {
+				case string:
+					t = fmt.Sprintf("\"%s\"", v)
+					i = widget.WarningImportance
+				case float64:
+					t = fmt.Sprintf("%v", v)
+					i = widget.SuccessImportance
+				case bool:
+					t = fmt.Sprintf("%v", v)
+					i = widget.HighImportance
+				case nil:
+					t = "null"
+				default:
+					t = fmt.Sprintf("%v", v)
+				}
+			}
+			value.Text = t
+			value.Importance = i
+			value.Refresh()
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {

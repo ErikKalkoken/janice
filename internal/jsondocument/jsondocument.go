@@ -14,6 +14,13 @@ const (
 	progressUpdateTick = 10_000
 )
 
+type Node struct {
+	Key   string
+	Value any
+}
+
+var Empty = struct{}{}
+
 // JSONDocument represents a JSON document.
 //
 // The purpose of this type is to compose a formatted string tree from a nested data structure,
@@ -23,9 +30,9 @@ type JSONDocument struct {
 	Progress binding.Float
 
 	ids          map[widget.TreeNodeID][]widget.TreeNodeID
-	values       map[widget.TreeNodeID]string
+	values       map[widget.TreeNodeID]Node
 	ids2         map[widget.TreeNodeID][]widget.TreeNodeID
-	values2      map[widget.TreeNodeID]string
+	values2      map[widget.TreeNodeID]Node
 	n            int
 	sizeEstimate int
 }
@@ -53,7 +60,7 @@ func (t *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
 }
 
 // Value returns the value of a node
-func (t *JSONDocument) Value(uid widget.TreeNodeID) string {
+func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 	return t.values2[uid]
 }
 
@@ -74,7 +81,7 @@ func (t *JSONDocument) Load(data any, sizeEstimate int) error {
 	t.ids2 = t.ids
 	t.values2 = t.values
 	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
-	t.values = make(map[widget.TreeNodeID]string)
+	t.values = make(map[widget.TreeNodeID]Node)
 	return nil
 }
 
@@ -85,9 +92,9 @@ func (t *JSONDocument) Size() int {
 
 // Reset resets the tree.
 func (t *JSONDocument) Reset() error {
-	t.values = make(map[widget.TreeNodeID]string)
+	t.values = make(map[widget.TreeNodeID]Node)
 	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
-	t.values2 = make(map[widget.TreeNodeID]string)
+	t.values2 = make(map[widget.TreeNodeID]Node)
 	t.ids2 = make(map[widget.TreeNodeID][]widget.TreeNodeID)
 	t.n = 0
 	t.sizeEstimate = 1
@@ -102,13 +109,13 @@ func (t *JSONDocument) addObject(parentUID widget.TreeNodeID, data map[string]an
 	slices.Sort(keys)
 	for _, k := range keys {
 		v := data[k]
-		t.addValue(parentUID, fmt.Sprintf("%s:", k), v)
+		t.addValue(parentUID, k, v)
 	}
 }
 
 func (t *JSONDocument) addSlice(parentUID string, a []any) {
 	for i, v := range a {
-		k := fmt.Sprintf("[%d]:", i)
+		k := fmt.Sprintf("[%d]", i)
 		t.addValue(parentUID, k, v)
 	}
 }
@@ -116,20 +123,13 @@ func (t *JSONDocument) addSlice(parentUID string, a []any) {
 func (t *JSONDocument) addValue(parentUID widget.TreeNodeID, k string, v any) {
 	switch v2 := v.(type) {
 	case map[string]any:
-		uid := t.addNode(parentUID, k)
+		uid := t.addNode(parentUID, k, Empty)
 		t.addObject(uid, v2)
 	case []any:
-		uid := t.addNode(parentUID, k)
+		uid := t.addNode(parentUID, k, Empty)
 		t.addSlice(uid, v2)
-	case string:
-		t.addNode(parentUID, fmt.Sprintf("%s \"%s\"", k, v2))
-	case int, float64, bool:
-		t.addNode(parentUID, fmt.Sprintf("%s %v", k, v2))
-	case nil:
-		t.addNode(parentUID, fmt.Sprintf("%s null", k))
 	default:
-		// t.add(parentUID, fmt.Sprintf("%v ??", v2))
-		panic(fmt.Sprintf("Unrecognized type: %s %v", k, v2))
+		t.addNode(parentUID, k, v2)
 	}
 }
 
@@ -137,7 +137,7 @@ func (t *JSONDocument) addValue(parentUID widget.TreeNodeID, k string, v any) {
 // Nodes will be rendered in the same order they are added.
 // Use "" as parentUID for adding nodes at the top level.
 // Returns the generated UID for this node and the incremented ID
-func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, value string) widget.TreeNodeID {
+func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value any) widget.TreeNodeID {
 	if parentUID != "" {
 		_, found := t.values[parentUID]
 		if !found {
@@ -148,13 +148,13 @@ func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, value string) widget
 	if parentUID == "" {
 		s = "ID"
 	}
-	uid := fmt.Sprintf("%s-%d-%s", s, t.n, value)
+	uid := fmt.Sprintf("%s-%d", s, t.n)
 	_, found := t.values[uid]
 	if found {
 		panic(fmt.Sprintf("UID for this node already exists: %v", uid))
 	}
 	t.ids[parentUID] = append(t.ids[parentUID], uid)
-	t.values[uid] = value
+	t.values[uid] = Node{Key: key, Value: value}
 	t.n++
 	if t.n%progressUpdateTick == 0 {
 		t.Progress.Set(min(1, float64(t.n)/float64(t.sizeEstimate)))
