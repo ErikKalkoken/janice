@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"slices"
 	"sync"
 
-	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 )
@@ -90,7 +89,7 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 }
 
 // Load loads a new tree from a reader.
-func (t *JSONDocument) Load(reader fyne.URIReadCloser, infoText binding.Int) error {
+func (t *JSONDocument) Load(reader io.Reader, infoText binding.Int) error {
 	data, err := loadFile(reader)
 	if err != nil {
 		return err
@@ -107,6 +106,7 @@ func (t *JSONDocument) Load(reader fyne.URIReadCloser, infoText binding.Int) err
 	default:
 		return fmt.Errorf("unrecognized format")
 	}
+	slog.Info("Finished loading JSON document into tree", "size", t.n)
 	return nil
 }
 
@@ -198,7 +198,7 @@ func (t *JSONDocument) reset() {
 	t.n = 0
 }
 
-func loadFile(reader fyne.URIReadCloser) (any, error) {
+func loadFile(reader io.Reader) (any, error) {
 	dat, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %s", err)
@@ -207,6 +207,6 @@ func loadFile(reader fyne.URIReadCloser) (any, error) {
 	if err := json.Unmarshal(dat, &data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
 	}
-	log.Printf("Read and unmarshaled JSON file")
+	slog.Info("Read and unmarshaled JSON file")
 	return data, nil
 }

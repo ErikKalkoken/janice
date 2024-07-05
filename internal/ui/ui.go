@@ -3,7 +3,7 @@ package ui
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/url"
 	"slices"
 
@@ -80,6 +80,12 @@ func (u *UI) ShowAndRun() {
 	u.window.ShowAndRun()
 }
 
+func (u *UI) showErrorDialog(message string, err error) {
+	slog.Error(message, "err", err)
+	d := dialog.NewInformation("Error", message, u.window)
+	d.Show()
+}
+
 func (u *UI) setTitle(fileName string) {
 	var s string
 	if fileName != "" {
@@ -88,40 +94,6 @@ func (u *UI) setTitle(fileName string) {
 		s = appTitle
 	}
 	u.window.SetTitle(s)
-}
-
-func (u *UI) updateRecentFilesMenu() {
-	files := u.app.Preferences().StringList(settingRecentFiles)
-	items := make([]*fyne.MenuItem, len(files))
-	for i, f := range files {
-		uri, err := storage.ParseURI(f)
-		if err != nil {
-			log.Printf("Failed to parse URI %s: %s", f, err)
-			continue
-		}
-		items[i] = fyne.NewMenuItem(uri.Path(), func() {
-			reader, err := storage.Reader(uri)
-			if err != nil {
-				dialog.ShowError(err, u.window)
-				return
-			}
-			defer reader.Close()
-			if err := u.loadDocument(reader); err != nil {
-				dialog.ShowError(err, u.window)
-				return
-			}
-		})
-	}
-	u.fileMenu.Items[1].ChildMenu.Items = items
-	u.fileMenu.Refresh()
-}
-
-func (u *UI) addRecentFile(uri fyne.URI) {
-	files := u.app.Preferences().StringList(settingRecentFiles)
-	uri2 := uri.String()
-	files = addToListWithRotation(files, uri2, 5)
-	u.app.Preferences().SetStringList(settingRecentFiles, files)
-	u.updateRecentFilesMenu()
 }
 
 func (u *UI) makeTree() *widget.Tree {
@@ -203,7 +175,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		fyne.NewMenuItem("Open File...", func() {
 			dialogOpen := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 				if err != nil {
-					dialog.ShowError(err, u.window)
+					u.showErrorDialog("Failed to read folder", err)
 					return
 				}
 				if reader == nil {
@@ -211,12 +183,12 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				}
 				defer reader.Close()
 				if err := u.loadDocument(reader); err != nil {
-					dialog.ShowError(err, u.window)
+					u.showErrorDialog("Failed to load document", err)
 					return
 				}
 			}, u.window)
-			f := storage.NewExtensionFileFilter([]string{".json"})
-			dialogOpen.SetFilter(f)
+			// f := storage.NewExtensionFileFilter([]string{".json"})
+			// dialogOpen.SetFilter(f)
 			dialogOpen.Show()
 		}),
 		recentItem,
@@ -224,12 +196,12 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		fyne.NewMenuItem("Reload", func() {
 			reader, err := storage.Reader(u.currentFile)
 			if err != nil {
-				dialog.ShowError(err, u.window)
+				u.showErrorDialog("Failed to open file", err)
 				return
 			}
 			defer reader.Close()
 			if err := u.loadDocument(reader); err != nil {
-				dialog.ShowError(err, u.window)
+				u.showErrorDialog("Failed to load document", err)
 				return
 			}
 		}),
@@ -254,6 +226,40 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	)
 	main := fyne.NewMainMenu(u.fileMenu, viewMenu, helpMenu)
 	return main
+}
+
+func (u *UI) updateRecentFilesMenu() {
+	files := u.app.Preferences().StringList(settingRecentFiles)
+	items := make([]*fyne.MenuItem, len(files))
+	for i, f := range files {
+		uri, err := storage.ParseURI(f)
+		if err != nil {
+			slog.Error("Failed to parse URI", "URI", f, "err", err)
+			continue
+		}
+		items[i] = fyne.NewMenuItem(uri.Path(), func() {
+			reader, err := storage.Reader(uri)
+			if err != nil {
+				dialog.ShowError(err, u.window)
+				return
+			}
+			defer reader.Close()
+			if err := u.loadDocument(reader); err != nil {
+				dialog.ShowError(err, u.window)
+				return
+			}
+		})
+	}
+	u.fileMenu.Items[1].ChildMenu.Items = items
+	u.fileMenu.Refresh()
+}
+
+func (u *UI) addRecentFile(uri fyne.URI) {
+	files := u.app.Preferences().StringList(settingRecentFiles)
+	uri2 := uri.String()
+	files = addToListWithRotation(files, uri2, 5)
+	u.app.Preferences().SetStringList(settingRecentFiles, files)
+	u.updateRecentFilesMenu()
 }
 
 func (u *UI) showAboutDialog() {
@@ -284,6 +290,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	currentSize.AddListener(binding.NewDataListener(func() {
 		v, err := currentSize.Get()
 		if err != nil {
+			slog.Error("Failed to retrieve value for current size", "err", err)
 			return
 		}
 		p := message.NewPrinter(language.English)
@@ -293,7 +300,6 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	if err := u.document.Load(reader, currentSize); err != nil {
 		return err
 	}
-	log.Printf("Loaded JSON file into tree with %d nodes", u.document.Size())
 	p := message.NewPrinter(language.English)
 	out := p.Sprintf("Size: %d", u.document.Size())
 	u.statusbar.SetText(out)
