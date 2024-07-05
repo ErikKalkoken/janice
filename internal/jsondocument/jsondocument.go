@@ -4,6 +4,7 @@ package jsondocument
 import (
 	"fmt"
 	"slices"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
@@ -26,42 +27,52 @@ var Empty = struct{}{}
 // The purpose of this type is to compose a formatted string tree from a nested data structure,
 // so it can be rendered directly with a Fyne tree widget.
 type JSONDocument struct {
-	infoText binding.Int
-	ids      map[widget.TreeNodeID][]widget.TreeNodeID
-	values   map[widget.TreeNodeID]Node
-	ids2     map[widget.TreeNodeID][]widget.TreeNodeID
-	values2  map[widget.TreeNodeID]Node
-	n        int
+	infoText  binding.Int
+	ids       map[widget.TreeNodeID][]widget.TreeNodeID
+	values    map[widget.TreeNodeID]Node
+	n         int
+	isLoading atomic.Bool
 }
 
 // Returns a new JSONDocument object.
 func NewJSONDocument() *JSONDocument {
 	t := &JSONDocument{}
-	t.Reset()
+	t.reset()
 	return t
 }
 
 // ChildUIDs returns the child UIDs for a given node.
 // This can be used directly in the tree widget childUIDs() function.
 func (t *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
-	return t.ids2[uid]
+	if t.isLoading.Load() {
+		return []widget.TreeNodeID{}
+	}
+	return t.ids[uid]
 }
 
 // IsBranch reports wether a node is a branch.
 // This can be used directly in the tree widget isBranch() function.
 func (t *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
-	_, found := t.ids2[uid]
+	if t.isLoading.Load() {
+		return false
+	}
+	_, found := t.ids[uid]
 	return found
 }
 
 // Value returns the value of a node
 func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
-	return t.values2[uid]
+	if t.isLoading.Load() {
+		return Node{}
+	}
+	return t.values[uid]
 }
 
 // Load loads a new tree from data.
 func (t *JSONDocument) Load(data any, infoText binding.Int) error {
-	t.Reset()
+	t.isLoading.Store(true)
+	defer t.isLoading.Store(false)
+	t.reset()
 	t.infoText = infoText
 	switch v := data.(type) {
 	case map[string]any:
@@ -71,24 +82,20 @@ func (t *JSONDocument) Load(data any, infoText binding.Int) error {
 	default:
 		return fmt.Errorf("unrecognized format")
 	}
-	t.ids2 = t.ids
-	t.values2 = t.values
-	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
-	t.values = make(map[widget.TreeNodeID]Node)
 	return nil
 }
 
 // Size returns the number of nodes.
 func (t *JSONDocument) Size() int {
+	if t.isLoading.Load() {
+		return 0
+	}
 	return t.n
 }
 
-// Reset resets the tree.
-func (t *JSONDocument) Reset() {
+func (t *JSONDocument) reset() {
 	t.values = make(map[widget.TreeNodeID]Node)
 	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
-	t.values2 = make(map[widget.TreeNodeID]Node)
-	t.ids2 = make(map[widget.TreeNodeID][]widget.TreeNodeID)
 	t.n = 0
 }
 
