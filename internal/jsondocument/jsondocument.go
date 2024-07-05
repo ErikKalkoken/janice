@@ -2,10 +2,14 @@
 package jsondocument
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"slices"
 	"sync"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 )
@@ -85,8 +89,12 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 	return t.values[uid]
 }
 
-// Load loads a new tree from data.
-func (t *JSONDocument) Load(data any, infoText binding.Int) error {
+// Load loads a new tree from a reader.
+func (t *JSONDocument) Load(reader fyne.URIReadCloser, infoText binding.Int) error {
+	data, err := loadFile(reader)
+	if err != nil {
+		return err
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.reset()
@@ -188,4 +196,17 @@ func (t *JSONDocument) reset() {
 	t.values = make(map[widget.TreeNodeID]Node)
 	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
 	t.n = 0
+}
+
+func loadFile(reader fyne.URIReadCloser) (any, error) {
+	dat, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %s", err)
+	}
+	var data any
+	if err := json.Unmarshal(dat, &data); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
+	}
+	log.Printf("Read and unmarshaled JSON file")
+	return data, nil
 }

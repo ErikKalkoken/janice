@@ -2,9 +2,7 @@
 package ui
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"slices"
@@ -82,18 +80,6 @@ func (u *UI) ShowAndRun() {
 	u.window.ShowAndRun()
 }
 
-func (u *UI) loadData(data any, infoText binding.Int) error {
-	if err := u.document.Load(data, infoText); err != nil {
-		return err
-	}
-	log.Printf("Loaded JSON file into tree with %d nodes", u.document.Size())
-	p := message.NewPrinter(language.English)
-	out := p.Sprintf("Size: %d", u.document.Size())
-	u.statusbar.SetText(out)
-	u.treeWidget.Refresh()
-	return nil
-}
-
 func (u *UI) setTitle(fileName string) {
 	var s string
 	if fileName != "" {
@@ -119,6 +105,7 @@ func (u *UI) updateRecentFilesMenu() {
 				dialog.ShowError(err, u.window)
 				return
 			}
+			defer reader.Close()
 			if err := u.loadDocument(reader); err != nil {
 				dialog.ShowError(err, u.window)
 				return
@@ -222,6 +209,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				if reader == nil {
 					return
 				}
+				defer reader.Close()
 				if err := u.loadDocument(reader); err != nil {
 					dialog.ShowError(err, u.window)
 					return
@@ -239,6 +227,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				dialog.ShowError(err, u.window)
 				return
 			}
+			defer reader.Close()
 			if err := u.loadDocument(reader); err != nil {
 				dialog.ShowError(err, u.window)
 				return
@@ -260,20 +249,24 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("About...", func() {
-			c := container.NewVBox()
-			info := u.app.Metadata()
-			appData := widget.NewRichTextFromMarkdown(
-				"## " + appTitle + "\n**Version:** " + info.Version)
-			c.Add(appData)
-			uri, _ := url.Parse("https://github.com/ErikKalkoken/jsombuddy")
-			c.Add(widget.NewHyperlink("Website", uri))
-			c.Add(widget.NewLabel("(c) 2024 Erik Kalkoken"))
-			d := dialog.NewCustom("About", "OK", c, u.window)
-			d.Show()
+			u.showAboutDialog()
 		}),
 	)
 	main := fyne.NewMainMenu(u.fileMenu, viewMenu, helpMenu)
 	return main
+}
+
+func (u *UI) showAboutDialog() {
+	c := container.NewVBox()
+	info := u.app.Metadata()
+	appData := widget.NewRichTextFromMarkdown(
+		"## " + appTitle + "\n**Version:** " + info.Version)
+	c.Add(appData)
+	x, _ := url.Parse("https://github.com/ErikKalkoken/jsombuddy")
+	c.Add(widget.NewHyperlink("Website", x))
+	c.Add(widget.NewLabel("(c) 2024 Erik Kalkoken"))
+	d := dialog.NewCustom("About", "OK", c, u.window)
+	d.Show()
 }
 
 func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
@@ -286,14 +279,10 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
 	defer d2.Hide()
-	data, err := loadFile(reader)
-	if err != nil {
-		return err
-	}
 	text1.SetText("Loading file 2 / 2. Please wait...")
-	n := binding.NewInt()
-	n.AddListener(binding.NewDataListener(func() {
-		v, err := n.Get()
+	currentSize := binding.NewInt()
+	currentSize.AddListener(binding.NewDataListener(func() {
+		v, err := currentSize.Get()
 		if err != nil {
 			return
 		}
@@ -301,27 +290,19 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 		t := p.Sprintf("%d elements loaded", v)
 		text2.SetText(t)
 	}))
-	if err := u.loadData(data, n); err != nil {
+	if err := u.document.Load(reader, currentSize); err != nil {
 		return err
 	}
-	uri := reader.URI()
-	u.setTitle(uri.Name())
-	u.addRecentFile(uri)
-	u.currentFile = uri
+	log.Printf("Loaded JSON file into tree with %d nodes", u.document.Size())
+	p := message.NewPrinter(language.English)
+	out := p.Sprintf("Size: %d", u.document.Size())
+	u.statusbar.SetText(out)
+	u.treeWidget.Refresh()
+	x := reader.URI()
+	u.setTitle(x.Name())
+	u.addRecentFile(x)
+	u.currentFile = x
 	return nil
-}
-
-func loadFile(reader fyne.URIReadCloser) (any, error) {
-	dat, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %s", err)
-	}
-	var data any
-	if err := json.Unmarshal(dat, &data); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
-	}
-	log.Printf("Read and unmarshaled JSON file")
-	return data, nil
 }
 
 func addToListWithRotation(s []string, v string, max int) []string {

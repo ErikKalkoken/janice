@@ -11,3 +11,7 @@ go run github.com/ErikKalkoken/jsonviewer@latest
 For more information on how to configure your system for Fyne please see: [Getting Started](https://docs.fyne.io/started/).
 
 This app is currently under development. Use at your own risk.
+
+## Attributions
+
+- [Json icons created by LAB Design Studio - Flaticon](https://www.flaticon.com/free-icons/json)
