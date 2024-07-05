@@ -168,29 +168,50 @@ func makeTree(u *UI) *widget.Tree {
 			key := hbox.Objects[0].(*widget.Label)
 			key.SetText(fmt.Sprintf("%s :", node.Key))
 			value := hbox.Objects[1].(*widget.Label)
-			var t string
-			var i widget.Importance
-			if node.Value == jsondocument.Empty {
-				t = ""
+			var text string
+			var importance widget.Importance
+			if node.Value == jsondocument.Object {
+				importance = widget.HighImportance
+				if branch {
+					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
+						text = ""
+					} else {
+						text = "{...}"
+					}
+				} else {
+					text = "{}"
+				}
+			} else if node.Value == jsondocument.Array {
+				importance = widget.HighImportance
+				if branch {
+					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
+						text = ""
+					} else {
+						text = "[...]"
+					}
+				} else {
+					text = "[]"
+				}
 			} else {
 				switch v := node.Value.(type) {
 				case string:
-					t = fmt.Sprintf("\"%s\"", v)
-					i = widget.WarningImportance
+					text = fmt.Sprintf("\"%s\"", v)
+					importance = widget.WarningImportance
 				case float64:
-					t = fmt.Sprintf("%v", v)
-					i = widget.SuccessImportance
+					text = fmt.Sprintf("%v", v)
+					importance = widget.SuccessImportance
 				case bool:
-					t = fmt.Sprintf("%v", v)
-					i = widget.HighImportance
+					text = fmt.Sprintf("%v", v)
+					importance = widget.DangerImportance
 				case nil:
-					t = "null"
+					text = "null"
+					importance = widget.DangerImportance
 				default:
-					t = fmt.Sprintf("%v", v)
+					text = fmt.Sprintf("%v", v)
 				}
 			}
-			value.Text = t
-			value.Importance = i
+			value.Text = text
+			value.Importance = importance
 			value.Refresh()
 		})
 
@@ -228,9 +249,13 @@ func makeMenu(u *UI) *fyne.MainMenu {
 		recentItem,
 	)
 	viewMenu := fyne.NewMenu("View",
-		fyne.NewMenuItem("Close All Branches", func() {
+		fyne.NewMenuItem("Expand All", func() {
+			u.treeWidget.OpenAllBranches()
+		}),
+		fyne.NewMenuItem("Collapse All", func() {
 			u.treeWidget.CloseAllBranches()
-		}))
+		}),
+	)
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("Documentation", func() {
 			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer")

@@ -20,7 +20,12 @@ type Node struct {
 	Value any
 }
 
-var Empty = struct{}{}
+type special uint
+
+const (
+	Object special = iota
+	Array
+)
 
 // JSONDocument represents a JSON document.
 //
@@ -125,10 +130,10 @@ func (t *JSONDocument) addSlice(parentUID string, a []any) {
 func (t *JSONDocument) addValue(parentUID widget.TreeNodeID, k string, v any) {
 	switch v2 := v.(type) {
 	case map[string]any:
-		uid := t.addNode(parentUID, k, Empty)
+		uid := t.addNode(parentUID, k, Object)
 		t.addObject(uid, v2)
 	case []any:
-		uid := t.addNode(parentUID, k, Empty)
+		uid := t.addNode(parentUID, k, Array)
 		t.addSlice(uid, v2)
 	default:
 		t.addNode(parentUID, k, v2)
