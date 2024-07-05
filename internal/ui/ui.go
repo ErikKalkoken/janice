@@ -16,7 +16,6 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"golang.org/x/text/language"
@@ -58,14 +57,8 @@ func NewUI() (*UI, error) {
 	}
 	u.document = d
 	u.treeWidget = makeTree(u)
-	tb := widget.NewToolbar(
-		widget.NewToolbarSpacer(),
-		widget.NewToolbarAction(theme.NewThemedResource(resourceUnfoldlessSvg), func() {
-			u.treeWidget.CloseAllBranches()
-		}),
-	)
 	c := container.NewBorder(
-		tb,
+		nil,
 		u.statusbar,
 		nil,
 		nil,
@@ -237,13 +230,16 @@ func makeMenu(u *UI) *fyne.MainMenu {
 		}),
 		recentItem,
 	)
+	viewMenu := fyne.NewMenu("View",
+		fyne.NewMenuItem("Close All Branches", func() {
+			u.treeWidget.CloseAllBranches()
+		}))
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("Documentation", func() {
-			url, _ := url.Parse("https://developer.fyne.io")
+			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer")
 			_ = u.app.OpenURL(url)
 		}))
-
-	main := fyne.NewMainMenu(u.fileMenu, helpMenu)
+	main := fyne.NewMainMenu(u.fileMenu, viewMenu, helpMenu)
 	return main
 }
 
