@@ -52,7 +52,7 @@ func NewUI() (*UI, error) {
 		statusbar: widget.NewLabel(""),
 		window:    a.NewWindow(appTitle),
 	}
-	u.treeWidget = makeTree(u)
+	u.treeWidget = u.makeTree()
 	c := container.NewBorder(
 		nil,
 		u.statusbar,
@@ -61,7 +61,7 @@ func NewUI() (*UI, error) {
 		u.treeWidget,
 	)
 	u.window.SetContent(c)
-	u.window.SetMainMenu(makeMenu(u))
+	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
 	u.window.SetMaster()
 	s := fyne.Size{
@@ -137,22 +137,7 @@ func (u *UI) addRecentFile(uri fyne.URI) {
 	u.updateRecentFilesMenu()
 }
 
-func addToListWithRotation(s []string, v string, max int) []string {
-	if max < 1 {
-		panic("max must be 1 or higher")
-	}
-	i := slices.Index(s, v)
-	if i != -1 {
-		s = slices.Delete(s, i, i+1)
-	}
-	s = slices.Insert(s, 0, v)
-	if len(s) > max {
-		s = s[0:max]
-	}
-	return s
-}
-
-func makeTree(u *UI) *widget.Tree {
+func (u *UI) makeTree() *widget.Tree {
 	tree := widget.NewTree(
 		func(id widget.TreeNodeID) []widget.TreeNodeID {
 			return u.document.ChildUIDs(id)
@@ -224,7 +209,7 @@ func makeTree(u *UI) *widget.Tree {
 	return tree
 }
 
-func makeMenu(u *UI) *fyne.MainMenu {
+func (u *UI) makeMenu() *fyne.MainMenu {
 	recentItem := fyne.NewMenuItem("Open Recent", nil)
 	recentItem.ChildMenu = fyne.NewMenu("")
 	u.fileMenu = fyne.NewMenu("File",
@@ -247,6 +232,7 @@ func makeMenu(u *UI) *fyne.MainMenu {
 			dialogOpen.Show()
 		}),
 		recentItem,
+		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Reload", func() {
 			reader, err := storage.Reader(u.currentFile)
 			if err != nil {
@@ -268,10 +254,24 @@ func makeMenu(u *UI) *fyne.MainMenu {
 		}),
 	)
 	helpMenu := fyne.NewMenu("Help",
-		fyne.NewMenuItem("Documentation", func() {
-			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer")
+		fyne.NewMenuItem("Report a bug", func() {
+			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer/issue")
 			_ = u.app.OpenURL(url)
-		}))
+		}),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("About...", func() {
+			c := container.NewVBox()
+			info := u.app.Metadata()
+			appData := widget.NewRichTextFromMarkdown(
+				"## " + appTitle + "\n**Version:** " + info.Version)
+			c.Add(appData)
+			uri, _ := url.Parse("https://github.com/ErikKalkoken/jsombuddy")
+			c.Add(widget.NewHyperlink("Website", uri))
+			c.Add(widget.NewLabel("(c) 2024 Erik Kalkoken"))
+			d := dialog.NewCustom("About", "OK", c, u.window)
+			d.Show()
+		}),
+	)
 	main := fyne.NewMainMenu(u.fileMenu, viewMenu, helpMenu)
 	return main
 }
@@ -322,4 +322,19 @@ func loadFile(reader fyne.URIReadCloser) (any, error) {
 	}
 	log.Printf("Read and unmarshaled JSON file")
 	return data, nil
+}
+
+func addToListWithRotation(s []string, v string, max int) []string {
+	if max < 1 {
+		panic("max must be 1 or higher")
+	}
+	i := slices.Index(s, v)
+	if i != -1 {
+		s = slices.Delete(s, i, i+1)
+	}
+	s = slices.Insert(s, 0, v)
+	if len(s) > max {
+		s = s[0:max]
+	}
+	return s
 }

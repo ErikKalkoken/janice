@@ -15,7 +15,7 @@ func TestJsonDocument(t *testing.T) {
 		err := j.Load(data, nil)
 		if assert.NoError(t, err) {
 			ids := j.ChildUIDs("")
-			want := jsondocument.Node{Key: "alpha", Value: jsondocument.Object}
+			want := jsondocument.Node{Key: "alpha", Value: jsondocument.Empty, Type: jsondocument.Object}
 			got := j.Value(ids[0])
 			assert.Equal(t, want, got)
 		}
