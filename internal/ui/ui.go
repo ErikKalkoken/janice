@@ -2,7 +2,6 @@
 package ui
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,14 +47,10 @@ func NewUI() (*UI, error) {
 	a := app.NewWithID("com.github.ErikKalkoken.jsonviewer")
 	u := &UI{
 		app:       a,
+		document:  jsondocument.NewJSONDocument(),
 		statusbar: widget.NewLabel(""),
 		window:    a.NewWindow(appTitle),
 	}
-	d, err := jsondocument.NewJSONDocument()
-	if err != nil {
-		return nil, err
-	}
-	u.document = d
 	u.treeWidget = makeTree(u)
 	c := container.NewBorder(
 		nil,
@@ -86,13 +81,12 @@ func (u *UI) ShowAndRun() {
 	u.window.ShowAndRun()
 }
 
-func (u *UI) loadData(data any, sizeEstimate int) error {
-	n := int(0.75 * float64(sizeEstimate))
-	if err := u.document.Load(data, n); err != nil {
+func (u *UI) loadData(data any, infoText binding.Int) error {
+	if err := u.document.Load(data, infoText); err != nil {
 		return err
 	}
-	p := message.NewPrinter(language.English)
 	log.Printf("Loaded JSON file into tree with %d nodes", u.document.Size())
+	p := message.NewPrinter(language.English)
 	out := p.Sprintf("Size: %d", u.document.Size())
 	u.statusbar.SetText(out)
 	u.treeWidget.Refresh()
@@ -201,7 +195,10 @@ func makeTree(u *UI) *widget.Tree {
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		u.treeWidget.UnselectAll()
+		defer u.treeWidget.UnselectAll()
+		if u.document.IsBranch(uid) {
+			tree.ToggleBranch(uid)
+		}
 	}
 	return tree
 }
@@ -245,20 +242,29 @@ func makeMenu(u *UI) *fyne.MainMenu {
 
 func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	defer reader.Close()
-	infoText := binding.NewString()
-	c := container.NewVBox(
-		widget.NewLabelWithData(infoText),
-		widget.NewProgressBarWithData(u.document.Progress),
-	)
+	text1 := widget.NewLabel("Loading file 1 / 2. Please wait...")
+	text2 := widget.NewLabel("")
+	pb := widget.NewProgressBarInfinite()
+	pb.Start()
+	c := container.NewVBox(text1, container.NewStack(pb, text2))
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
 	defer d2.Hide()
-	infoText.Set("Loading file... Please Wait.")
-	data, n, err := loadFile(reader)
+	data, err := loadFile(reader)
 	if err != nil {
 		return err
 	}
-	infoText.Set("Parsing file... Please Wait.")
+	text1.SetText("Loading file 2 / 2. Please wait...")
+	n := binding.NewInt()
+	n.AddListener(binding.NewDataListener(func() {
+		v, err := n.Get()
+		if err != nil {
+			return
+		}
+		p := message.NewPrinter(language.English)
+		t := p.Sprintf("%d elements loaded", v)
+		text2.SetText(t)
+	}))
 	if err := u.loadData(data, n); err != nil {
 		return err
 	}
@@ -267,17 +273,15 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	return nil
 }
 
-func loadFile(reader fyne.URIReadCloser) (any, int, error) {
+func loadFile(reader fyne.URIReadCloser) (any, error) {
 	dat, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to read file: %s", err)
+		return nil, fmt.Errorf("failed to read file: %s", err)
 	}
 	var data any
 	if err := json.Unmarshal(dat, &data); err != nil {
-		return nil, 0, fmt.Errorf("failed to unmarshal JSON: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
 	}
 	log.Printf("Read and unmarshaled JSON file")
-	n := bytes.Count(dat, []byte{'\n'})
-	log.Printf("File has %d LOC", n)
-	return data, n, nil
+	return data, nil
 }

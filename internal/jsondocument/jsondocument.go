@@ -26,24 +26,19 @@ var Empty = struct{}{}
 // The purpose of this type is to compose a formatted string tree from a nested data structure,
 // so it can be rendered directly with a Fyne tree widget.
 type JSONDocument struct {
-	// Current progress while loading a new tree from data
-	Progress binding.Float
-
-	ids          map[widget.TreeNodeID][]widget.TreeNodeID
-	values       map[widget.TreeNodeID]Node
-	ids2         map[widget.TreeNodeID][]widget.TreeNodeID
-	values2      map[widget.TreeNodeID]Node
-	n            int
-	sizeEstimate int
+	infoText binding.Int
+	ids      map[widget.TreeNodeID][]widget.TreeNodeID
+	values   map[widget.TreeNodeID]Node
+	ids2     map[widget.TreeNodeID][]widget.TreeNodeID
+	values2  map[widget.TreeNodeID]Node
+	n        int
 }
 
 // Returns a new JSONDocument object.
-func NewJSONDocument() (*JSONDocument, error) {
-	t := &JSONDocument{Progress: binding.NewFloat()}
-	if err := t.Reset(); err != nil {
-		return t, err
-	}
-	return t, nil
+func NewJSONDocument() *JSONDocument {
+	t := &JSONDocument{}
+	t.Reset()
+	return t
 }
 
 // ChildUIDs returns the child UIDs for a given node.
@@ -65,11 +60,9 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 }
 
 // Load loads a new tree from data.
-func (t *JSONDocument) Load(data any, sizeEstimate int) error {
-	if err := t.Reset(); err != nil {
-		return err
-	}
-	t.sizeEstimate = sizeEstimate
+func (t *JSONDocument) Load(data any, infoText binding.Int) error {
+	t.Reset()
+	t.infoText = infoText
 	switch v := data.(type) {
 	case map[string]any:
 		t.addObject("", v)
@@ -91,14 +84,12 @@ func (t *JSONDocument) Size() int {
 }
 
 // Reset resets the tree.
-func (t *JSONDocument) Reset() error {
+func (t *JSONDocument) Reset() {
 	t.values = make(map[widget.TreeNodeID]Node)
 	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
 	t.values2 = make(map[widget.TreeNodeID]Node)
 	t.ids2 = make(map[widget.TreeNodeID][]widget.TreeNodeID)
 	t.n = 0
-	t.sizeEstimate = 1
-	return t.Progress.Set(0)
 }
 
 func (t *JSONDocument) addObject(parentUID widget.TreeNodeID, data map[string]any) {
@@ -157,7 +148,7 @@ func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value an
 	t.values[uid] = Node{Key: key, Value: value}
 	t.n++
 	if t.n%progressUpdateTick == 0 {
-		t.Progress.Set(min(1, float64(t.n)/float64(t.sizeEstimate)))
+		t.infoText.Set(t.n)
 	}
 	return uid
 }
