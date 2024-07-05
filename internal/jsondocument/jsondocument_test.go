@@ -18,15 +18,28 @@ func TestJsonDocument(t *testing.T) {
 		// given
 		j := jsondocument.NewJSONDocument()
 		data := map[string]any{
-			"alpha": map[string]any{"sub": "one"}}
+			"master": map[string]any{"alpha": "abc", "bravo": 5, "charlie": true, "delta": nil}}
 		// when
 		err := j.Load(makeDataReader(data), i1, i2)
 		// then
 		if assert.NoError(t, err) {
 			ids := j.ChildUIDs("")
-			want := jsondocument.Node{Key: "alpha", Value: jsondocument.Empty, Type: jsondocument.Object}
+			want := jsondocument.Node{Key: "master", Value: jsondocument.Empty, Type: jsondocument.Object}
 			got := j.Value(ids[0])
 			assert.Equal(t, want, got)
+			for i, id := range j.ChildUIDs(ids[0]) {
+				node := j.Value(id)
+				switch i {
+				case 0:
+					assert.Equal(t, node, jsondocument.Node{Key: "alpha", Value: "abc", Type: jsondocument.String})
+				case 1:
+					assert.Equal(t, node, jsondocument.Node{Key: "bravo", Value: float64(5), Type: jsondocument.Number})
+				case 2:
+					assert.Equal(t, node, jsondocument.Node{Key: "charlie", Value: true, Type: jsondocument.Boolean})
+				case 3:
+					assert.Equal(t, node, jsondocument.Node{Key: "delta", Value: nil, Type: jsondocument.Null})
+				}
+			}
 		}
 	})
 }
