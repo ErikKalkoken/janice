@@ -34,12 +34,13 @@ const (
 
 // UI represents the user interface of this app.
 type UI struct {
-	app        fyne.App
-	document   *jsondocument.JSONDocument
-	fileMenu   *fyne.Menu
-	statusbar  *widget.Label
-	treeWidget *widget.Tree
-	window     fyne.Window
+	app         fyne.App
+	document    *jsondocument.JSONDocument
+	fileMenu    *fyne.Menu
+	statusbar   *widget.Label
+	treeWidget  *widget.Tree
+	currentFile fyne.URI
+	window      fyne.Window
 }
 
 // NewUI returns a new UI object.
@@ -115,11 +116,12 @@ func (u *UI) updateRecentFilesMenu() {
 		items[i] = fyne.NewMenuItem(uri.Path(), func() {
 			reader, err := storage.Reader(uri)
 			if err != nil {
-				log.Printf("Failed to read from URI %s: %s", uri, err)
+				dialog.ShowError(err, u.window)
 				return
 			}
 			if err := u.loadDocument(reader); err != nil {
 				dialog.ShowError(err, u.window)
+				return
 			}
 		})
 	}
@@ -245,6 +247,17 @@ func makeMenu(u *UI) *fyne.MainMenu {
 			dialogOpen.Show()
 		}),
 		recentItem,
+		fyne.NewMenuItem("Reload", func() {
+			reader, err := storage.Reader(u.currentFile)
+			if err != nil {
+				dialog.ShowError(err, u.window)
+				return
+			}
+			if err := u.loadDocument(reader); err != nil {
+				dialog.ShowError(err, u.window)
+				return
+			}
+		}),
 	)
 	viewMenu := fyne.NewMenu("View",
 		fyne.NewMenuItem("Expand All", func() {
@@ -291,8 +304,10 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	if err := u.loadData(data, n); err != nil {
 		return err
 	}
-	u.setTitle(reader.URI().Name())
-	u.addRecentFile(reader.URI())
+	uri := reader.URI()
+	u.setTitle(uri.Name())
+	u.addRecentFile(uri)
+	u.currentFile = uri
 	return nil
 }
 
