@@ -1,0 +1,170 @@
+# Main workflow for testing and releasing
+
+name: CI/CD
+
+env:
+  GOVERSION: "1.22.4"
+  NAME: "jsonviewer"
+  FULLNAME: "JSON Viewer"
+  PREFIX: "jsonviewer-${{  github.ref_name }}"
+
+on: push
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GOVERSION }}
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install gcc libgl1-mesa-dev xorg-dev
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
+
+  package_linux:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GOVERSION }}
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install gcc libgl1-mesa-dev xorg-dev
+
+    - name: Install Fyne tool
+      run: go install fyne.io/fyne/v2/cmd/fyne@latest
+
+    - name: Package Fyne app
+      run: fyne package -os linux
+
+    - name: Rename package
+      run: mv "${{ env.FULLNAME }}.tar.xz" ${{ env.PREFIX }}-linux-amd64.tar.xz
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.NAME }}-linux
+        path: ${{ env.PREFIX }}-linux-amd64.tar.xz
+        if-no-files-found: error
+        overwrite: true
+
+  package_darwin:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: test
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: msys2/setup-msys2@v2
+      with:
+        path-type: inherit
+        update: true
+
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GOVERSION }}
+
+    - name: Install Dependencies
+      run: >
+        pacman -Syu &&
+        pacman --noconfirm -S git zip mingw-w64-x86_64-toolchain
+
+    - name: Install Fyne tool
+      run: go install fyne.io/fyne/v2/cmd/fyne@latest
+
+    - name: Package
+      run: fyne package -os windows
+
+    - name: ZIP package
+      run: zip ${{ env.PREFIX }}-windows-x64.zip "${{ env.FULLNAME }}.exe"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.NAME }}-windows
+        path: ${{ env.PREFIX }}-windows-x64.zip
+        if-no-files-found: error
+        overwrite: true
+
+  package_macos:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: macos-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GOVERSION }}
+
+    - name: Install Fyne tool
+      run: go install fyne.io/fyne/v2/cmd/fyne@latest
+
+    - name: Package app bundles
+      run: fyne package -os darwin
+
+    - name: ZIP app bundle
+      run: zip --symlinks -r ${{ env.PREFIX }}-darwin-x64.zip "${{ env.FULLNAME }}.app/"
+
+    - name: Display structure of downloaded files
+      run: ls -R
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.NAME }}-macos
+        path: ${{ env.PREFIX }}-darwin-x64.zip
+        if-no-files-found: error
+        overwrite: true
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [package_linux, package_macos, package_darwin]
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/download-artifact@v4
+      with:
+        merge-multiple: true
+
+    - name: Display structure of downloaded files
+      run: ls -R
+
+    - name: Create release
+      uses: softprops/action-gh-release@v2
+      with:
+        fail_on_unmatched_files: true
+        files: |
+          ${{ env.PREFIX }}-darwin-x64.zip
+          ${{ env.PREFIX }}-linux-amd64.tar.xz
+          ${{ env.PREFIX }}-windows-x64.zip
