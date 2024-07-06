@@ -1,0 +1,8 @@
+Website = "https://github.com/ErikKalkoken/jsonviewer"
+
+[Details]
+  Icon = "icon.png"
+  Name = "JSON Viewer"
+  ID = "com.github.ErikKalkoken.jsonviewer"
+  Version = "0.1.0"
+  Build = 3

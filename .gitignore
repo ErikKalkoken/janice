@@ -1,3 +1,5 @@
 .temp/
 .vscode/
 jsonviewer
+*.tar.xz
+*.AppImage
