@@ -6,6 +6,7 @@ env:
   GOVERSION: "1.22.4"
   NAME: "jsonviewer"
   FULLNAME: "JSON Viewer"
+  APPIMAGENAME: "JSON_Viewer-x86_64"
   PREFIX: "jsonviewer-${{  github.ref_name }}"
 
 on: push
@@ -56,13 +57,23 @@ jobs:
     - name: Package Fyne app
       run: fyne package -os linux
 
+    - name: Build AppImage
+      run: ./build_appimage.sh
+
     - name: Rename package
       run: mv "${{ env.FULLNAME }}.tar.xz" ${{ env.PREFIX }}-linux-amd64.tar.xz
 
     - uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.NAME }}-linux
+        name: ${{ env.NAME }}-linux-1
         path: ${{ env.PREFIX }}-linux-amd64.tar.xz
+        if-no-files-found: error
+        overwrite: true
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.NAME }}-linux-2
+        path: ${{ env.APPIMAGENAME }}.AppImage
         if-no-files-found: error
         overwrite: true
 
@@ -163,8 +174,9 @@ jobs:
     - name: Create release
       uses: softprops/action-gh-release@v2
       with:
-        fail_on_unmatched_files: true
+        fail_on_unmatched_files: false
         files: |
-          ${{ env.PREFIX }}-darwin-x64.zip
-          ${{ env.PREFIX }}-linux-amd64.tar.xz
           ${{ env.PREFIX }}-windows-x64.zip
+          ${{ env.APPIMAGENAME }}.AppImage
+          ${{ env.PREFIX }}-linux-amd64.tar.xz
+          ${{ env.PREFIX }}-darwin-x64.zip
