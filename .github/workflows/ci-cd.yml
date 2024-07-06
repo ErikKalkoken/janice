@@ -66,7 +66,7 @@ jobs:
         if-no-files-found: error
         overwrite: true
 
-  package_darwin:
+  package_windows:
     if: startsWith(github.ref, 'refs/tags/')
     needs: test
     runs-on: windows-latest
@@ -108,7 +108,7 @@ jobs:
         if-no-files-found: error
         overwrite: true
 
-  package_macos:
+  package_darwin:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: macos-latest
     needs: test
@@ -147,7 +147,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [package_linux, package_macos, package_darwin]
+    needs: [package_linux, package_darwin, package_windows]
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
