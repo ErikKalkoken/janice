@@ -14,26 +14,15 @@ mkdir "$dest"
 # Extract application files into appdir folder
 tar xvfJ "$appname".tar.xz -C "$dest"
 
-# Add AppRun executable
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/AppRun-x86_64 -O "$dest/AppRun"
-chmod +x "$dest/AppRun"
-
-# Rearange application files to conform with appdir specs
-mkdir "$dest/usr/bin"
-mv "$dest/usr/local/share/pixmaps/$appname.png" "$dest"
-mv "$dest/usr/local/share/applications/$appname.desktop" "$dest"
-mv "$dest/usr/local/bin/$packagename" "$dest/usr/bin"
-rm -rf "$dest/usr/local"
-
 # Add category to desktop file
-sed -i -- "s/;/\nCategories=$categories;/g" "$dest/$appname.desktop"
+sed -i -- "s/;/\nCategories=$categories;/g" "$dest/usr/local/share/applications/$appname.desktop"
 desktop-file-validate "$dest/$appname.desktop"
 
 # Create appimage
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
-chmod +x appimagetool
-./appimagetool "$dest"
+# wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage -O linuxdeployqt
+# chmod +x linuxdeployqt
+linuxdeploy --appdir "$dest" -o appimage -e "$dest/usr/local/bin/$packagename"  -d "$dest/usr/local/share/applications/$appname.desktop" -i "$dest/usr/local/share/pixmaps/$appname.png"
 
 # Cleanup
 rm -rf "$dest"
-rm appimagetool
+# rm appimagetool
