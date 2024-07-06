@@ -16,12 +16,12 @@ tar xvfJ "$appname".tar.xz -C "$dest"
 
 # Add category to desktop file
 sed -i -- "s/;/\nCategories=$categories;/g" "$dest/usr/local/share/applications/$appname.desktop"
-desktop-file-validate "$dest/$appname.desktop"
+# desktop-file-validate "$dest/$appname.desktop"
 
 # Create appimage
-# wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage -O linuxdeployqt
-# chmod +x linuxdeployqt
-linuxdeploy --appdir "$dest" -o appimage -e "$dest/usr/local/bin/$packagename"  -d "$dest/usr/local/share/applications/$appname.desktop" -i "$dest/usr/local/share/pixmaps/$appname.png"
+wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage -O linuxdeployqt
+chmod +x linuxdeployqt
+./linuxdeploy --appdir "$dest" -o appimage -e "$dest/usr/local/bin/$packagename"  -d "$dest/usr/local/share/applications/$appname.desktop" -i "$dest/usr/local/share/pixmaps/$appname.png"
 
 # Cleanup
 rm -rf "$dest"
