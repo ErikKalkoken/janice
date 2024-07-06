@@ -19,9 +19,9 @@ sed -i -- "s/;/\nCategories=$categories;/g" "$dest/usr/local/share/applications/
 # desktop-file-validate "$dest/$appname.desktop"
 
 # Create appimage
-wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy
+wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy
 chmod +x linuxdeploy
-./linuxdeploy --appdir "$dest" -o appimage -e "$dest/usr/local/bin/$packagename"  -d "$dest/usr/local/share/applications/$appname.desktop" -i "$dest/usr/local/share/pixmaps/$appname.png"
+./linuxdeploy --appdir "$dest" -v 2 -o appimage -e "$dest/usr/local/bin/$packagename"  -d "$dest/usr/local/share/applications/$appname.desktop" -i "$dest/usr/local/share/pixmaps/$appname.png"
 
 # Cleanup
 rm -rf "$dest"
