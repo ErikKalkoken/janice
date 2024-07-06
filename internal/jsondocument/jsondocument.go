@@ -50,7 +50,7 @@ type JSONDocument struct {
 }
 
 // Returns a new JSONDocument object.
-func NewJSONDocument() *JSONDocument {
+func New() *JSONDocument {
 	t := &JSONDocument{}
 	t.reset()
 	return t

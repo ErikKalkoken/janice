@@ -39,7 +39,7 @@ func NewUI() (*UI, error) {
 	a := app.NewWithID("com.github.ErikKalkoken.jsonviewer")
 	u := &UI{
 		app:       a,
-		document:  jsondocument.NewJSONDocument(),
+		document:  jsondocument.New(),
 		statusbar: widget.NewLabel(""),
 		window:    a.NewWindow(appTitle),
 	}
