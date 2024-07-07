@@ -11,11 +11,14 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 const (
 	// Update progress after x added nodes
 	progressUpdateTick = 10_000
+	totalLoadSteps     = 4
 )
 
 type JSONType uint
@@ -41,7 +44,11 @@ var Empty = struct{}{}
 
 // JSONDocument represents a JSON document which can be rendered by a Fyne tree widget.
 type JSONDocument struct {
-	elementsCount binding.Int
+	// Current progress in percent while loading a document
+	Progress binding.Float
+
+	infoText      binding.String
+	elementsCount int
 
 	mu     sync.RWMutex
 	ids    map[widget.TreeNodeID][]widget.TreeNodeID
@@ -51,9 +58,15 @@ type JSONDocument struct {
 
 // Returns a new JSONDocument object.
 func New() *JSONDocument {
-	t := &JSONDocument{}
+	t := &JSONDocument{
+		Progress: binding.NewFloat(), infoText: binding.NewString(),
+	}
 	t.reset()
 	return t
+}
+
+func (t *JSONDocument) TotalLoadSteps() int {
+	return totalLoadSteps
 }
 
 // ChildUIDs returns the child UIDs for a given node.
@@ -89,15 +102,36 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 }
 
 // Load loads a new tree from a reader.
-func (t *JSONDocument) Load(reader io.Reader, loadStep binding.Int, elementsCount binding.Int) error {
-	data, err := loadFile(reader, loadStep)
+func (t *JSONDocument) Load(reader io.Reader, infoText binding.String) error {
+	if err := t.Progress.Set(0); err != nil {
+		return err
+	}
+	t.infoText = infoText
+	data, err := t.loadFile(reader)
 	if err != nil {
 		return err
 	}
+	t.infoText.Set("3/4: Sizing data...")
+	c := JSONTreeSizer{}
+	s, err := c.Run(data)
+	if err != nil {
+		return err
+	}
+	t.elementsCount = s
+	slog.Info("Tree size calculated", "size", s)
+	p := message.NewPrinter(language.English)
+	t.infoText.Set(p.Sprintf("4/4: Rendering tree with %d elements...", s))
+	if err := t.load(data); err != nil {
+		return err
+	}
+	slog.Info("Finished loading JSON document into tree", "size", t.n)
+	return nil
+}
+
+func (t *JSONDocument) load(data any) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.reset()
-	t.elementsCount = elementsCount
 	switch v := data.(type) {
 	case map[string]any:
 		t.addObject("", v)
@@ -106,7 +140,6 @@ func (t *JSONDocument) Load(reader io.Reader, loadStep binding.Int, elementsCoun
 	default:
 		return fmt.Errorf("unrecognized format")
 	}
-	slog.Info("Finished loading JSON document into tree", "size", t.n)
 	return nil
 }
 
@@ -186,7 +219,10 @@ func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value an
 	t.values[uid] = Node{Key: key, Value: value, Type: typ}
 	t.n++
 	if t.n%progressUpdateTick == 0 {
-		t.elementsCount.Set(t.n)
+		p := float64(t.n) / float64(t.elementsCount)
+		if err := t.Progress.Set(p); err != nil {
+			slog.Warn("Failed to set progress", "err", err)
+		}
 	}
 	return uid
 }
@@ -198,17 +234,17 @@ func (t *JSONDocument) reset() {
 	t.n = 0
 }
 
-func loadFile(reader io.Reader, loadStep binding.Int) (any, error) {
+func (t *JSONDocument) loadFile(reader io.Reader) (any, error) {
+	t.infoText.Set("1/4: Loading file from disk...")
 	dat, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %s", err)
 	}
-	loadStep.Set(2)
+	t.infoText.Set("2/4: Parsing file...")
 	var data any
 	if err := json.Unmarshal(dat, &data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
 	}
 	slog.Info("Read and unmarshaled JSON file")
-	loadStep.Set(3)
 	return data, nil
 }

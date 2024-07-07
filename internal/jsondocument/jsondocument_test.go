@@ -11,8 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dummy1 = binding.NewInt()
-var dummy2 = binding.NewInt()
+var dummy = binding.NewString()
 
 func TestJsonDocument(t *testing.T) {
 	j := jsondocument.New()
@@ -20,7 +19,7 @@ func TestJsonDocument(t *testing.T) {
 		"alpha": map[string]any{"second": 1},
 		"bravo": 2,
 	}
-	if err := j.Load(makeDataReader(data), dummy1, dummy2); err != nil {
+	if err := j.Load(makeDataReader(data), dummy); err != nil {
 		t.Fatal(err)
 	}
 	ids := j.ChildUIDs("")
@@ -48,11 +47,11 @@ func TestJsonDocumentLoad(t *testing.T) {
 			"bravo":   5,
 			"charlie": true,
 			"delta":   nil,
-			"echo":    []int{1, 2},
+			"echo":    []any{1, 2},
 			"foxtrot": map[string]any{"child": 1},
 		}
 		// when
-		err := j.Load(makeDataReader(data), dummy1, dummy2)
+		err := j.Load(makeDataReader(data), dummy)
 		// then
 		if assert.NoError(t, err) {
 			assert.Equal(t, 9, j.Size())
@@ -96,7 +95,7 @@ func TestJsonDocumentLoad(t *testing.T) {
 		j := jsondocument.New()
 		data := []any{"one", "two"}
 		// when
-		err := j.Load(makeDataReader(data), dummy1, dummy2)
+		err := j.Load(makeDataReader(data), dummy)
 		// then
 		if assert.NoError(t, err) {
 			assert.Equal(t, 2, j.Size())

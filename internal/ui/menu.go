@@ -129,28 +129,14 @@ func (u *UI) updateRecentFilesMenu() {
 
 func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	defer reader.Close()
-	loadStep := binding.NewInt()
-	loadStep.Set(1)
-	t := binding.IntToStringWithFormat(loadStep, "Loading file. Step %d / 3. Please wait...")
+	infoText := binding.NewString()
 	text2 := widget.NewLabel("")
-	pb := widget.NewProgressBarInfinite()
-	pb.Start()
-	c := container.NewVBox(widget.NewLabelWithData(t), container.NewStack(pb, text2))
+	pb := widget.NewProgressBarWithData(u.document.Progress)
+	c := container.NewVBox(widget.NewLabelWithData(infoText), container.NewStack(pb, text2))
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
 	defer d2.Hide()
-	elementsCount := binding.NewInt()
-	elementsCount.AddListener(binding.NewDataListener(func() {
-		v, err := elementsCount.Get()
-		if err != nil {
-			slog.Error("Failed to retrieve value for current size", "err", err)
-			return
-		}
-		p := message.NewPrinter(language.English)
-		t := p.Sprintf("%d elements loaded", v)
-		text2.SetText(t)
-	}))
-	if err := u.document.Load(reader, loadStep, elementsCount); err != nil {
+	if err := u.document.Load(reader, infoText); err != nil {
 		return err
 	}
 	p := message.NewPrinter(language.English)

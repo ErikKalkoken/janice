@@ -6,13 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"fyne.io/fyne/v2/data/binding"
 	"github.com/stretchr/testify/assert"
 )
 
-var dummy1 = binding.NewInt()
-
 func TestLoadFile(t *testing.T) {
+	j := New()
 	t.Run("should return unmarshaled data from stream", func(t *testing.T) {
 		// given
 		data := map[string]any{"alpha": "two"}
@@ -22,7 +20,7 @@ func TestLoadFile(t *testing.T) {
 		}
 		r := bytes.NewReader(dat)
 		// when
-		got, err := loadFile(r, dummy1)
+		got, err := j.loadFile(r)
 		// then
 		if assert.NoError(t, err) {
 			assert.Equal(t, data, got)
@@ -32,7 +30,7 @@ func TestLoadFile(t *testing.T) {
 		// given
 		r := strings.NewReader("invalid JSON")
 		// when
-		_, err := loadFile(r, dummy1)
+		_, err := j.loadFile(r)
 		// then
 		assert.Error(t, err)
 	})
