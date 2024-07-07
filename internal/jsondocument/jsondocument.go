@@ -33,6 +33,24 @@ const (
 	String
 )
 
+var typeMap = map[JSONType]string{
+	Unknown: "unknown",
+	Array:   "array",
+	Boolean: "boolean",
+	Null:    "null",
+	Number:  "number",
+	Object:  "object",
+	String:  "string",
+}
+
+func (t JSONType) String() string {
+	s, ok := typeMap[t]
+	if !ok {
+		return "undefined"
+	}
+	return s
+}
+
 // Node represents a node in the JSON data tree.
 type Node struct {
 	Key   string
@@ -57,10 +75,11 @@ type JSONDocument struct {
 	progressInfo  binding.Untyped
 	elementsCount int
 
-	mu     sync.RWMutex
-	ids    map[widget.TreeNodeID][]widget.TreeNodeID
-	values map[widget.TreeNodeID]Node
-	n      int
+	mu      sync.RWMutex
+	ids     map[widget.TreeNodeID][]widget.TreeNodeID
+	values  map[widget.TreeNodeID]Node
+	parents map[widget.TreeNodeID]widget.TreeNodeID
+	n       int
 }
 
 // Returns a new JSONDocument object.
@@ -137,6 +156,24 @@ func (t *JSONDocument) Size() int {
 	}
 	defer t.mu.RUnlock()
 	return t.n
+}
+
+// Path returns the path of a node in the tree.
+func (t *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
+	path := make([]widget.TreeNodeID, 0)
+	if !t.mu.TryRLock() {
+		return path
+	}
+	defer t.mu.RUnlock()
+	for {
+		uid = t.parents[uid]
+		if uid == "" {
+			break
+		}
+		path = append(path, uid)
+	}
+	slices.Reverse(path)
+	return path
 }
 
 // render is the main method for rendering the JSON data into a tree.
@@ -220,6 +257,7 @@ func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value an
 	}
 	t.ids[parentUID] = append(t.ids[parentUID], uid)
 	t.values[uid] = Node{Key: key, Value: value, Type: typ}
+	t.parents[uid] = parentUID
 	t.n++
 	if t.n%progressUpdateTick == 0 {
 		p := float64(t.n) / float64(t.elementsCount)
@@ -234,6 +272,7 @@ func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value an
 func (t *JSONDocument) reset() {
 	t.values = make(map[widget.TreeNodeID]Node)
 	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
+	t.parents = make(map[widget.TreeNodeID]widget.TreeNodeID)
 	t.n = 0
 }
 

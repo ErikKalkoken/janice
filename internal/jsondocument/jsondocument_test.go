@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/widget"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +17,7 @@ var dummy = binding.NewUntyped()
 func TestJsonDocument(t *testing.T) {
 	j := jsondocument.New()
 	data := map[string]any{
-		"alpha": map[string]any{"second": 1},
+		"alpha": map[string]any{"charlie": map[string]any{"delta": 1}},
 		"bravo": 2,
 	}
 	if err := j.Load(makeDataReader(data), dummy); err != nil {
@@ -25,16 +26,34 @@ func TestJsonDocument(t *testing.T) {
 	ids := j.ChildUIDs("")
 	alphaID := ids[0]
 	bravoID := ids[1]
+	ids = j.ChildUIDs(alphaID)
+	charlieID := ids[0]
+	ids = j.ChildUIDs(charlieID)
+	deltaID := ids[0]
 	t.Run("should return tree size", func(t *testing.T) {
-		assert.Equal(t, 3, j.Size())
+		assert.Equal(t, 4, j.Size())
 	})
 	t.Run("should return true when branch", func(t *testing.T) {
 		assert.True(t, j.IsBranch(alphaID))
 		assert.False(t, j.IsBranch(bravoID))
 	})
-	t.Run("should return node value", func(t *testing.T) {
+	t.Run("should return value of parent node", func(t *testing.T) {
 		got := j.Value(alphaID)
 		want := jsondocument.Node{Key: "alpha", Value: jsondocument.Empty, Type: jsondocument.Object}
+		assert.Equal(t, want, got)
+	})
+	t.Run("should return value of child node", func(t *testing.T) {
+		got := j.Value(deltaID)
+		want := jsondocument.Node{Key: "delta", Value: float64(1), Type: jsondocument.Number}
+		assert.Equal(t, want, got)
+	})
+	t.Run("should return empty path for parent node", func(t *testing.T) {
+		got := j.Path(alphaID)
+		assert.Len(t, got, 0)
+	})
+	t.Run("should return path for child node", func(t *testing.T) {
+		got := j.Path(deltaID)
+		want := []widget.TreeNodeID{alphaID, charlieID}
 		assert.Equal(t, want, got)
 	})
 }

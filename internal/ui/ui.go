@@ -4,6 +4,7 @@ package ui
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -23,9 +24,21 @@ const (
 	settingRecentFiles  = "recent-files"
 )
 
+var type2importance = map[jsondocument.JSONType]widget.Importance{
+	jsondocument.Array:   widget.HighImportance,
+	jsondocument.Object:  widget.HighImportance,
+	jsondocument.String:  widget.WarningImportance,
+	jsondocument.Number:  widget.SuccessImportance,
+	jsondocument.Boolean: widget.DangerImportance,
+	jsondocument.Null:    widget.DangerImportance,
+}
+
 // UI represents the user interface of this app.
 type UI struct {
 	app         fyne.App
+	detailPath  *widget.Label
+	detailType  *widget.Label
+	detailValue *widget.RichText
 	document    *jsondocument.JSONDocument
 	fileMenu    *fyne.Menu
 	statusbar   *widget.Label
@@ -38,19 +51,23 @@ type UI struct {
 func NewUI() (*UI, error) {
 	a := app.NewWithID("com.github.ErikKalkoken.jsonviewer")
 	u := &UI{
-		app:       a,
-		document:  jsondocument.New(),
-		statusbar: widget.NewLabel(""),
-		window:    a.NewWindow(appTitle),
+		app:         a,
+		document:    jsondocument.New(),
+		detailPath:  widget.NewLabel(""),
+		detailType:  widget.NewLabel(""),
+		detailValue: widget.NewRichText(),
+		statusbar:   widget.NewLabel(""),
+		window:      a.NewWindow(appTitle),
 	}
 	u.treeWidget = u.makeTree()
-	c := container.NewBorder(
-		nil,
-		u.statusbar,
-		nil,
-		nil,
-		u.treeWidget,
+	u.detailPath.Wrapping = fyne.TextWrapWord
+	u.detailValue.Wrapping = fyne.TextWrapWord
+	detail := container.NewBorder(
+		container.NewBorder(nil, u.detailType, nil, nil, u.detailPath), nil, nil, nil, u.detailValue,
 	)
+	hsplit := container.NewHSplit(u.treeWidget, detail)
+	hsplit.Offset = 0.75
+	c := container.NewBorder(nil, u.statusbar, nil, nil, hsplit)
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
@@ -112,10 +129,8 @@ func (u *UI) makeTree() *widget.Tree {
 			node := u.document.Value(uid)
 			obj := co.(*NodeWidget)
 			var text string
-			var importance widget.Importance
 			switch v := node.Value; node.Type {
 			case jsondocument.Array:
-				importance = widget.HighImportance
 				if branch {
 					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
 						text = ""
@@ -126,7 +141,6 @@ func (u *UI) makeTree() *widget.Tree {
 					text = "[]"
 				}
 			case jsondocument.Object:
-				importance = widget.HighImportance
 				if branch {
 					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
 						text = ""
@@ -137,28 +151,44 @@ func (u *UI) makeTree() *widget.Tree {
 					text = "{}"
 				}
 			case jsondocument.String:
-				importance = widget.WarningImportance
 				text = fmt.Sprintf("\"%s\"", v)
 			case jsondocument.Number:
-				importance = widget.SuccessImportance
 				text = fmt.Sprintf("%v", v)
 			case jsondocument.Boolean:
-				importance = widget.DangerImportance
 				text = fmt.Sprintf("%v", v)
 			case jsondocument.Null:
-				importance = widget.DangerImportance
 				text = "null"
 			default:
 				text = fmt.Sprintf("%v", v)
 			}
-			obj.Set(node.Key, text, importance)
+			obj.Set(node.Key, text, type2importance[node.Type])
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		defer u.treeWidget.UnselectAll()
 		if u.document.IsBranch(uid) {
-			tree.ToggleBranch(uid)
+			u.treeWidget.UnselectAll()
+			return
 		}
+		p := u.document.Path(uid)
+		keys := []string{"$"}
+		for _, id := range p {
+			node := u.document.Value(id)
+			keys = append(keys, node.Key)
+		}
+		node := u.document.Value(uid)
+		keys = append(keys, node.Key)
+		u.detailPath.SetText(strings.Join(keys, "."))
+		u.detailType.SetText(fmt.Sprint(node.Type))
+		var v string
+		switch node.Type {
+		case jsondocument.String:
+			v = fmt.Sprintf("\"%s\"", node.Value)
+		case jsondocument.Null:
+			v = "null"
+		default:
+			v = fmt.Sprint(node.Value)
+		}
+		u.detailValue.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
 	}
 	return tree
 }
