@@ -1,4 +1,4 @@
-// Package jsondocument contains the logic for building a Fyne tree from a JSON document.
+// Package jsondocument contains the logic for rendering a Fyne tree from a JSON document.
 package jsondocument
 
 import (
@@ -16,9 +16,11 @@ import (
 const (
 	// Update progress after x added nodes
 	progressUpdateTick = 10_000
-	totalLoadSteps     = 4
+	// Total number of load steps
+	totalLoadSteps = 4
 )
 
+// JSONType represents the type of a JSON value.
 type JSONType uint
 
 const (
@@ -31,12 +33,15 @@ const (
 	String
 )
 
+// Node represents a node in the JSON data tree.
 type Node struct {
 	Key   string
 	Value any
 	Type  JSONType
 }
 
+// ProgressInfo represents the current progress while loading a document
+// and is used to communicate the the UI.
 type ProgressInfo struct {
 	Progress    float64
 	Size        int
@@ -97,7 +102,8 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 	return t.values[uid]
 }
 
-// Load loads a new tree from a reader.
+// Load loads JSON data from a reader and builds a new JSON document from it.
+// It reports it's current progress to the caller via updates to progressInfo.
 func (t *JSONDocument) Load(reader io.Reader, progressInfo binding.Untyped) error {
 	t.progressInfo = progressInfo
 	data, err := t.loadFile(reader)
@@ -108,7 +114,7 @@ func (t *JSONDocument) Load(reader io.Reader, progressInfo binding.Untyped) erro
 		return err
 	}
 	c := JSONTreeSizer{}
-	s, err := c.Run(data)
+	s, err := c.Calculate(data)
 	if err != nil {
 		return err
 	}
@@ -117,14 +123,24 @@ func (t *JSONDocument) Load(reader io.Reader, progressInfo binding.Untyped) erro
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 4}); err != nil {
 		return err
 	}
-	if err := t.load(data); err != nil {
+	if err := t.render(data); err != nil {
 		return err
 	}
 	slog.Info("Finished loading JSON document into tree", "size", t.n)
 	return nil
 }
 
-func (t *JSONDocument) load(data any) error {
+// Size returns the number of nodes.
+func (t *JSONDocument) Size() int {
+	if !t.mu.TryRLock() {
+		return 0
+	}
+	defer t.mu.RUnlock()
+	return t.n
+}
+
+// render is the main method for rendering the JSON data into a tree.
+func (t *JSONDocument) render(data any) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.reset()
@@ -137,15 +153,6 @@ func (t *JSONDocument) load(data any) error {
 		return fmt.Errorf("unrecognized format")
 	}
 	return nil
-}
-
-// Size returns the number of nodes.
-func (t *JSONDocument) Size() int {
-	if !t.mu.TryRLock() {
-		return 0
-	}
-	defer t.mu.RUnlock()
-	return t.n
 }
 
 // addObject adds a JSON object to the tree.

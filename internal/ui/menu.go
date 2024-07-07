@@ -130,7 +130,7 @@ func (u *UI) updateRecentFilesMenu() {
 
 func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	defer reader.Close()
-	text := widget.NewLabel("")
+	infoText := widget.NewLabel("")
 	pb1 := widget.NewProgressBarInfinite()
 	pb2 := widget.NewProgressBar()
 	pb2.Hide()
@@ -145,15 +145,14 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 		if !ok {
 			return
 		}
-		step := fmt.Sprintf("%d / %d", info.CurrentStep, info.TotalSteps)
-		var t string
+		var text string
 		switch info.CurrentStep {
 		case 1:
-			t = fmt.Sprintf("%s: Loading file from disk...", step)
+			text = "Loading file from disk..."
 		case 2:
-			t = fmt.Sprintf("%s: Parsing file...", step)
+			text = "Parsing file..."
 		case 3:
-			t = fmt.Sprintf("%s: Calculating size...", step)
+			text = "Calculating size..."
 		case 4:
 			if pb2.Hidden {
 				pb1.Stop()
@@ -161,12 +160,15 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 				pb2.Show()
 			}
 			p := message.NewPrinter(language.English)
-			t = p.Sprintf("%s: Rendering document for %d elements...", step, info.Size)
+			text = p.Sprintf("Rendering document with %d elements...", info.Size)
+			pb2.SetValue(info.Progress)
+		default:
+			text = "?"
 		}
-		text.SetText(t)
-		pb2.SetValue(info.Progress)
+		message := fmt.Sprintf("%d / %d: %s", info.CurrentStep, info.TotalSteps, text)
+		infoText.SetText(message)
 	}))
-	c := container.NewVBox(text, container.NewStack(pb1, pb2))
+	c := container.NewVBox(infoText, container.NewStack(pb1, pb2))
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
 	defer d2.Hide()

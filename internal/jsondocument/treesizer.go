@@ -4,47 +4,47 @@ import (
 	"fmt"
 )
 
-// JSONTreeSizer allows the quick sizing of a tree structure.
-// It is specialized for data coming from unmarshaled JSON.
+// JSONTreeSizer is an object for calculating the number of nodes in a tree structure.
+// It is specialized for data produced by un-marshalling a JSON document.
 type JSONTreeSizer struct {
 	count int
 }
 
-// Load loads a new tree from a reader.
-func (t *JSONTreeSizer) Run(data any) (int, error) {
+// Calculate returns the number of nodes in a tree structure.
+func (t *JSONTreeSizer) Calculate(data any) (int, error) {
 	t.count = 0
 	switch v := data.(type) {
 	case map[string]any:
-		t.addObject(v)
+		t.parseObject(v)
 	case []any:
-		t.addArray(v)
+		t.parseArray(v)
 	default:
 		return 0, fmt.Errorf("unrecognized format")
 	}
 	return t.count, nil
 }
 
-// addObject adds a JSON object to the tree.
-func (t *JSONTreeSizer) addObject(data map[string]any) {
+// parseObject parses an object in a JSON tree.
+func (t *JSONTreeSizer) parseObject(data map[string]any) {
 	for _, v := range data {
-		t.addValue(v)
+		t.parseValue(v)
 	}
 }
 
-// addArray adds a JSON array to the tree.
-func (t *JSONTreeSizer) addArray(a []any) {
+// parseArray parses an array in a JSON tree.
+func (t *JSONTreeSizer) parseArray(a []any) {
 	for _, v := range a {
-		t.addValue(v)
+		t.parseValue(v)
 	}
 }
 
-// addValue adds a JSON value to the tree.
-func (t *JSONTreeSizer) addValue(v any) {
+// parseArray parses a value in a JSON tree
+func (t *JSONTreeSizer) parseValue(v any) {
 	t.count++
 	switch v2 := v.(type) {
 	case map[string]any:
-		t.addObject(v2)
+		t.parseObject(v2)
 	case []any:
-		t.addArray(v2)
+		t.parseArray(v2)
 	}
 }

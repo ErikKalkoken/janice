@@ -18,7 +18,7 @@ func TestCounter(t *testing.T) {
 			"foxtrot": map[string]any{"child": 1},
 		}
 		c := jsondocument.JSONTreeSizer{}
-		x, err := c.Run(data)
+		x, err := c.Calculate(data)
 		if assert.NoError(t, err) {
 			assert.Equal(t, 9, x)
 		}
@@ -32,7 +32,7 @@ func TestCounter(t *testing.T) {
 			map[string]any{"child": 1},
 		}
 		c := jsondocument.JSONTreeSizer{}
-		x, err := c.Run(data)
+		x, err := c.Calculate(data)
 		if assert.NoError(t, err) {
 			assert.Equal(t, 8, x)
 		}
