@@ -176,7 +176,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 		return err
 	}
 	p := message.NewPrinter(language.English)
-	out := p.Sprintf("Size: %d", u.document.Size())
+	out := p.Sprintf("%d elements", u.document.Size())
 	u.statusTreeSize.SetText(out)
 	u.treeWidget.Refresh()
 	x := reader.URI()

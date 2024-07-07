@@ -10,7 +10,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
@@ -36,17 +36,20 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 
 // UI represents the user interface of this app.
 type UI struct {
-	app            fyne.App
-	detailPath     *widget.Label
-	detailType     *widget.Label
-	detailValue    *widget.RichText
-	document       *jsondocument.JSONDocument
-	fileMenu       *fyne.Menu
-	statusPath     *widget.Label
-	statusTreeSize *widget.Label
-	treeWidget     *widget.Tree
-	currentFile    fyne.URI
-	window         fyne.Window
+	app             fyne.App
+	detailCopyPath  *widget.Button
+	detailCopyValue *widget.Button
+	detailPath      *widget.Label
+	detailType      *widget.Label
+	detailValueMD   *widget.RichText
+	detailValueRaw  string
+	document        *jsondocument.JSONDocument
+	fileMenu        *fyne.Menu
+	statusPath      *widget.Label
+	statusTreeSize  *widget.Label
+	treeWidget      *widget.Tree
+	currentFile     fyne.URI
+	window          fyne.Window
 }
 
 // NewUI returns a new UI object.
@@ -57,21 +60,46 @@ func NewUI() (*UI, error) {
 		document:       jsondocument.New(),
 		detailPath:     widget.NewLabel(""),
 		detailType:     widget.NewLabel(""),
-		detailValue:    widget.NewRichText(),
+		detailValueMD:  widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
 		statusPath:     widget.NewLabel(""),
 		window:         a.NewWindow(appTitle),
 	}
 	u.treeWidget = u.makeTree()
 	u.detailPath.Wrapping = fyne.TextWrapWord
-	u.detailValue.Wrapping = fyne.TextWrapWord
+	u.detailValueMD.Wrapping = fyne.TextWrapWord
+	u.statusPath.Wrapping = fyne.TextWrapWord
+	u.detailCopyPath = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		u.window.Clipboard().SetContent(u.detailPath.Text)
+	})
+	u.detailCopyPath.Disable()
+	u.detailCopyValue = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		u.window.Clipboard().SetContent(u.detailValueRaw)
+	})
+	u.detailCopyValue.Disable()
 	detail := container.NewBorder(
-		container.NewBorder(nil, u.detailType, nil, nil, u.detailPath), nil, nil, nil, u.detailValue,
+		container.NewBorder(
+			nil,
+			u.detailType,
+			nil,
+			container.NewVBox(u.detailCopyPath),
+			u.detailPath,
+		),
+		nil,
+		nil,
+		container.NewVBox(u.detailCopyValue),
+		u.detailValueMD,
 	)
 	hsplit := container.NewHSplit(u.treeWidget, detail)
 	hsplit.Offset = 0.75
-	statusbar := container.NewHBox(u.statusPath, layout.NewSpacer(), u.statusTreeSize)
-	c := container.NewBorder(nil, statusbar, nil, nil, hsplit)
+	statusbar := container.NewBorder(
+		nil,
+		nil,
+		nil,
+		container.NewHBox(widget.NewSeparator(), u.statusTreeSize),
+		u.statusPath,
+	)
+	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), statusbar), nil, nil, hsplit)
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
@@ -169,6 +197,7 @@ func (u *UI) makeTree() *widget.Tree {
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
+		u.detailCopyPath.Enable()
 		path := u.renderPath(uid)
 		u.statusPath.SetText(path)
 		node := u.document.Value(uid)
@@ -176,18 +205,21 @@ func (u *UI) makeTree() *widget.Tree {
 		u.detailType.SetText(fmt.Sprint(node.Type))
 		var v string
 		if u.document.IsBranch(uid) {
+			u.detailCopyValue.Disable()
 			v = "..."
 		} else {
+			u.detailCopyValue.Enable()
+			u.detailValueRaw = fmt.Sprint(node.Value)
 			switch node.Type {
 			case jsondocument.String:
 				v = fmt.Sprintf("\"%s\"", node.Value)
 			case jsondocument.Null:
 				v = "null"
 			default:
-				v = fmt.Sprint(node.Value)
+				v = u.detailValueRaw
 			}
 		}
-		u.detailValue.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
+		u.detailValueMD.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
 	}
 	return tree
 }
