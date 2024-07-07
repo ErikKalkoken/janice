@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
+	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -129,14 +130,47 @@ func (u *UI) updateRecentFilesMenu() {
 
 func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	defer reader.Close()
-	infoText := binding.NewString()
-	text2 := widget.NewLabel("")
-	pb := widget.NewProgressBarWithData(u.document.Progress)
-	c := container.NewVBox(widget.NewLabelWithData(infoText), container.NewStack(pb, text2))
+	text := widget.NewLabel("")
+	pb1 := widget.NewProgressBarInfinite()
+	pb2 := widget.NewProgressBar()
+	pb2.Hide()
+	progressInfo := binding.NewUntyped()
+	progressInfo.AddListener(binding.NewDataListener(func() {
+		x, err := progressInfo.Get()
+		if err != nil {
+			slog.Warn("Failed to get progress info", "err", err)
+			return
+		}
+		info, ok := x.(jsondocument.ProgressInfo)
+		if !ok {
+			return
+		}
+		step := fmt.Sprintf("%d / %d", info.CurrentStep, info.TotalSteps)
+		var t string
+		switch info.CurrentStep {
+		case 1:
+			t = fmt.Sprintf("%s: Loading file from disk...", step)
+		case 2:
+			t = fmt.Sprintf("%s: Parsing file...", step)
+		case 3:
+			t = fmt.Sprintf("%s: Calculating size...", step)
+		case 4:
+			if pb2.Hidden {
+				pb1.Stop()
+				pb1.Hide()
+				pb2.Show()
+			}
+			p := message.NewPrinter(language.English)
+			t = p.Sprintf("%s: Rendering document for %d elements...", step, info.Size)
+		}
+		text.SetText(t)
+		pb2.SetValue(info.Progress)
+	}))
+	c := container.NewVBox(text, container.NewStack(pb1, pb2))
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
 	defer d2.Hide()
-	if err := u.document.Load(reader, infoText); err != nil {
+	if err := u.document.Load(reader, progressInfo); err != nil {
 		return err
 	}
 	p := message.NewPrinter(language.English)

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dummy = binding.NewString()
+var dummy = binding.NewUntyped()
 
 func TestJsonDocument(t *testing.T) {
 	j := jsondocument.New()
