@@ -106,15 +106,11 @@ func (u *UI) makeTree() *widget.Tree {
 			return u.document.IsBranch(id)
 		},
 		func(branch bool) fyne.CanvasObject {
-			return container.NewHBox(
-				widget.NewLabel("Key template"), widget.NewLabel("Value template"))
+			return NewNodeWidget()
 		},
 		func(uid widget.TreeNodeID, branch bool, co fyne.CanvasObject) {
 			node := u.document.Value(uid)
-			hbox := co.(*fyne.Container)
-			key := hbox.Objects[0].(*widget.Label)
-			key.SetText(fmt.Sprintf("%s :", node.Key))
-			value := hbox.Objects[1].(*widget.Label)
+			obj := co.(*NodeWidget)
 			var text string
 			var importance widget.Importance
 			switch v := node.Value; node.Type {
@@ -155,9 +151,7 @@ func (u *UI) makeTree() *widget.Tree {
 			default:
 				text = fmt.Sprintf("%v", v)
 			}
-			value.Text = text
-			value.Importance = importance
-			value.Refresh()
+			obj.Set(node.Key, text, importance)
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
