@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
@@ -35,29 +36,31 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 
 // UI represents the user interface of this app.
 type UI struct {
-	app         fyne.App
-	detailPath  *widget.Label
-	detailType  *widget.Label
-	detailValue *widget.RichText
-	document    *jsondocument.JSONDocument
-	fileMenu    *fyne.Menu
-	statusbar   *widget.Label
-	treeWidget  *widget.Tree
-	currentFile fyne.URI
-	window      fyne.Window
+	app            fyne.App
+	detailPath     *widget.Label
+	detailType     *widget.Label
+	detailValue    *widget.RichText
+	document       *jsondocument.JSONDocument
+	fileMenu       *fyne.Menu
+	statusPath     *widget.Label
+	statusTreeSize *widget.Label
+	treeWidget     *widget.Tree
+	currentFile    fyne.URI
+	window         fyne.Window
 }
 
 // NewUI returns a new UI object.
 func NewUI() (*UI, error) {
 	a := app.NewWithID("com.github.ErikKalkoken.jsonviewer")
 	u := &UI{
-		app:         a,
-		document:    jsondocument.New(),
-		detailPath:  widget.NewLabel(""),
-		detailType:  widget.NewLabel(""),
-		detailValue: widget.NewRichText(),
-		statusbar:   widget.NewLabel(""),
-		window:      a.NewWindow(appTitle),
+		app:            a,
+		document:       jsondocument.New(),
+		detailPath:     widget.NewLabel(""),
+		detailType:     widget.NewLabel(""),
+		detailValue:    widget.NewRichText(),
+		statusTreeSize: widget.NewLabel(""),
+		statusPath:     widget.NewLabel(""),
+		window:         a.NewWindow(appTitle),
 	}
 	u.treeWidget = u.makeTree()
 	u.detailPath.Wrapping = fyne.TextWrapWord
@@ -67,7 +70,8 @@ func NewUI() (*UI, error) {
 	)
 	hsplit := container.NewHSplit(u.treeWidget, detail)
 	hsplit.Offset = 0.75
-	c := container.NewBorder(nil, u.statusbar, nil, nil, hsplit)
+	statusbar := container.NewHBox(u.statusPath, layout.NewSpacer(), u.statusTreeSize)
+	c := container.NewBorder(nil, statusbar, nil, nil, hsplit)
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
@@ -165,30 +169,37 @@ func (u *UI) makeTree() *widget.Tree {
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		if u.document.IsBranch(uid) {
-			u.treeWidget.UnselectAll()
-			return
-		}
-		p := u.document.Path(uid)
-		keys := []string{"$"}
-		for _, id := range p {
-			node := u.document.Value(id)
-			keys = append(keys, node.Key)
-		}
+		path := u.renderPath(uid)
+		u.statusPath.SetText(path)
 		node := u.document.Value(uid)
-		keys = append(keys, node.Key)
-		u.detailPath.SetText(strings.Join(keys, "."))
+		u.detailPath.SetText(path)
 		u.detailType.SetText(fmt.Sprint(node.Type))
 		var v string
-		switch node.Type {
-		case jsondocument.String:
-			v = fmt.Sprintf("\"%s\"", node.Value)
-		case jsondocument.Null:
-			v = "null"
-		default:
-			v = fmt.Sprint(node.Value)
+		if u.document.IsBranch(uid) {
+			v = "..."
+		} else {
+			switch node.Type {
+			case jsondocument.String:
+				v = fmt.Sprintf("\"%s\"", node.Value)
+			case jsondocument.Null:
+				v = "null"
+			default:
+				v = fmt.Sprint(node.Value)
+			}
 		}
 		u.detailValue.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
 	}
 	return tree
+}
+
+func (u *UI) renderPath(uid string) string {
+	p := u.document.Path(uid)
+	keys := []string{"$"}
+	for _, id := range p {
+		node := u.document.Value(id)
+		keys = append(keys, node.Key)
+	}
+	node := u.document.Value(uid)
+	keys = append(keys, node.Key)
+	return strings.Join(keys, ".")
 }
