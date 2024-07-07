@@ -27,24 +27,9 @@ JSON Viewer is a desktop app for browsing large JSON files. It runs on Linux, Wi
 
 ## How to run
 
-JSON Viewer is designed to run directly on all platforms without requiring installation. You find the latest packages for all supported platforms on the [releases page](https://github.com/ErikKalkoken/jsonviewer/releases):
-
-- [Linux AppImage](#appimage)
-- [Linux TAR file](#tar)
-- [Windows](#windows)
-- [MAC](#mac-os)
-- [Build and run directly](#build-and-run-directly)
+JSON Viewer is designed to run on all supported platforms without requiring installation. You find the latest packages for all supported platforms on the [releases page](https://github.com/ErikKalkoken/jsonviewer/releases).
 
 ### Linux
-
-There are two packages for Linux:
-
-- AppImage
-- TAR
-
-We recommend the AppImage package, since it does not require local installation or root privileges to run. The TAR package is there as backup, in case your system can not run AppImages. For more information on the AppImage format please see the [Appimage website](https://appimage.org/).
-
-#### AppImage
 
 Download the latest AppImage file from the releases page and place it a local folder of your choosing (e.g. `~/Applications` or `~/.local/bin`).
 
@@ -52,18 +37,6 @@ Make the AppImage file executable. The execute it ot start the app.
 
 > [!TIP]
 > Should you get the following error: `AppImages require FUSE to run.`, you need to first install FUSE on your system. Please see [this page](https://docs.appimage.org/user-guide/troubleshooting/fuse.html#the-appimage-tells-me-it-needs-fuse-to-run) for details.
-
-#### TAR
-
-First download the TAR file from the release page.
-
-Then install the app on your desktop with:
-
-```sh
-sudo tar xvfJ evebuddy-v1.0.0-linux-amd64.tar.xz -C /
-```
-
-The above command will install the app for all users on your system. User specific data will be stored in the home directories of each user.
 
 ### Windows
 
