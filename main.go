@@ -37,6 +37,7 @@ func main() {
 	levelFlag := logLevelFlag{value: slog.LevelWarn}
 	flag.Var(&levelFlag, "loglevel", "set log level")
 	flag.Parse()
+	log.SetFlags(log.LstdFlags | log.Llongfile)
 	slog.SetLogLoggerLevel(levelFlag.value)
 	u, err := ui.NewUI()
 	if err != nil {

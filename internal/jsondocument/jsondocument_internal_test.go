@@ -18,7 +18,7 @@ func TestLoadFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := bytes.NewReader(dat)
+		r := MakeURIReadCloser(bytes.NewReader(dat), "test")
 		// when
 		byt, err := j.loadFile(r)
 		if assert.NoError(t, err) {
@@ -31,7 +31,7 @@ func TestLoadFile(t *testing.T) {
 	})
 	t.Run("should return error when stream can not be unmarshaled", func(t *testing.T) {
 		// given
-		r := strings.NewReader("invalid JSON")
+		r := MakeURIReadCloser(strings.NewReader("invalid JSON"), "test")
 		// when
 		byt, err := j.loadFile(r)
 		if assert.NoError(t, err) {

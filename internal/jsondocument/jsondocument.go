@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 )
@@ -128,7 +129,8 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 
 // Load loads JSON data from a reader and builds a new JSON document from it.
 // It reports it's current progress to the caller via updates to progressInfo.
-func (t *JSONDocument) Load(reader io.Reader, progressInfo binding.Untyped) error {
+func (t *JSONDocument) Load(reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
+	defer reader.Close()
 	t.progressInfo = progressInfo
 	byt, err := t.loadFile(reader)
 	if err != nil {
@@ -291,15 +293,15 @@ func (t *JSONDocument) setProgressInfo(info ProgressInfo) error {
 	return nil
 }
 
-func (t *JSONDocument) loadFile(reader io.Reader) ([]byte, error) {
+func (t *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
 		return nil, err
 	}
 	dat, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %s", err)
+		return nil, fmt.Errorf("failed to read file %s: %s", reader.URI(), err)
 	}
-	slog.Info("Read file")
+	slog.Info("Read file", "uri", reader.URI())
 	return dat, nil
 }
 
@@ -309,9 +311,9 @@ func (t *JSONDocument) parseFile(dat []byte) (any, error) {
 	}
 	var data any
 	if err := json.Unmarshal(dat, &data); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal data: %s", err)
 	}
-	slog.Info("Unmarshaled JSON file")
+	slog.Info("Completed un-marshaling data")
 	return data, nil
 }
 

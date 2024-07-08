@@ -3,9 +3,9 @@ package jsondocument_test
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"testing"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
@@ -131,12 +131,11 @@ func TestJsonDocumentLoad(t *testing.T) {
 	})
 }
 
-func makeDataReader(data any) io.Reader {
+func makeDataReader(data any) fyne.URIReadCloser {
 	x, err := json.Marshal(data)
 	if err != nil {
 		panic(err)
 	}
 	r := bytes.NewReader(x)
-	return r
-
+	return jsondocument.MakeURIReadCloser(r, "test")
 }

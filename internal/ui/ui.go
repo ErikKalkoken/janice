@@ -104,20 +104,18 @@ func NewUI() (*UI, error) {
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
 	u.window.SetMaster()
-	u.window.SetOnDropped(func(p fyne.Position, uri []fyne.URI) {
-		if len(uri) < 1 {
+	u.window.SetOnDropped(func(p fyne.Position, uris []fyne.URI) {
+		if len(uris) < 1 {
 			return
 		}
-		x := uri[0].String()
-		x2, err := storage.ParseURI(x)
+		uri := uris[0]
+		slog.Info("Loading dropped file", "uri", uri)
+		reader, err := storage.Reader(uri)
 		if err != nil {
-			slog.Error("Failed to identify dropped file", "err", err)
+			u.showErrorDialog(fmt.Sprintf("Failed to load file: %s", uri), err)
 			return
 		}
-		slog.Info("Loading dropped file", "uri", x2)
-		if err := u.loadURI(x2); err != nil {
-			u.showErrorDialog("Failed to load file", err)
-		}
+		u.loadDocument(reader)
 	})
 	s := fyne.Size{
 		Width:  float32(a.Preferences().FloatWithFallback(settingWindowWidth, 800)),

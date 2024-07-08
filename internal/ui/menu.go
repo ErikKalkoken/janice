@@ -31,31 +31,27 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				if reader == nil {
 					return
 				}
-				defer reader.Close()
-				if err := u.loadDocument(reader); err != nil {
-					u.showErrorDialog("Failed to load document", err)
-					return
-				}
+				u.loadDocument(reader)
 			}, u.window)
 			dialogOpen.Show()
 		}),
 		recentItem,
 		fyne.NewMenuItem("Open From Clipboard", func() {
 			r := strings.NewReader(u.window.Clipboard().Content())
-			reader := makeURIReadCloser(r)
-			if err := u.loadDocument(reader); err != nil {
-				u.showErrorDialog("Failed to load JSON document from clipboard", err)
-				return
-			}
+			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
+			u.loadDocument(reader)
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Reload", func() {
 			if u.currentFile == nil {
 				return
 			}
-			if err := u.loadURI(u.currentFile); err != nil {
+			reader, err := storage.Reader(u.currentFile)
+			if err != nil {
 				u.showErrorDialog("Failed to reload file", err)
+				return
 			}
+			u.loadDocument(reader)
 		}),
 	)
 	viewMenu := fyne.NewMenu("View",
@@ -122,30 +118,16 @@ func (u *UI) updateRecentFilesMenu() {
 				dialog.ShowError(err, u.window)
 				return
 			}
-			defer reader.Close()
-			if err := u.loadDocument(reader); err != nil {
-				dialog.ShowError(err, u.window)
-				return
-			}
+			u.loadDocument(reader)
 		})
 	}
 	u.fileMenu.Items[1].ChildMenu.Items = items
 	u.fileMenu.Refresh()
 }
 
-func (u *UI) loadURI(uri fyne.URI) error {
-	reader, err := storage.Reader(uri)
-	if err != nil {
-		return err
-	}
-	if err := u.loadDocument(reader); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
-	defer reader.Close()
+// loadDocument loads a JSON file
+// Shows a loader modal while loading
+func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 	infoText := widget.NewLabel("")
 	pb1 := widget.NewProgressBarInfinite()
 	pb2 := widget.NewProgressBar()
@@ -187,25 +169,25 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	c := container.NewVBox(infoText, container.NewStack(pb1, pb2))
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
-	defer d2.Hide()
-	if err := u.document.Load(reader, progressInfo); err != nil {
-		return err
-	}
-	p := message.NewPrinter(language.English)
-	out := p.Sprintf("%d elements", u.document.Size())
-	u.statusTreeSize.SetText(out)
-	u.welcomeMessage.Hide()
-	u.treeWidget.Refresh()
-	u.detailCopyValue.Show()
-	x := reader.URI()
-	if x != nil {
-		u.setTitle(x.Name())
-		u.addRecentFile(x)
-	} else {
-		u.setTitle("CLIPBOARD")
-	}
-	u.currentFile = x
-	return nil
+	go func() {
+		defer d2.Hide()
+		if err := u.document.Load(reader, progressInfo); err != nil {
+			u.showErrorDialog("Failed to load document", err)
+			return
+		}
+		p := message.NewPrinter(language.English)
+		out := p.Sprintf("%d elements", u.document.Size())
+		u.statusTreeSize.SetText(out)
+		u.welcomeMessage.Hide()
+		u.treeWidget.Refresh()
+		u.detailCopyValue.Show()
+		uri := reader.URI()
+		if uri.Scheme() == "file" {
+			u.addRecentFile(uri)
+		}
+		u.setTitle(uri.Name())
+		u.currentFile = uri
+	}()
 }
 
 func (u *UI) showAboutDialog() {

@@ -20,7 +20,7 @@ JSON Viewer is a desktop app for browsing large JSON files. It runs on Linux, Wi
 - Single executable file, no installation required
 - Desktop app that runs on Windows, Linux and macOS (experimental)
 - Automatic dark and light mode
-- Open JSON files from disk or clipboard
+- JSON files can be opened via file dialog, from clipboard or drag-and-drop
 
 ## Screenshots
 
