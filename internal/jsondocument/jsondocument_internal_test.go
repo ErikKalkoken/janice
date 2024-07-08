@@ -20,19 +20,25 @@ func TestLoadFile(t *testing.T) {
 		}
 		r := bytes.NewReader(dat)
 		// when
-		got, err := j.loadFile(r)
-		// then
+		byt, err := j.loadFile(r)
 		if assert.NoError(t, err) {
-			assert.Equal(t, data, got)
+			got, err := j.parseFile(byt)
+			// then
+			if assert.NoError(t, err) {
+				assert.Equal(t, data, got)
+			}
 		}
 	})
 	t.Run("should return error when stream can not be unmarshaled", func(t *testing.T) {
 		// given
 		r := strings.NewReader("invalid JSON")
 		// when
-		_, err := j.loadFile(r)
-		// then
-		assert.Error(t, err)
+		byt, err := j.loadFile(r)
+		if assert.NoError(t, err) {
+			_, err := j.parseFile(byt)
+			// then
+			assert.Error(t, err)
+		}
 	})
 }
 

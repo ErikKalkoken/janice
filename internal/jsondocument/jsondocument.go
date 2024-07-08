@@ -42,14 +42,14 @@ var typeMap = map[JSONType]string{
 	Number:    "number",
 	Object:    "object",
 	String:    "string",
-	Unknown:   "unknown",
 	Undefined: "undefined",
+	Unknown:   "unknown",
 }
 
 func (t JSONType) String() string {
 	s, ok := typeMap[t]
 	if !ok {
-		return "undefined"
+		return typeMap[Undefined]
 	}
 	return s
 }
@@ -64,9 +64,9 @@ type Node struct {
 // ProgressInfo represents the current progress while loading a document
 // and is used to communicate the the UI.
 type ProgressInfo struct {
+	CurrentStep int
 	Progress    float64
 	Size        int
-	CurrentStep int
 	TotalSteps  int
 }
 
@@ -130,7 +130,11 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 // It reports it's current progress to the caller via updates to progressInfo.
 func (t *JSONDocument) Load(reader io.Reader, progressInfo binding.Untyped) error {
 	t.progressInfo = progressInfo
-	data, err := t.loadFile(reader)
+	byt, err := t.loadFile(reader)
+	if err != nil {
+		return err
+	}
+	data, err := t.parseFile(byt)
 	if err != nil {
 		return err
 	}
@@ -272,9 +276,9 @@ func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType
 
 // initialize initializes the tree and allocates needed memory.
 func (t *JSONDocument) initialize(size int) {
-	t.values = make([]Node, size+1)
 	t.ids = make(map[int][]int)
-	t.parents = make([]int, size+1)
+	t.values = make([]Node, size+1) // we are starting at ID 1, so we need one more
+	t.parents = make([]int, size+1) // ditto
 	t.n = 0
 }
 
@@ -287,7 +291,7 @@ func (t *JSONDocument) setProgressInfo(info ProgressInfo) error {
 	return nil
 }
 
-func (t *JSONDocument) loadFile(reader io.Reader) (any, error) {
+func (t *JSONDocument) loadFile(reader io.Reader) ([]byte, error) {
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
 		return nil, err
 	}
@@ -295,6 +299,11 @@ func (t *JSONDocument) loadFile(reader io.Reader) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %s", err)
 	}
+	slog.Info("Read file")
+	return dat, nil
+}
+
+func (t *JSONDocument) parseFile(dat []byte) (any, error) {
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
 		return nil, err
 	}
@@ -302,7 +311,7 @@ func (t *JSONDocument) loadFile(reader io.Reader) (any, error) {
 	if err := json.Unmarshal(dat, &data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %s", err)
 	}
-	slog.Info("Read and unmarshaled JSON file")
+	slog.Info("Unmarshaled JSON file")
 	return data, nil
 }
 
