@@ -37,7 +37,6 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 // UI represents the user interface of this app.
 type UI struct {
 	app             fyne.App
-	detailCopyPath  *widget.Button
 	detailCopyValue *widget.Button
 	detailPath      *widget.Label
 	detailType      *widget.Label
@@ -48,6 +47,7 @@ type UI struct {
 	statusPath      *widget.Label
 	statusTreeSize  *widget.Label
 	treeWidget      *widget.Tree
+	welcomeMessage  *fyne.Container
 	currentFile     fyne.URI
 	window          fyne.Window
 }
@@ -66,23 +66,20 @@ func NewUI() (*UI, error) {
 		window:         a.NewWindow(appTitle),
 	}
 	u.treeWidget = u.makeTree()
-	u.detailPath.Wrapping = fyne.TextWrapWord
+	u.detailPath.Wrapping = fyne.TextWrapBreak
 	u.detailValueMD.Wrapping = fyne.TextWrapWord
 	u.statusPath.Wrapping = fyne.TextWrapWord
-	u.detailCopyPath = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		u.window.Clipboard().SetContent(u.detailPath.Text)
-	})
-	u.detailCopyPath.Disable()
 	u.detailCopyValue = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		u.window.Clipboard().SetContent(u.detailValueRaw)
 	})
 	u.detailCopyValue.Disable()
+	u.detailCopyValue.Hide()
 	detail := container.NewBorder(
 		container.NewBorder(
 			nil,
 			u.detailType,
 			nil,
-			container.NewVBox(u.detailCopyPath),
+			nil,
 			u.detailPath,
 		),
 		nil,
@@ -90,16 +87,18 @@ func NewUI() (*UI, error) {
 		container.NewVBox(u.detailCopyValue),
 		u.detailValueMD,
 	)
-	hsplit := container.NewHSplit(u.treeWidget, detail)
-	hsplit.Offset = 0.75
-	statusbar := container.NewBorder(
-		nil,
-		nil,
-		nil,
-		container.NewHBox(widget.NewSeparator(), u.statusTreeSize),
-		u.statusPath,
+	welcomeText := widget.NewLabel(
+		"Welcome to JSON Viewer.\nSee the File menu for opening a JSON file.",
 	)
-	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), statusbar), nil, nil, hsplit)
+	welcomeText.Importance = widget.LowImportance
+	welcomeText.Alignment = fyne.TextAlignCenter
+	u.welcomeMessage = container.NewCenter(welcomeText)
+	hsplit := container.NewHSplit(
+		container.NewStack(u.welcomeMessage, u.treeWidget),
+		detail,
+	)
+	hsplit.Offset = 0.75
+	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), u.statusTreeSize), nil, nil, hsplit)
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
@@ -197,7 +196,6 @@ func (u *UI) makeTree() *widget.Tree {
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		u.detailCopyPath.Enable()
 		path := u.renderPath(uid)
 		u.statusPath.SetText(path)
 		node := u.document.Value(uid)

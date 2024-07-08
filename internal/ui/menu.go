@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/url"
 	"slices"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -39,8 +40,19 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			dialogOpen.Show()
 		}),
 		recentItem,
+		fyne.NewMenuItem("Open From Clipboard", func() {
+			r := strings.NewReader(u.window.Clipboard().Content())
+			reader := makeURIReadCloser(r)
+			if err := u.loadDocument(reader); err != nil {
+				u.showErrorDialog("Failed to load JSON document from clipboard", err)
+				return
+			}
+		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Reload", func() {
+			if u.currentFile == nil {
+				return
+			}
 			reader, err := storage.Reader(u.currentFile)
 			if err != nil {
 				u.showErrorDialog("Failed to open file", err)
@@ -178,10 +190,16 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) error {
 	p := message.NewPrinter(language.English)
 	out := p.Sprintf("%d elements", u.document.Size())
 	u.statusTreeSize.SetText(out)
+	u.welcomeMessage.Hide()
 	u.treeWidget.Refresh()
+	u.detailCopyValue.Show()
 	x := reader.URI()
-	u.setTitle(x.Name())
-	u.addRecentFile(x)
+	if x != nil {
+		u.setTitle(x.Name())
+		u.addRecentFile(x)
+	} else {
+		u.setTitle("CLIPBOARD")
+	}
 	u.currentFile = x
 	return nil
 }
