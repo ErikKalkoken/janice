@@ -53,15 +53,8 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			if u.currentFile == nil {
 				return
 			}
-			reader, err := storage.Reader(u.currentFile)
-			if err != nil {
-				u.showErrorDialog("Failed to open file", err)
-				return
-			}
-			defer reader.Close()
-			if err := u.loadDocument(reader); err != nil {
-				u.showErrorDialog("Failed to load document", err)
-				return
+			if err := u.loadURI(u.currentFile); err != nil {
+				u.showErrorDialog("Failed to reload file", err)
 			}
 		}),
 	)
@@ -138,6 +131,17 @@ func (u *UI) updateRecentFilesMenu() {
 	}
 	u.fileMenu.Items[1].ChildMenu.Items = items
 	u.fileMenu.Refresh()
+}
+
+func (u *UI) loadURI(uri fyne.URI) error {
+	reader, err := storage.Reader(uri)
+	if err != nil {
+		return err
+	}
+	if err := u.loadDocument(reader); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (u *UI) loadDocument(reader fyne.URIReadCloser) error {

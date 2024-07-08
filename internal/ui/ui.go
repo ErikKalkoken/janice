@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -88,7 +89,7 @@ func NewUI() (*UI, error) {
 		u.detailValueMD,
 	)
 	welcomeText := widget.NewLabel(
-		"Welcome to JSON Viewer.\nSee the File menu for opening a JSON file.",
+		"Welcome to JSON Viewer.\nOpen a JSON file by dropping it on the window\nor through the File menu.",
 	)
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
@@ -103,12 +104,26 @@ func NewUI() (*UI, error) {
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
 	u.window.SetMaster()
+	u.window.SetOnDropped(func(p fyne.Position, uri []fyne.URI) {
+		if len(uri) < 1 {
+			return
+		}
+		x := uri[0].String()
+		x2, err := storage.ParseURI(x)
+		if err != nil {
+			slog.Error("Failed to identify dropped file", "err", err)
+			return
+		}
+		slog.Info("Loading dropped file", "uri", x2)
+		if err := u.loadURI(x2); err != nil {
+			u.showErrorDialog("Failed to load file", err)
+		}
+	})
 	s := fyne.Size{
 		Width:  float32(a.Preferences().FloatWithFallback(settingWindowWidth, 800)),
 		Height: float32(a.Preferences().FloatWithFallback(settingWindowHeight, 600)),
 	}
 	u.window.Resize(s)
-
 	u.window.SetOnClosed(func() {
 		a.Preferences().SetFloat(settingWindowWidth, float64(u.window.Canvas().Size().Width))
 		a.Preferences().SetFloat(settingWindowHeight, float64(u.window.Canvas().Size().Height))
