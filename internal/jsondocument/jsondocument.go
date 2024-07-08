@@ -92,51 +92,51 @@ type JSONDocument struct {
 
 // Returns a new JSONDocument object.
 func New() *JSONDocument {
-	t := &JSONDocument{progressInfo: binding.NewUntyped()}
-	t.initialize(0)
-	return t
+	j := &JSONDocument{progressInfo: binding.NewUntyped()}
+	j.initialize(0)
+	return j
 }
 
 // ChildUIDs returns the child UIDs for a given node.
 // This can be used directly in the tree widget childUIDs() function.
-func (t *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
-	if !t.mu.TryRLock() {
+func (j *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
+	if !j.mu.TryRLock() {
 		// This method can be called by another goroutine from the Fyne library while a new tree is loaded.
 		// This can not block, or it would block the whole Fyne app.
 		return []widget.TreeNodeID{}
 	}
-	defer t.mu.RUnlock()
+	defer j.mu.RUnlock()
 	id := uid2id(uid)
-	return ids2uids(t.ids[id])
+	return ids2uids(j.ids[id])
 }
 
 // IsBranch reports wether a node is a branch.
 // This can be used directly in the tree widget isBranch() function.
-func (t *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
-	if !t.mu.TryRLock() {
+func (j *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
+	if !j.mu.TryRLock() {
 		return false
 	}
-	defer t.mu.RUnlock()
+	defer j.mu.RUnlock()
 	id := uid2id(uid)
-	_, found := t.ids[id]
+	_, found := j.ids[id]
 	return found
 }
 
 // Value returns the value of a node
-func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
-	if !t.mu.TryRLock() {
+func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
+	if !j.mu.TryRLock() {
 		return Node{}
 	}
-	defer t.mu.RUnlock()
+	defer j.mu.RUnlock()
 	id := uid2id(uid)
-	return t.values[id]
+	return j.values[id]
 }
 
 // Load loads JSON data from a reader and builds a new JSON document from it.
 // It reports it's current progress to the caller via updates to progressInfo.
-func (t *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
-	t.progressInfo = progressInfo
-	byt, err := t.loadFile(reader)
+func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
+	j.progressInfo = progressInfo
+	byt, err := j.loadFile(reader)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (t *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 		return ErrLoadCanceled
 	default:
 	}
-	data, err := t.parseFile(byt)
+	data, err := j.parseFile(byt)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (t *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 		return ErrLoadCanceled
 	default:
 	}
-	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 3}); err != nil {
+	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 3}); err != nil {
 		return err
 	}
 	sizer := JSONTreeSizer{}
@@ -167,35 +167,35 @@ func (t *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 		return ErrLoadCanceled
 	default:
 	}
-	t.elementsCount = size
+	j.elementsCount = size
 	slog.Info("Tree size calculated", "size", size)
-	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 4}); err != nil {
+	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 4}); err != nil {
 		return err
 	}
-	if err := t.render(ctx, data, size); err != nil {
+	if err := j.render(ctx, data, size); err != nil {
 		return err
 	}
-	slog.Info("Finished loading JSON document into tree", "size", t.n)
+	slog.Info("Finished loading JSON document into tree", "size", j.n)
 	return nil
 }
 
 // Size returns the number of nodes.
-func (t *JSONDocument) Reset() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.initialize(0)
+func (j *JSONDocument) Reset() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.initialize(0)
 }
 
 // Path returns the path of a node in the tree.
-func (t *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
+func (j *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 	path := make([]int, 0)
-	if !t.mu.TryRLock() {
+	if !j.mu.TryRLock() {
 		return []widget.TreeNodeID{}
 	}
-	defer t.mu.RUnlock()
+	defer j.mu.RUnlock()
 	id := uid2id(uid)
 	for {
-		id = t.parents[id]
+		id = j.parents[id]
 		if id == 0 {
 			break
 		}
@@ -206,17 +206,17 @@ func (t *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 }
 
 // Size returns the number of nodes.
-func (t *JSONDocument) Size() int {
-	if !t.mu.TryRLock() {
+func (j *JSONDocument) Size() int {
+	if !j.mu.TryRLock() {
 		return 0
 	}
-	defer t.mu.RUnlock()
-	return t.n
+	defer j.mu.RUnlock()
+	return j.n
 }
 
-func (t *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
+func (j *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
 	defer reader.Close()
-	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
+	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
 		return nil, err
 	}
 	dat, err := io.ReadAll(reader)
@@ -227,8 +227,8 @@ func (t *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
 	return dat, nil
 }
 
-func (t *JSONDocument) parseFile(dat []byte) (any, error) {
-	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
+func (j *JSONDocument) parseFile(dat []byte) (any, error) {
+	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
 		return nil, err
 	}
 	var data any
@@ -240,16 +240,16 @@ func (t *JSONDocument) parseFile(dat []byte) (any, error) {
 }
 
 // render is the main method for rendering the JSON data into a tree.
-func (t *JSONDocument) render(ctx context.Context, data any, size int) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.initialize(size)
+func (j *JSONDocument) render(ctx context.Context, data any, size int) error {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.initialize(size)
 	var err error
 	switch v := data.(type) {
 	case map[string]any:
-		err = t.addObject(ctx, 0, v)
+		err = j.addObject(ctx, 0, v)
 	case []any:
-		err = t.addArray(ctx, 0, v)
+		err = j.addArray(ctx, 0, v)
 	default:
 		err = fmt.Errorf("unrecognized format")
 	}
@@ -257,7 +257,7 @@ func (t *JSONDocument) render(ctx context.Context, data any, size int) error {
 }
 
 // addObject adds a JSON object to the tree.
-func (t *JSONDocument) addObject(ctx context.Context, parentID int, data map[string]any) error {
+func (j *JSONDocument) addObject(ctx context.Context, parentID int, data map[string]any) error {
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -265,7 +265,7 @@ func (t *JSONDocument) addObject(ctx context.Context, parentID int, data map[str
 	slices.Sort(keys)
 	for _, k := range keys {
 		v := data[k]
-		if err := t.addValue(ctx, parentID, k, v); err != nil {
+		if err := j.addValue(ctx, parentID, k, v); err != nil {
 			return err
 		}
 	}
@@ -273,10 +273,10 @@ func (t *JSONDocument) addObject(ctx context.Context, parentID int, data map[str
 }
 
 // addArray adds a JSON array to the tree.
-func (t *JSONDocument) addArray(ctx context.Context, parentID int, a []any) error {
+func (j *JSONDocument) addArray(ctx context.Context, parentID int, a []any) error {
 	for i, v := range a {
 		k := fmt.Sprintf("[%d]", i)
-		if err := t.addValue(ctx, parentID, k, v); err != nil {
+		if err := j.addValue(ctx, parentID, k, v); err != nil {
 			return err
 		}
 	}
@@ -284,41 +284,41 @@ func (t *JSONDocument) addArray(ctx context.Context, parentID int, a []any) erro
 }
 
 // addValue adds a JSON value to the tree.
-func (t *JSONDocument) addValue(ctx context.Context, parentID int, k string, v any) error {
+func (j *JSONDocument) addValue(ctx context.Context, parentID int, k string, v any) error {
 	switch v2 := v.(type) {
 	case map[string]any:
-		id, err := t.addNode(ctx, parentID, k, Empty, Object)
+		id, err := j.addNode(ctx, parentID, k, Empty, Object)
 		if err != nil {
 			return err
 		}
-		if err := t.addObject(ctx, id, v2); err != nil {
+		if err := j.addObject(ctx, id, v2); err != nil {
 			return err
 		}
 	case []any:
-		id, err := t.addNode(ctx, parentID, k, Empty, Array)
+		id, err := j.addNode(ctx, parentID, k, Empty, Array)
 		if err != nil {
 			return err
 		}
-		if err := t.addArray(ctx, id, v2); err != nil {
+		if err := j.addArray(ctx, id, v2); err != nil {
 			return err
 		}
 	case string:
-		_, err := t.addNode(ctx, parentID, k, v2, String)
+		_, err := j.addNode(ctx, parentID, k, v2, String)
 		if err != nil {
 			return err
 		}
 	case float64:
-		_, err := t.addNode(ctx, parentID, k, v2, Number)
+		_, err := j.addNode(ctx, parentID, k, v2, Number)
 		if err != nil {
 			return err
 		}
 	case bool:
-		_, err := t.addNode(ctx, parentID, k, v2, Boolean)
+		_, err := j.addNode(ctx, parentID, k, v2, Boolean)
 		if err != nil {
 			return err
 		}
 	case nil:
-		_, err := t.addNode(ctx, parentID, k, v2, Null)
+		_, err := j.addNode(ctx, parentID, k, v2, Null)
 		if err != nil {
 			return err
 		}
@@ -332,30 +332,30 @@ func (t *JSONDocument) addValue(ctx context.Context, parentID int, k string, v a
 // Nodes will be rendered in the same order they are added.
 // Use "" as parentUID for adding nodes at the top level.
 // Returns the generated UID for this node and the incremented ID
-func (t *JSONDocument) addNode(ctx context.Context, parentID int, key string, value any, typ JSONType) (int, error) {
+func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, value any, typ JSONType) (int, error) {
 	if parentID != 0 {
-		n := t.values[parentID]
+		n := j.values[parentID]
 		if n.Type == Undefined {
 			return 0, fmt.Errorf("parent ID does not exist: %d", parentID)
 		}
 	}
-	t.n++
-	id := t.n
-	n := t.values[id]
+	j.n++
+	id := j.n
+	n := j.values[id]
 	if n.Type != Undefined {
 		return 0, fmt.Errorf("ID for this node already exists: %v", id)
 	}
-	t.ids[parentID] = append(t.ids[parentID], id)
-	t.values[id] = Node{Key: key, Value: value, Type: typ}
-	t.parents[id] = parentID
-	if t.n%progressUpdateTick == 0 {
+	j.ids[parentID] = append(j.ids[parentID], id)
+	j.values[id] = Node{Key: key, Value: value, Type: typ}
+	j.parents[id] = parentID
+	if j.n%progressUpdateTick == 0 {
 		select {
 		case <-ctx.Done():
 			return 0, ErrLoadCanceled
 		default:
 		}
-		p := float64(t.n) / float64(t.elementsCount)
-		if err := t.setProgressInfo(ProgressInfo{CurrentStep: 4, Progress: p}); err != nil {
+		p := float64(j.n) / float64(j.elementsCount)
+		if err := j.setProgressInfo(ProgressInfo{CurrentStep: 4, Progress: p}); err != nil {
 			slog.Warn("Failed to set progress", "err", err)
 		}
 	}
@@ -363,17 +363,17 @@ func (t *JSONDocument) addNode(ctx context.Context, parentID int, key string, va
 }
 
 // initialize initializes the tree and allocates needed memory.
-func (t *JSONDocument) initialize(size int) {
-	t.ids = make(map[int][]int)
-	t.values = make([]Node, size+1) // we are starting at ID 1, so we need one more
-	t.parents = make([]int, size+1) // ditto
-	t.n = 0
+func (j *JSONDocument) initialize(size int) {
+	j.ids = make(map[int][]int)
+	j.values = make([]Node, size+1) // we are starting at ID 1, so we need one more
+	j.parents = make([]int, size+1) // ditto
+	j.n = 0
 }
 
-func (t *JSONDocument) setProgressInfo(info ProgressInfo) error {
+func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 	info.TotalSteps = totalLoadSteps
-	info.Size = t.elementsCount
-	if err := t.progressInfo.Set(info); err != nil {
+	info.Size = j.elementsCount
+	if err := j.progressInfo.Set(info); err != nil {
 		return err
 	}
 	return nil
