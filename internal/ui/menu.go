@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -14,10 +15,19 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+)
+
+const (
+	preferencesRecentFiles         = "recent-files"
+	settingsRecentFileCount        = "settings-recent-files"
+	settingsRecentFileCountDefault = 5
+	settingsExtensionFilter        = "settings-extension-filter"
+	settingsExtensionDefault       = true
 )
 
 func (u *UI) makeMenu() *fyne.MainMenu {
@@ -28,7 +38,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.reset()
 		}),
 		fyne.NewMenuItem("Open File...", func() {
-			dialogOpen := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 				if err != nil {
 					u.showErrorDialog("Failed to read folder", err)
 					return
@@ -38,7 +48,12 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				}
 				u.loadDocument(reader)
 			}, u.window)
-			dialogOpen.Show()
+			d.Show()
+			filterEnabled := u.app.Preferences().BoolWithFallback(settingsExtensionFilter, settingsExtensionDefault)
+			if filterEnabled {
+				f := storage.NewExtensionFileFilter([]string{".json"})
+				d.SetFilter(f)
+			}
 		}),
 		recentItem,
 		fyne.NewMenuItem("Open From Clipboard", func() {
@@ -57,6 +72,10 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				return
 			}
 			u.loadDocument(reader)
+		}),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Preferences", func() {
+			u.showSettingsDialog()
 		}),
 	)
 	viewMenu := fyne.NewMenu("View",
@@ -86,10 +105,11 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 }
 
 func (u *UI) addRecentFile(uri fyne.URI) {
-	files := u.app.Preferences().StringList(settingRecentFiles)
+	files := u.app.Preferences().StringList(preferencesRecentFiles)
 	uri2 := uri.String()
-	files = addToListWithRotation(files, uri2, 5)
-	u.app.Preferences().SetStringList(settingRecentFiles, files)
+	max := u.app.Preferences().IntWithFallback(settingsRecentFileCount, settingsRecentFileCountDefault)
+	files = addToListWithRotation(files, uri2, max)
+	u.app.Preferences().SetStringList(preferencesRecentFiles, files)
 	u.updateRecentFilesMenu()
 }
 
@@ -109,7 +129,7 @@ func addToListWithRotation(s []string, v string, max int) []string {
 }
 
 func (u *UI) updateRecentFilesMenu() {
-	files := u.app.Preferences().StringList(settingRecentFiles)
+	files := u.app.Preferences().StringList(preferencesRecentFiles)
 	items := make([]*fyne.MenuItem, len(files))
 	for i, f := range files {
 		uri, err := storage.ParseURI(f)
@@ -133,7 +153,6 @@ func (u *UI) updateRecentFilesMenu() {
 // loadDocument loads a JSON file
 // Shows a loader modal while loading
 func (u *UI) loadDocument(reader fyne.URIReadCloser) {
-	u.reset()
 	infoText := widget.NewLabel("")
 	pb1 := widget.NewProgressBarInfinite()
 	pb2 := widget.NewProgressBar()
@@ -173,25 +192,26 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		infoText.SetText(message)
 	}))
 	ctx, cancel := context.WithCancel(context.TODO())
-	b := widget.NewButton("Cancel", func() {
+	b := widget.NewButtonWithIcon("", theme.CancelIcon(), func() {
 		cancel()
 	})
-	c := container.NewVBox(infoText, container.NewStack(pb1, pb2), b)
+	c := container.NewVBox(infoText, container.NewBorder(nil, nil, nil, b, container.NewStack(pb1, pb2)))
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.SetOnClosed(func() {
 		cancel()
 	})
 	d2.Show()
 	go func() {
-		if err := u.document.Load(ctx, reader, progressInfo); err != nil {
+		doc := jsondocument.New()
+		if err := doc.Load(ctx, reader, progressInfo); err != nil {
 			d2.Hide()
 			if errors.Is(err, jsondocument.ErrLoadCanceled) {
-				u.reset()
 				return
 			}
 			u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)
 			return
 		}
+		u.document = doc
 		p := message.NewPrinter(language.English)
 		out := p.Sprintf("%d elements", u.document.Size())
 		u.statusTreeSize.SetText(out)
@@ -218,4 +238,48 @@ func (u *UI) showAboutDialog() {
 	c.Add(widget.NewLabel("(c) 2024 Erik Kalkoken"))
 	d := dialog.NewCustom("About", "OK", c, u.window)
 	d.Show()
+}
+
+func (u *UI) showSettingsDialog() {
+	recentEntry := widget.NewEntry()
+	x := u.app.Preferences().IntWithFallback(settingsRecentFileCount, settingsRecentFileCountDefault)
+	recentEntry.SetText(strconv.Itoa(x))
+	recentEntry.Validator = newPositiveNumberValidator()
+
+	extFilterCheck := widget.NewCheck("enabled", func(bool) {})
+	y := u.app.Preferences().BoolWithFallback(settingsExtensionFilter, settingsExtensionDefault)
+	extFilterCheck.SetChecked(y)
+	items := []*widget.FormItem{
+		{Text: "Max recent files", Widget: recentEntry, HintText: "Maximum number of recent files remembered"},
+		{Text: "JSON file filter", Widget: extFilterCheck, HintText: "Filter applied in file open dialog"},
+	}
+	d := dialog.NewForm(
+		"Preferences", "Apply", "Cancel", items, func(applied bool) {
+			if !applied {
+				return
+			}
+			x, err := strconv.Atoi(recentEntry.Text)
+			if err != nil {
+				slog.Error("Failed to convert", "err", err)
+				return
+			}
+			u.app.Preferences().SetInt(settingsRecentFileCount, x)
+			u.app.Preferences().SetBool(settingsExtensionFilter, extFilterCheck.Checked)
+		}, u.window)
+	d.Show()
+}
+
+// newPositiveNumberValidator ensures entry is a positive number (incl. zero).
+func newPositiveNumberValidator() fyne.StringValidator {
+	myErr := errors.New("must be positive number")
+	return func(text string) error {
+		val, err := strconv.Atoi(text)
+		if err != nil {
+			return myErr
+		}
+		if val < 0 {
+			return myErr
+		}
+		return nil
+	}
 }

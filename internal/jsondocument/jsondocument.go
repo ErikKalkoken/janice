@@ -93,6 +93,7 @@ type JSONDocument struct {
 // Returns a new JSONDocument object.
 func New() *JSONDocument {
 	t := &JSONDocument{progressInfo: binding.NewUntyped()}
+	t.initialize(0)
 	return t
 }
 
@@ -211,6 +212,31 @@ func (t *JSONDocument) Size() int {
 	}
 	defer t.mu.RUnlock()
 	return t.n
+}
+
+func (t *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
+	defer reader.Close()
+	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
+		return nil, err
+	}
+	dat, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %s", reader.URI(), err)
+	}
+	slog.Info("Read file", "uri", reader.URI())
+	return dat, nil
+}
+
+func (t *JSONDocument) parseFile(dat []byte) (any, error) {
+	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
+		return nil, err
+	}
+	var data any
+	if err := json.Unmarshal(dat, &data); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal data: %s", err)
+	}
+	slog.Info("Completed un-marshaling data")
+	return data, nil
 }
 
 // render is the main method for rendering the JSON data into a tree.
@@ -351,31 +377,6 @@ func (t *JSONDocument) setProgressInfo(info ProgressInfo) error {
 		return err
 	}
 	return nil
-}
-
-func (t *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
-	defer reader.Close()
-	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
-		return nil, err
-	}
-	dat, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %s", reader.URI(), err)
-	}
-	slog.Info("Read file", "uri", reader.URI())
-	return dat, nil
-}
-
-func (t *JSONDocument) parseFile(dat []byte) (any, error) {
-	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
-		return nil, err
-	}
-	var data any
-	if err := json.Unmarshal(dat, &data); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal data: %s", err)
-	}
-	slog.Info("Completed un-marshaling data")
-	return data, nil
 }
 
 func uid2id(uid widget.TreeNodeID) int {

@@ -61,15 +61,15 @@ func TestJsonDocument(t *testing.T) {
 }
 func TestJsonDocumentLoad(t *testing.T) {
 	ctx := context.TODO()
-	t.Run("can load object with values of all types", func(t *testing.T) {
+	t.Run("can load object with values of all types and sort keys", func(t *testing.T) {
 		// given
 		j := jsondocument.New()
 		data := map[string]any{
-			"alpha":   "abc",
 			"bravo":   5,
+			"alpha":   "abc",
+			"echo":    []any{1, 2},
 			"charlie": true,
 			"delta":   nil,
-			"echo":    []any{1, 2},
 			"foxtrot": map[string]any{"child": 1},
 		}
 		// when

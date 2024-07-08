@@ -23,7 +23,6 @@ const appTitle = "JSON Viewer"
 const (
 	settingWindowWidth  = "main-window-width"
 	settingWindowHeight = "main-window-height"
-	settingRecentFiles  = "recent-files"
 )
 
 var type2importance = map[jsondocument.JSONType]widget.Importance{
