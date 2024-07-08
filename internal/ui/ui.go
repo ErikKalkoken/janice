@@ -36,20 +36,21 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 
 // UI represents the user interface of this app.
 type UI struct {
-	app             fyne.App
-	detailCopyValue *widget.Button
-	detailPath      *widget.Label
-	detailType      *widget.Label
-	detailValueMD   *widget.RichText
-	detailValueRaw  string
-	document        *jsondocument.JSONDocument
-	fileMenu        *fyne.Menu
-	statusPath      *widget.Label
-	statusTreeSize  *widget.Label
-	treeWidget      *widget.Tree
-	welcomeMessage  *fyne.Container
-	currentFile     fyne.URI
-	window          fyne.Window
+	app                fyne.App
+	currentSelectedUID widget.TreeNodeID
+	detailCopyValue    *widget.Button
+	detailPath         *widget.Label
+	detailType         *widget.Label
+	detailValueMD      *widget.RichText
+	detailValueRaw     string
+	document           *jsondocument.JSONDocument
+	fileMenu           *fyne.Menu
+	statusPath         *widget.Label
+	statusTreeSize     *widget.Label
+	treeWidget         *widget.Tree
+	welcomeMessage     *fyne.Container
+	currentFile        fyne.URI
+	window             fyne.Window
 }
 
 // NewUI returns a new UI object.
@@ -134,7 +135,9 @@ func (u *UI) ShowAndRun() {
 }
 
 func (u *UI) showErrorDialog(message string, err error) {
-	slog.Error(message, "err", err)
+	if err != nil {
+		slog.Error(message, "err", err)
+	}
 	d := dialog.NewInformation("Error", message, u.window)
 	d.Show()
 }
@@ -150,6 +153,7 @@ func (u *UI) reset() {
 	u.detailValueMD.ParseMarkdown("")
 	u.detailCopyValue.Disable()
 	u.detailCopyValue.Hide()
+	u.currentSelectedUID = ""
 }
 
 func (u *UI) setTitle(fileName string) {
@@ -221,6 +225,7 @@ func (u *UI) makeTree() *widget.Tree {
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
+		u.currentSelectedUID = uid
 		path := u.renderPath(uid)
 		u.statusPath.SetText(path)
 		node := u.document.Value(uid)

@@ -37,6 +37,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		fyne.NewMenuItem("New", func() {
 			u.reset()
 		}),
+		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Open File...", func() {
 			d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 				if err != nil {
@@ -61,7 +62,6 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
 			u.loadDocument(reader)
 		}),
-		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Reload", func() {
 			if u.currentFile == nil {
 				return
@@ -74,7 +74,35 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.loadDocument(reader)
 		}),
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Preferences", func() {
+		fyne.NewMenuItem("Export selection...", func() {
+			n := u.document.Value(u.currentSelectedUID)
+			if n.Type != jsondocument.Array && n.Type != jsondocument.Object {
+				u.showErrorDialog("Can only export array and objects", nil)
+				return
+			}
+			byt, err := u.document.Extract(u.currentSelectedUID)
+			if err != nil {
+				u.showErrorDialog("Failed to extract document", err)
+				return
+			}
+			d := dialog.NewFileSave(func(f fyne.URIWriteCloser, err error) {
+				if err != nil {
+					u.showErrorDialog("Failed to open save dialog", err)
+					return
+				}
+				if f == nil {
+					return
+				}
+				_, err = f.Write(byt)
+				if err != nil {
+					u.showErrorDialog("Failed to write file", err)
+					return
+				}
+			}, u.window)
+			d.Show()
+		}),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Preferences...", func() {
 			u.showSettingsDialog()
 		}),
 	)
@@ -146,7 +174,7 @@ func (u *UI) updateRecentFilesMenu() {
 			u.loadDocument(reader)
 		})
 	}
-	u.fileMenu.Items[2].ChildMenu.Items = items
+	u.fileMenu.Items[3].ChildMenu.Items = items
 	u.fileMenu.Refresh()
 }
 

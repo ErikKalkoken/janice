@@ -154,14 +154,14 @@ func TestJsonDocumentExtract(t *testing.T) {
 	t.Run("can extract object", func(t *testing.T) {
 		got, err := j.Extract(alphaID)
 		if assert.NoError(t, err) {
-			want := map[string]any{"charlie": map[string]any{"delta": float64(1)}}
+			want, _ := json.Marshal(map[string]any{"charlie": map[string]any{"delta": float64(1)}})
 			assert.Equal(t, want, got)
 		}
 	})
 	t.Run("can extract array", func(t *testing.T) {
 		got, err := j.Extract(bravoID)
 		if assert.NoError(t, err) {
-			want := []any{float64(1), float64(2), float64(3)}
+			want, _ := json.Marshal([]any{float64(1), float64(2), float64(3)})
 			assert.Equal(t, want, got)
 		}
 	})
