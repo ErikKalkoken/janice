@@ -196,14 +196,16 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		if !ok {
 			return
 		}
+		uri := reader.URI()
+		name := uri.Name()
 		var text string
 		switch info.CurrentStep {
 		case 1:
-			text = "Loading file from disk..."
+			text = fmt.Sprintf("Loading file from disk: %s", name)
 		case 2:
-			text = "Parsing file..."
+			text = fmt.Sprintf("Parsing file: %s", name)
 		case 3:
-			text = "Calculating size..."
+			text = fmt.Sprintf("Calculating document size: %s", name)
 		case 4:
 			if pb2.Hidden {
 				pb1.Stop()
@@ -211,7 +213,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 				pb2.Show()
 			}
 			p := message.NewPrinter(language.English)
-			text = p.Sprintf("Rendering document with %d elements...", info.Size)
+			text = p.Sprintf("Rendering document with %d elements: %s", info.Size, name)
 			pb2.SetValue(info.Progress)
 		default:
 			text = "?"

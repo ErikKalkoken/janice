@@ -80,6 +80,9 @@ var Empty = struct{}{}
 
 // JSONDocument represents a JSON document which can be rendered by a Fyne tree widget.
 type JSONDocument struct {
+	// How often progress info is updated
+	ProgressUpdateTick int
+
 	progressInfo  binding.Untyped
 	elementsCount int
 
@@ -92,7 +95,10 @@ type JSONDocument struct {
 
 // Returns a new JSONDocument object.
 func New() *JSONDocument {
-	j := &JSONDocument{progressInfo: binding.NewUntyped()}
+	j := &JSONDocument{
+		progressInfo:       binding.NewUntyped(),
+		ProgressUpdateTick: progressUpdateTick,
+	}
 	j.initialize(0)
 	return j
 }
@@ -348,7 +354,7 @@ func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, va
 	j.ids[parentID] = append(j.ids[parentID], id)
 	j.values[id] = Node{Key: key, Value: value, Type: typ}
 	j.parents[id] = parentID
-	if j.n%progressUpdateTick == 0 {
+	if j.n%j.ProgressUpdateTick == 0 {
 		select {
 		case <-ctx.Done():
 			return 0, ErrLoadCanceled

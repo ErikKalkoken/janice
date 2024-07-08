@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"fyne.io/fyne/v2"
@@ -13,10 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dummy = binding.NewUntyped()
-
 func TestJsonDocument(t *testing.T) {
 	ctx := context.TODO()
+	var dummy = binding.NewUntyped()
 	j := jsondocument.New()
 	data := map[string]any{
 		"alpha": map[string]any{"charlie": map[string]any{"delta": 1}},
@@ -61,6 +61,7 @@ func TestJsonDocument(t *testing.T) {
 }
 func TestJsonDocumentLoad(t *testing.T) {
 	ctx := context.TODO()
+	var dummy = binding.NewUntyped()
 	t.Run("can load object with values of all types and sort keys", func(t *testing.T) {
 		// given
 		j := jsondocument.New()
@@ -132,10 +133,31 @@ func TestJsonDocumentLoad(t *testing.T) {
 			}
 		}
 	})
+	t.Run("can load JSON and update progress", func(t *testing.T) {
+		// given
+		info := binding.NewUntyped()
+		j := jsondocument.New()
+		j.ProgressUpdateTick = 1
+		data := []any{"one", "two"}
+		// when
+		err := j.Load(ctx, makeDataReader(data), info)
+		// then
+		if assert.NoError(t, err) {
+			assert.Equal(t, 2, j.Size())
+			x, err := info.Get()
+			if assert.NoError(t, err) {
+				p := x.(jsondocument.ProgressInfo)
+				assert.Equal(t, 2, p.Size)
+				assert.Equal(t, 4, p.CurrentStep)
+				assert.Equal(t, 4, p.TotalSteps)
+			}
+		}
+	})
 }
 
 func TestJsonDocumentExtract(t *testing.T) {
 	ctx := context.TODO()
+	var dummy = binding.NewUntyped()
 	j := jsondocument.New()
 	data := map[string]any{
 		"alpha": map[string]any{"charlie": map[string]any{"delta": 1}},
@@ -178,4 +200,26 @@ func makeDataReader(data any) fyne.URIReadCloser {
 	}
 	r := bytes.NewReader(x)
 	return jsondocument.MakeURIReadCloser(r, "test")
+}
+
+func TestJSONType(t *testing.T) {
+	cases := []struct {
+		typ  jsondocument.JSONType
+		name string
+	}{
+		{jsondocument.Array, "array"},
+		{jsondocument.Boolean, "boolean"},
+		{jsondocument.Null, "null"},
+		{jsondocument.Number, "number"},
+		{jsondocument.Object, "object"},
+		{jsondocument.String, "string"},
+		{jsondocument.Undefined, "undefined"},
+		{jsondocument.Unknown, "unknown"},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("can return name of type %T as string", tc.typ), func(t *testing.T) {
+			got := fmt.Sprint(tc.typ)
+			assert.Equal(t, tc.name, got)
+		})
+	}
 }
