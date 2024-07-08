@@ -134,6 +134,43 @@ func TestJsonDocumentLoad(t *testing.T) {
 	})
 }
 
+func TestJsonDocumentExtract(t *testing.T) {
+	ctx := context.TODO()
+	j := jsondocument.New()
+	data := map[string]any{
+		"alpha": map[string]any{"charlie": map[string]any{"delta": 1}},
+		"bravo": []any{1, 2, 3},
+	}
+	if err := j.Load(ctx, makeDataReader(data), dummy); err != nil {
+		t.Fatal(err)
+	}
+	ids := j.ChildUIDs("")
+	alphaID := ids[0]
+	bravoID := ids[1]
+	ids = j.ChildUIDs(alphaID)
+	charlieID := ids[0]
+	ids = j.ChildUIDs(charlieID)
+	deltaID := ids[0]
+	t.Run("can extract object", func(t *testing.T) {
+		got, err := j.Extract(alphaID)
+		if assert.NoError(t, err) {
+			want := map[string]any{"charlie": map[string]any{"delta": float64(1)}}
+			assert.Equal(t, want, got)
+		}
+	})
+	t.Run("can extract array", func(t *testing.T) {
+		got, err := j.Extract(bravoID)
+		if assert.NoError(t, err) {
+			want := []any{float64(1), float64(2), float64(3)}
+			assert.Equal(t, want, got)
+		}
+	})
+	t.Run("should return error when trying to extract normal value", func(t *testing.T) {
+		_, err := j.Extract(deltaID)
+		assert.Error(t, err)
+	})
+}
+
 func makeDataReader(data any) fyne.URIReadCloser {
 	x, err := json.Marshal(data)
 	if err != nil {

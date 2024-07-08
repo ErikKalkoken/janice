@@ -379,6 +379,59 @@ func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 	return nil
 }
 
+// Extract returns a segment of the JSON document, with the given UID as new root container.
+// Note that only arrays and objects can be extracted
+func (j *JSONDocument) Extract(uid widget.TreeNodeID) (any, error) {
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+	id := uid2id(uid)
+	n := j.values[id]
+	switch n.Type {
+	case Array:
+		return j.extractArray(id), nil
+	case Object:
+		return j.extractObject(id), nil
+	default:
+		return nil, fmt.Errorf("can only extract objects and arrays")
+	}
+}
+
+func (j *JSONDocument) extractObject(id int) map[string]any {
+	data := make(map[string]any)
+	for _, childID := range j.ids[id] {
+		n := j.values[childID]
+		var v any
+		switch n.Type {
+		case Array:
+			v = j.extractArray(childID)
+		case Object:
+			v = j.extractObject(childID)
+		default:
+			v = n.Value
+		}
+		data[n.Key] = v
+	}
+	return data
+}
+
+func (j *JSONDocument) extractArray(id int) []any {
+	data := make([]any, len(j.ids[id]))
+	for i, childID := range j.ids[id] {
+		n := j.values[childID]
+		var v any
+		switch n.Type {
+		case Array:
+			v = j.extractArray(childID)
+		case Object:
+			v = j.extractObject(childID)
+		default:
+			v = n.Value
+		}
+		data[i] = v
+	}
+	return data
+}
+
 func uid2id(uid widget.TreeNodeID) int {
 	if uid == "" {
 		return 0
