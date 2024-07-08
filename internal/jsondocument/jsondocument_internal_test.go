@@ -39,21 +39,21 @@ func TestLoadFile(t *testing.T) {
 func TestAddNode(t *testing.T) {
 	t.Run("can add valid parent node", func(t *testing.T) {
 		j := New()
-		uid := j.addNode("", "alpha", "one", String)
+		id := j.addNode(0, "alpha", "one", String)
 		assert.Equal(t, 1, j.Size())
-		assert.Equal(t, Node{Key: "alpha", Value: "one", Type: String}, j.Value(uid))
+		assert.Equal(t, Node{Key: "alpha", Value: "one", Type: String}, j.values[id])
 	})
 	t.Run("can add valid child node", func(t *testing.T) {
 		j := New()
-		uid1 := j.addNode("", "alpha", "one", String)
-		uid2 := j.addNode(uid1, "bravo", "two", String)
+		id1 := j.addNode(0, "alpha", "one", String)
+		id2 := j.addNode(id1, "bravo", "two", String)
 		assert.Equal(t, 2, j.Size())
-		assert.Equal(t, Node{Key: "bravo", Value: "two", Type: String}, j.Value(uid2))
+		assert.Equal(t, Node{Key: "bravo", Value: "two", Type: String}, j.values[id2])
 	})
 	t.Run("should panic when parent UID does not exist", func(t *testing.T) {
 		j := New()
 		assert.Panics(t, func() {
-			j.addNode("invalid", "alpha", "one", String)
+			j.addNode(1000, "alpha", "one", String)
 		})
 	})
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"slices"
+	"strconv"
 	"sync"
 
 	"fyne.io/fyne/v2/data/binding"
@@ -21,7 +22,7 @@ const (
 )
 
 // JSONType represents the type of a JSON value.
-type JSONType uint
+type JSONType uint8
 
 const (
 	Unknown JSONType = iota
@@ -76,9 +77,9 @@ type JSONDocument struct {
 	elementsCount int
 
 	mu      sync.RWMutex
-	ids     map[widget.TreeNodeID][]widget.TreeNodeID
-	values  map[widget.TreeNodeID]Node
-	parents map[widget.TreeNodeID]widget.TreeNodeID
+	ids     map[int][]int
+	values  map[int]Node
+	parents map[int]int
 	n       int
 }
 
@@ -98,7 +99,8 @@ func (t *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
 		return []widget.TreeNodeID{}
 	}
 	defer t.mu.RUnlock()
-	return t.ids[uid]
+	id := uid2id(uid)
+	return ids2uids(t.ids[id])
 }
 
 // IsBranch reports wether a node is a branch.
@@ -108,7 +110,8 @@ func (t *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
 		return false
 	}
 	defer t.mu.RUnlock()
-	_, found := t.ids[uid]
+	id := uid2id(uid)
+	_, found := t.ids[id]
 	return found
 }
 
@@ -118,7 +121,8 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 		return Node{}
 	}
 	defer t.mu.RUnlock()
-	return t.values[uid]
+	id := uid2id(uid)
+	return t.values[id]
 }
 
 // Load loads JSON data from a reader and builds a new JSON document from it.
@@ -160,20 +164,21 @@ func (t *JSONDocument) Size() int {
 
 // Path returns the path of a node in the tree.
 func (t *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
-	path := make([]widget.TreeNodeID, 0)
+	path := make([]int, 0)
 	if !t.mu.TryRLock() {
-		return path
+		return []widget.TreeNodeID{}
 	}
 	defer t.mu.RUnlock()
+	id := uid2id(uid)
 	for {
-		uid = t.parents[uid]
-		if uid == "" {
+		id = t.parents[id]
+		if id == 0 {
 			break
 		}
-		path = append(path, uid)
+		path = append(path, id)
 	}
 	slices.Reverse(path)
-	return path
+	return ids2uids(path)
 }
 
 // render is the main method for rendering the JSON data into a tree.
@@ -183,9 +188,9 @@ func (t *JSONDocument) render(data any) error {
 	t.reset()
 	switch v := data.(type) {
 	case map[string]any:
-		t.addObject("", v)
+		t.addObject(0, v)
 	case []any:
-		t.addArray("", v)
+		t.addArray(0, v)
 	default:
 		return fmt.Errorf("unrecognized format")
 	}
@@ -193,7 +198,7 @@ func (t *JSONDocument) render(data any) error {
 }
 
 // addObject adds a JSON object to the tree.
-func (t *JSONDocument) addObject(parentUID widget.TreeNodeID, data map[string]any) {
+func (t *JSONDocument) addObject(parentID int, data map[string]any) {
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -201,37 +206,37 @@ func (t *JSONDocument) addObject(parentUID widget.TreeNodeID, data map[string]an
 	slices.Sort(keys)
 	for _, k := range keys {
 		v := data[k]
-		t.addValue(parentUID, k, v)
+		t.addValue(parentID, k, v)
 	}
 }
 
 // addArray adds a JSON array to the tree.
-func (t *JSONDocument) addArray(parentUID string, a []any) {
+func (t *JSONDocument) addArray(parentID int, a []any) {
 	for i, v := range a {
 		k := fmt.Sprintf("[%d]", i)
-		t.addValue(parentUID, k, v)
+		t.addValue(parentID, k, v)
 	}
 }
 
 // addValue adds a JSON value to the tree.
-func (t *JSONDocument) addValue(parentUID widget.TreeNodeID, k string, v any) {
+func (t *JSONDocument) addValue(parentID int, k string, v any) {
 	switch v2 := v.(type) {
 	case map[string]any:
-		uid := t.addNode(parentUID, k, Empty, Object)
-		t.addObject(uid, v2)
+		id := t.addNode(parentID, k, Empty, Object)
+		t.addObject(id, v2)
 	case []any:
-		uid := t.addNode(parentUID, k, Empty, Array)
-		t.addArray(uid, v2)
+		id := t.addNode(parentID, k, Empty, Array)
+		t.addArray(id, v2)
 	case string:
-		t.addNode(parentUID, k, v2, String)
+		t.addNode(parentID, k, v2, String)
 	case float64:
-		t.addNode(parentUID, k, v2, Number)
+		t.addNode(parentID, k, v2, Number)
 	case bool:
-		t.addNode(parentUID, k, v2, Boolean)
+		t.addNode(parentID, k, v2, Boolean)
 	case nil:
-		t.addNode(parentUID, k, v2, Null)
+		t.addNode(parentID, k, v2, Null)
 	default:
-		t.addNode(parentUID, k, v2, Unknown)
+		t.addNode(parentID, k, v2, Unknown)
 	}
 }
 
@@ -239,40 +244,36 @@ func (t *JSONDocument) addValue(parentUID widget.TreeNodeID, k string, v any) {
 // Nodes will be rendered in the same order they are added.
 // Use "" as parentUID for adding nodes at the top level.
 // Returns the generated UID for this node and the incremented ID
-func (t *JSONDocument) addNode(parentUID widget.TreeNodeID, key string, value any, typ JSONType) widget.TreeNodeID {
-	if parentUID != "" {
-		_, found := t.values[parentUID]
+func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType) int {
+	if parentID != 0 {
+		_, found := t.values[parentID]
 		if !found {
-			panic(fmt.Sprintf("parent UID does not exist: %s", parentUID))
+			panic(fmt.Sprintf("parent ID does not exist: %d", parentID))
 		}
 	}
-	s := parentUID
-	if parentUID == "" {
-		s = "ID"
-	}
-	uid := fmt.Sprintf("%s-%d", s, t.n)
-	_, found := t.values[uid]
-	if found {
-		panic(fmt.Sprintf("UID for this node already exists: %v", uid))
-	}
-	t.ids[parentUID] = append(t.ids[parentUID], uid)
-	t.values[uid] = Node{Key: key, Value: value, Type: typ}
-	t.parents[uid] = parentUID
 	t.n++
+	id := t.n
+	_, found := t.values[id]
+	if found {
+		panic(fmt.Sprintf("UID for this node already exists: %v", id))
+	}
+	t.ids[parentID] = append(t.ids[parentID], id)
+	t.values[id] = Node{Key: key, Value: value, Type: typ}
+	t.parents[id] = parentID
 	if t.n%progressUpdateTick == 0 {
 		p := float64(t.n) / float64(t.elementsCount)
 		if err := t.setProgressInfo(ProgressInfo{CurrentStep: 4, Progress: p}); err != nil {
 			slog.Warn("Failed to set progress", "err", err)
 		}
 	}
-	return uid
+	return id
 }
 
 // reset re-initializes the tree so a new tree can be build.
 func (t *JSONDocument) reset() {
-	t.values = make(map[widget.TreeNodeID]Node)
-	t.ids = make(map[widget.TreeNodeID][]widget.TreeNodeID)
-	t.parents = make(map[widget.TreeNodeID]widget.TreeNodeID)
+	t.values = make(map[int]Node)
+	t.ids = make(map[int][]int)
+	t.parents = make(map[int]int)
 	t.n = 0
 }
 
@@ -302,4 +303,30 @@ func (t *JSONDocument) loadFile(reader io.Reader) (any, error) {
 	}
 	slog.Info("Read and unmarshaled JSON file")
 	return data, nil
+}
+
+func uid2id(uid widget.TreeNodeID) int {
+	if uid == "" {
+		return 0
+	}
+	id, err := strconv.Atoi(uid)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
+func id2uid(id int) widget.TreeNodeID {
+	if id == 0 {
+		return ""
+	}
+	return strconv.Itoa(id)
+}
+
+func ids2uids(ids []int) []widget.TreeNodeID {
+	uids := make([]widget.TreeNodeID, len(ids))
+	for i, id := range ids {
+		uids[i] = id2uid(id)
+	}
+	return uids
 }
