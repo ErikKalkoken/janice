@@ -3,3 +3,4 @@
 jsonviewer
 *.tar.xz
 *.AppImage
+tools/generate_json/generate_json

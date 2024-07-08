@@ -25,23 +25,25 @@ const (
 type JSONType uint8
 
 const (
-	Unknown JSONType = iota
+	Undefined JSONType = iota
 	Array
 	Boolean
 	Null
 	Number
 	Object
 	String
+	Unknown
 )
 
 var typeMap = map[JSONType]string{
-	Unknown: "unknown",
-	Array:   "array",
-	Boolean: "boolean",
-	Null:    "null",
-	Number:  "number",
-	Object:  "object",
-	String:  "string",
+	Array:     "array",
+	Boolean:   "boolean",
+	Null:      "null",
+	Number:    "number",
+	Object:    "object",
+	String:    "string",
+	Unknown:   "unknown",
+	Undefined: "undefined",
 }
 
 func (t JSONType) String() string {
@@ -78,15 +80,14 @@ type JSONDocument struct {
 
 	mu      sync.RWMutex
 	ids     map[int][]int
-	values  map[int]Node
-	parents map[int]int
+	values  []Node // using a slice here instead of a map for better load time
+	parents []int  // ditto
 	n       int
 }
 
 // Returns a new JSONDocument object.
 func New() *JSONDocument {
 	t := &JSONDocument{progressInfo: binding.NewUntyped()}
-	t.reset()
 	return t
 }
 
@@ -136,17 +137,17 @@ func (t *JSONDocument) Load(reader io.Reader, progressInfo binding.Untyped) erro
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 3}); err != nil {
 		return err
 	}
-	c := JSONTreeSizer{}
-	s, err := c.Calculate(data)
+	sizer := JSONTreeSizer{}
+	size, err := sizer.Calculate(data)
 	if err != nil {
 		return err
 	}
-	t.elementsCount = s
-	slog.Info("Tree size calculated", "size", s)
+	t.elementsCount = size
+	slog.Info("Tree size calculated", "size", size)
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 4}); err != nil {
 		return err
 	}
-	if err := t.render(data); err != nil {
+	if err := t.render(data, size); err != nil {
 		return err
 	}
 	slog.Info("Finished loading JSON document into tree", "size", t.n)
@@ -182,10 +183,10 @@ func (t *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 }
 
 // render is the main method for rendering the JSON data into a tree.
-func (t *JSONDocument) render(data any) error {
+func (t *JSONDocument) render(data any, size int) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.reset()
+	t.initialize(size)
 	switch v := data.(type) {
 	case map[string]any:
 		t.addObject(0, v)
@@ -246,16 +247,16 @@ func (t *JSONDocument) addValue(parentID int, k string, v any) {
 // Returns the generated UID for this node and the incremented ID
 func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType) int {
 	if parentID != 0 {
-		_, found := t.values[parentID]
-		if !found {
+		n := t.values[parentID]
+		if n.Type == Undefined {
 			panic(fmt.Sprintf("parent ID does not exist: %d", parentID))
 		}
 	}
 	t.n++
 	id := t.n
-	_, found := t.values[id]
-	if found {
-		panic(fmt.Sprintf("UID for this node already exists: %v", id))
+	n := t.values[id]
+	if n.Type != Undefined {
+		panic(fmt.Sprintf("ID for this node already exists: %v", id))
 	}
 	t.ids[parentID] = append(t.ids[parentID], id)
 	t.values[id] = Node{Key: key, Value: value, Type: typ}
@@ -269,11 +270,11 @@ func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType
 	return id
 }
 
-// reset re-initializes the tree so a new tree can be build.
-func (t *JSONDocument) reset() {
-	t.values = make(map[int]Node)
+// initialize initializes the tree and allocates needed memory.
+func (t *JSONDocument) initialize(size int) {
+	t.values = make([]Node, size+1)
 	t.ids = make(map[int][]int)
-	t.parents = make(map[int]int)
+	t.parents = make([]int, size+1)
 	t.n = 0
 }
 
