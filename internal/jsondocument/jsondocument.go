@@ -179,12 +179,10 @@ func (t *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 }
 
 // Size returns the number of nodes.
-func (t *JSONDocument) Size() int {
-	if !t.mu.TryRLock() {
-		return 0
-	}
-	defer t.mu.RUnlock()
-	return t.n
+func (t *JSONDocument) Reset() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.initialize(0)
 }
 
 // Path returns the path of a node in the tree.
@@ -204,6 +202,15 @@ func (t *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 	}
 	slices.Reverse(path)
 	return ids2uids(path)
+}
+
+// Size returns the number of nodes.
+func (t *JSONDocument) Size() int {
+	if !t.mu.TryRLock() {
+		return 0
+	}
+	defer t.mu.RUnlock()
+	return t.n
 }
 
 // render is the main method for rendering the JSON data into a tree.

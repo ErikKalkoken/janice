@@ -24,6 +24,9 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	recentItem := fyne.NewMenuItem("Open Recent", nil)
 	recentItem.ChildMenu = fyne.NewMenu("")
 	u.fileMenu = fyne.NewMenu("File",
+		fyne.NewMenuItem("New", func() {
+			u.reset()
+		}),
 		fyne.NewMenuItem("Open File...", func() {
 			dialogOpen := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 				if err != nil {
@@ -123,13 +126,14 @@ func (u *UI) updateRecentFilesMenu() {
 			u.loadDocument(reader)
 		})
 	}
-	u.fileMenu.Items[1].ChildMenu.Items = items
+	u.fileMenu.Items[2].ChildMenu.Items = items
 	u.fileMenu.Refresh()
 }
 
 // loadDocument loads a JSON file
 // Shows a loader modal while loading
 func (u *UI) loadDocument(reader fyne.URIReadCloser) {
+	u.reset()
 	infoText := widget.NewLabel("")
 	pb1 := widget.NewProgressBarInfinite()
 	pb2 := widget.NewProgressBar()
@@ -182,6 +186,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		if err := u.document.Load(ctx, reader, progressInfo); err != nil {
 			d2.Hide()
 			if errors.Is(err, jsondocument.ErrLoadCanceled) {
+				u.reset()
 				return
 			}
 			u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)

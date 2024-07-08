@@ -140,6 +140,19 @@ func (u *UI) showErrorDialog(message string, err error) {
 	d.Show()
 }
 
+// reset resets the app to it's initial state
+func (u *UI) reset() {
+	u.document.Reset()
+	u.setTitle("")
+	u.statusTreeSize.SetText("")
+	u.welcomeMessage.Show()
+	u.detailPath.SetText("")
+	u.detailType.SetText("")
+	u.detailValueMD.ParseMarkdown("")
+	u.detailCopyValue.Disable()
+	u.detailCopyValue.Hide()
+}
+
 func (u *UI) setTitle(fileName string) {
 	var s string
 	if fileName != "" {
