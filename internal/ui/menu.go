@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -166,14 +168,23 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		message := fmt.Sprintf("%d / %d: %s", info.CurrentStep, info.TotalSteps, text)
 		infoText.SetText(message)
 	}))
-	c := container.NewVBox(infoText, container.NewStack(pb1, pb2))
-	// ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.TODO())
+	b := widget.NewButton("Cancel", func() {
+		cancel()
+	})
+	c := container.NewVBox(infoText, container.NewStack(pb1, pb2), b)
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
+	d2.SetOnClosed(func() {
+		cancel()
+	})
 	d2.Show()
 	go func() {
-		if err := u.document.Load(reader, progressInfo); err != nil {
+		if err := u.document.Load(ctx, reader, progressInfo); err != nil {
 			d2.Hide()
-			u.showErrorDialog("Failed to load document", err)
+			if errors.Is(err, jsondocument.ErrLoadCanceled) {
+				return
+			}
+			u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)
 			return
 		}
 		p := message.NewPrinter(language.English)

@@ -2,6 +2,7 @@ package jsondocument
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -43,10 +44,11 @@ func TestLoadFile(t *testing.T) {
 }
 
 func TestAddNode(t *testing.T) {
+	ctx := context.TODO()
 	t.Run("can add valid parent node", func(t *testing.T) {
 		j := New()
 		j.initialize(10)
-		id, err := j.addNode(0, "alpha", "one", String)
+		id, err := j.addNode(ctx, 0, "alpha", "one", String)
 		if assert.NoError(t, err) {
 			assert.Equal(t, 1, j.Size())
 			assert.Equal(t, Node{Key: "alpha", Value: "one", Type: String}, j.values[id])
@@ -55,8 +57,8 @@ func TestAddNode(t *testing.T) {
 	t.Run("can add valid child node", func(t *testing.T) {
 		j := New()
 		j.initialize(10)
-		id1, _ := j.addNode(0, "alpha", "one", String)
-		id2, err := j.addNode(id1, "bravo", "two", String)
+		id1, _ := j.addNode(ctx, 0, "alpha", "one", String)
+		id2, err := j.addNode(ctx, id1, "bravo", "two", String)
 		if assert.NoError(t, err) {
 			assert.Equal(t, 2, j.Size())
 			assert.Equal(t, Node{Key: "bravo", Value: "two", Type: String}, j.values[id2])
@@ -65,7 +67,7 @@ func TestAddNode(t *testing.T) {
 	t.Run("should return error when parent UID does not exist", func(t *testing.T) {
 		j := New()
 		j.initialize(10)
-		_, err := j.addNode(5, "alpha", "one", String)
+		_, err := j.addNode(ctx, 5, "alpha", "one", String)
 		assert.Error(t, err)
 	})
 }

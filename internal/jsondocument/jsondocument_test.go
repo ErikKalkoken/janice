@@ -2,6 +2,7 @@ package jsondocument_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -15,12 +16,13 @@ import (
 var dummy = binding.NewUntyped()
 
 func TestJsonDocument(t *testing.T) {
+	ctx := context.TODO()
 	j := jsondocument.New()
 	data := map[string]any{
 		"alpha": map[string]any{"charlie": map[string]any{"delta": 1}},
 		"bravo": 2,
 	}
-	if err := j.Load(makeDataReader(data), dummy); err != nil {
+	if err := j.Load(ctx, makeDataReader(data), dummy); err != nil {
 		t.Fatal(err)
 	}
 	ids := j.ChildUIDs("")
@@ -58,6 +60,7 @@ func TestJsonDocument(t *testing.T) {
 	})
 }
 func TestJsonDocumentLoad(t *testing.T) {
+	ctx := context.TODO()
 	t.Run("can load object with values of all types", func(t *testing.T) {
 		// given
 		j := jsondocument.New()
@@ -70,7 +73,7 @@ func TestJsonDocumentLoad(t *testing.T) {
 			"foxtrot": map[string]any{"child": 1},
 		}
 		// when
-		err := j.Load(makeDataReader(data), dummy)
+		err := j.Load(ctx, makeDataReader(data), dummy)
 		// then
 		if assert.NoError(t, err) {
 			assert.Equal(t, 9, j.Size())
@@ -114,7 +117,7 @@ func TestJsonDocumentLoad(t *testing.T) {
 		j := jsondocument.New()
 		data := []any{"one", "two"}
 		// when
-		err := j.Load(makeDataReader(data), dummy)
+		err := j.Load(ctx, makeDataReader(data), dummy)
 		// then
 		if assert.NoError(t, err) {
 			assert.Equal(t, 2, j.Size())

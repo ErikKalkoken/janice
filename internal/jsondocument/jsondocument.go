@@ -2,7 +2,9 @@
 package jsondocument
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -21,6 +23,8 @@ const (
 	// Total number of load steps
 	totalLoadSteps = 4
 )
+
+var ErrLoadCanceled = errors.New("load canceled by caller")
 
 // JSONType represents the type of a JSON value.
 type JSONType uint8
@@ -129,16 +133,25 @@ func (t *JSONDocument) Value(uid widget.TreeNodeID) Node {
 
 // Load loads JSON data from a reader and builds a new JSON document from it.
 // It reports it's current progress to the caller via updates to progressInfo.
-func (t *JSONDocument) Load(reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
-	defer reader.Close()
+func (t *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
 	t.progressInfo = progressInfo
 	byt, err := t.loadFile(reader)
 	if err != nil {
 		return err
 	}
+	select {
+	case <-ctx.Done():
+		return ErrLoadCanceled
+	default:
+	}
 	data, err := t.parseFile(byt)
 	if err != nil {
 		return err
+	}
+	select {
+	case <-ctx.Done():
+		return ErrLoadCanceled
+	default:
 	}
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 3}); err != nil {
 		return err
@@ -148,12 +161,17 @@ func (t *JSONDocument) Load(reader fyne.URIReadCloser, progressInfo binding.Unty
 	if err != nil {
 		return err
 	}
+	select {
+	case <-ctx.Done():
+		return ErrLoadCanceled
+	default:
+	}
 	t.elementsCount = size
 	slog.Info("Tree size calculated", "size", size)
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 4}); err != nil {
 		return err
 	}
-	if err := t.render(data, size); err != nil {
+	if err := t.render(ctx, data, size); err != nil {
 		return err
 	}
 	slog.Info("Finished loading JSON document into tree", "size", t.n)
@@ -189,16 +207,16 @@ func (t *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 }
 
 // render is the main method for rendering the JSON data into a tree.
-func (t *JSONDocument) render(data any, size int) error {
+func (t *JSONDocument) render(ctx context.Context, data any, size int) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.initialize(size)
 	var err error
 	switch v := data.(type) {
 	case map[string]any:
-		err = t.addObject(0, v)
+		err = t.addObject(ctx, 0, v)
 	case []any:
-		err = t.addArray(0, v)
+		err = t.addArray(ctx, 0, v)
 	default:
 		err = fmt.Errorf("unrecognized format")
 	}
@@ -206,7 +224,7 @@ func (t *JSONDocument) render(data any, size int) error {
 }
 
 // addObject adds a JSON object to the tree.
-func (t *JSONDocument) addObject(parentID int, data map[string]any) error {
+func (t *JSONDocument) addObject(ctx context.Context, parentID int, data map[string]any) error {
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -214,7 +232,7 @@ func (t *JSONDocument) addObject(parentID int, data map[string]any) error {
 	slices.Sort(keys)
 	for _, k := range keys {
 		v := data[k]
-		if err := t.addValue(parentID, k, v); err != nil {
+		if err := t.addValue(ctx, parentID, k, v); err != nil {
 			return err
 		}
 	}
@@ -222,10 +240,10 @@ func (t *JSONDocument) addObject(parentID int, data map[string]any) error {
 }
 
 // addArray adds a JSON array to the tree.
-func (t *JSONDocument) addArray(parentID int, a []any) error {
+func (t *JSONDocument) addArray(ctx context.Context, parentID int, a []any) error {
 	for i, v := range a {
 		k := fmt.Sprintf("[%d]", i)
-		if err := t.addValue(parentID, k, v); err != nil {
+		if err := t.addValue(ctx, parentID, k, v); err != nil {
 			return err
 		}
 	}
@@ -233,41 +251,41 @@ func (t *JSONDocument) addArray(parentID int, a []any) error {
 }
 
 // addValue adds a JSON value to the tree.
-func (t *JSONDocument) addValue(parentID int, k string, v any) error {
+func (t *JSONDocument) addValue(ctx context.Context, parentID int, k string, v any) error {
 	switch v2 := v.(type) {
 	case map[string]any:
-		id, err := t.addNode(parentID, k, Empty, Object)
+		id, err := t.addNode(ctx, parentID, k, Empty, Object)
 		if err != nil {
 			return err
 		}
-		if err := t.addObject(id, v2); err != nil {
+		if err := t.addObject(ctx, id, v2); err != nil {
 			return err
 		}
 	case []any:
-		id, err := t.addNode(parentID, k, Empty, Array)
+		id, err := t.addNode(ctx, parentID, k, Empty, Array)
 		if err != nil {
 			return err
 		}
-		if err := t.addArray(id, v2); err != nil {
+		if err := t.addArray(ctx, id, v2); err != nil {
 			return err
 		}
 	case string:
-		_, err := t.addNode(parentID, k, v2, String)
+		_, err := t.addNode(ctx, parentID, k, v2, String)
 		if err != nil {
 			return err
 		}
 	case float64:
-		_, err := t.addNode(parentID, k, v2, Number)
+		_, err := t.addNode(ctx, parentID, k, v2, Number)
 		if err != nil {
 			return err
 		}
 	case bool:
-		_, err := t.addNode(parentID, k, v2, Boolean)
+		_, err := t.addNode(ctx, parentID, k, v2, Boolean)
 		if err != nil {
 			return err
 		}
 	case nil:
-		_, err := t.addNode(parentID, k, v2, Null)
+		_, err := t.addNode(ctx, parentID, k, v2, Null)
 		if err != nil {
 			return err
 		}
@@ -281,7 +299,7 @@ func (t *JSONDocument) addValue(parentID int, k string, v any) error {
 // Nodes will be rendered in the same order they are added.
 // Use "" as parentUID for adding nodes at the top level.
 // Returns the generated UID for this node and the incremented ID
-func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType) (int, error) {
+func (t *JSONDocument) addNode(ctx context.Context, parentID int, key string, value any, typ JSONType) (int, error) {
 	if parentID != 0 {
 		n := t.values[parentID]
 		if n.Type == Undefined {
@@ -298,6 +316,11 @@ func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType
 	t.values[id] = Node{Key: key, Value: value, Type: typ}
 	t.parents[id] = parentID
 	if t.n%progressUpdateTick == 0 {
+		select {
+		case <-ctx.Done():
+			return 0, ErrLoadCanceled
+		default:
+		}
 		p := float64(t.n) / float64(t.elementsCount)
 		if err := t.setProgressInfo(ProgressInfo{CurrentStep: 4, Progress: p}); err != nil {
 			slog.Warn("Failed to set progress", "err", err)
@@ -324,6 +347,7 @@ func (t *JSONDocument) setProgressInfo(info ProgressInfo) error {
 }
 
 func (t *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
+	defer reader.Close()
 	if err := t.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
 		return nil, err
 	}
