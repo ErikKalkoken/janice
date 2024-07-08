@@ -193,19 +193,20 @@ func (t *JSONDocument) render(data any, size int) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.initialize(size)
+	var err error
 	switch v := data.(type) {
 	case map[string]any:
-		t.addObject(0, v)
+		err = t.addObject(0, v)
 	case []any:
-		t.addArray(0, v)
+		err = t.addArray(0, v)
 	default:
-		return fmt.Errorf("unrecognized format")
+		err = fmt.Errorf("unrecognized format")
 	}
-	return nil
+	return err
 }
 
 // addObject adds a JSON object to the tree.
-func (t *JSONDocument) addObject(parentID int, data map[string]any) {
+func (t *JSONDocument) addObject(parentID int, data map[string]any) error {
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -213,56 +214,85 @@ func (t *JSONDocument) addObject(parentID int, data map[string]any) {
 	slices.Sort(keys)
 	for _, k := range keys {
 		v := data[k]
-		t.addValue(parentID, k, v)
+		if err := t.addValue(parentID, k, v); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // addArray adds a JSON array to the tree.
-func (t *JSONDocument) addArray(parentID int, a []any) {
+func (t *JSONDocument) addArray(parentID int, a []any) error {
 	for i, v := range a {
 		k := fmt.Sprintf("[%d]", i)
-		t.addValue(parentID, k, v)
+		if err := t.addValue(parentID, k, v); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // addValue adds a JSON value to the tree.
-func (t *JSONDocument) addValue(parentID int, k string, v any) {
+func (t *JSONDocument) addValue(parentID int, k string, v any) error {
 	switch v2 := v.(type) {
 	case map[string]any:
-		id := t.addNode(parentID, k, Empty, Object)
-		t.addObject(id, v2)
+		id, err := t.addNode(parentID, k, Empty, Object)
+		if err != nil {
+			return err
+		}
+		if err := t.addObject(id, v2); err != nil {
+			return err
+		}
 	case []any:
-		id := t.addNode(parentID, k, Empty, Array)
-		t.addArray(id, v2)
+		id, err := t.addNode(parentID, k, Empty, Array)
+		if err != nil {
+			return err
+		}
+		if err := t.addArray(id, v2); err != nil {
+			return err
+		}
 	case string:
-		t.addNode(parentID, k, v2, String)
+		_, err := t.addNode(parentID, k, v2, String)
+		if err != nil {
+			return err
+		}
 	case float64:
-		t.addNode(parentID, k, v2, Number)
+		_, err := t.addNode(parentID, k, v2, Number)
+		if err != nil {
+			return err
+		}
 	case bool:
-		t.addNode(parentID, k, v2, Boolean)
+		_, err := t.addNode(parentID, k, v2, Boolean)
+		if err != nil {
+			return err
+		}
 	case nil:
-		t.addNode(parentID, k, v2, Null)
+		_, err := t.addNode(parentID, k, v2, Null)
+		if err != nil {
+			return err
+		}
 	default:
-		t.addNode(parentID, k, v2, Unknown)
+		return fmt.Errorf("unrecognized JSON type %v", v)
 	}
+	return nil
 }
 
 // addNode adds a node to the tree and returns the UID.
 // Nodes will be rendered in the same order they are added.
 // Use "" as parentUID for adding nodes at the top level.
 // Returns the generated UID for this node and the incremented ID
-func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType) int {
+func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType) (int, error) {
 	if parentID != 0 {
 		n := t.values[parentID]
 		if n.Type == Undefined {
-			panic(fmt.Sprintf("parent ID does not exist: %d", parentID))
+			return 0, fmt.Errorf("parent ID does not exist: %d", parentID)
 		}
 	}
 	t.n++
 	id := t.n
 	n := t.values[id]
 	if n.Type != Undefined {
-		panic(fmt.Sprintf("ID for this node already exists: %v", id))
+		return 0, fmt.Errorf("ID for this node already exists: %v", id)
 	}
 	t.ids[parentID] = append(t.ids[parentID], id)
 	t.values[id] = Node{Key: key, Value: value, Type: typ}
@@ -273,7 +303,7 @@ func (t *JSONDocument) addNode(parentID int, key string, value any, typ JSONType
 			slog.Warn("Failed to set progress", "err", err)
 		}
 	}
-	return id
+	return id, nil
 }
 
 // initialize initializes the tree and allocates needed memory.

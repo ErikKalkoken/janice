@@ -167,11 +167,12 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		infoText.SetText(message)
 	}))
 	c := container.NewVBox(infoText, container.NewStack(pb1, pb2))
+	// ctx, cancel := context.WithCancel(context.TODO())
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.Show()
 	go func() {
-		defer d2.Hide()
 		if err := u.document.Load(reader, progressInfo); err != nil {
+			d2.Hide()
 			u.showErrorDialog("Failed to load document", err)
 			return
 		}
@@ -187,6 +188,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		}
 		u.setTitle(uri.Name())
 		u.currentFile = uri
+		d2.Hide()
 	}()
 }
 
