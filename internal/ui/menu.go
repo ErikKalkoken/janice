@@ -107,6 +107,19 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		}),
 	)
 	viewMenu := fyne.NewMenu("View",
+		fyne.NewMenuItem("Scroll to top", func() {
+			u.treeWidget.ScrollToTop()
+		}),
+		fyne.NewMenuItem("Scroll to bottom", func() {
+			u.treeWidget.ScrollToBottom()
+		}),
+		fyne.NewMenuItem("Scroll to selection", func() {
+			u.showInTree(u.currentSelectedUID)
+		}),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Expand All", func() {
+			u.treeWidget.OpenAllBranches()
+		}),
 		fyne.NewMenuItem("Expand All", func() {
 			u.treeWidget.OpenAllBranches()
 		}),

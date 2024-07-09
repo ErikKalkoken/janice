@@ -75,9 +75,12 @@ func NewUI() (*UI, error) {
 	})
 	u.detailCopyValue.Disable()
 	u.detailCopyValue.Hide()
+	b := widget.NewButton("Show in tree", func() {
+		u.showInTree(u.currentSelectedUID)
+	})
 	detail := container.NewBorder(
 		container.NewBorder(
-			nil,
+			b,
 			u.detailType,
 			nil,
 			nil,
@@ -140,6 +143,17 @@ func (u *UI) showErrorDialog(message string, err error) {
 	}
 	d := dialog.NewInformation("Error", message, u.window)
 	d.Show()
+}
+
+func (u *UI) showInTree(uid widget.TreeNodeID) {
+	if uid == "" {
+		return
+	}
+	p := u.document.Path(uid)
+	for _, uid2 := range p {
+		u.treeWidget.OpenBranch(uid2)
+	}
+	u.treeWidget.ScrollTo(uid)
 }
 
 // reset resets the app to it's initial state
