@@ -100,6 +100,8 @@ func NewUI() (*UI, error) {
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
+	hsplit := container.NewHSplit(container.NewStack(u.welcomeMessage, u.treeWidget), detail)
+	hsplit.Offset = 0.75
 	searchButton := widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		key := u.searchEntry.Text
 		uid, err := u.document.SearchKey(u.currentSelectedUID, key)
@@ -112,22 +114,13 @@ func NewUI() (*UI, error) {
 			return
 		}
 		u.showInTree(uid)
-		u.treeWidget.Select(uid)
 	})
-	searchBar := container.NewBorder(nil, nil, nil, searchButton, u.searchEntry)
-	hsplit := container.NewHSplit(
-		container.NewBorder(
-			searchBar,
-			nil,
-			nil,
-			nil,
-			container.NewStack(u.welcomeMessage, u.treeWidget),
-		),
-		detail,
-	)
-	hsplit.Offset = 0.75
+	collapseButton := widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
+		u.treeWidget.CloseAllBranches()
+	})
+	searchBar := container.NewBorder(nil, nil, nil, container.NewHBox(searchButton, collapseButton), u.searchEntry)
 	c := container.NewBorder(
-		nil,
+		searchBar,
 		container.NewVBox(widget.NewSeparator(), u.statusTreeSize),
 		nil,
 		nil,
@@ -184,6 +177,7 @@ func (u *UI) showInTree(uid widget.TreeNodeID) {
 		u.treeWidget.OpenBranch(uid2)
 	}
 	u.treeWidget.ScrollTo(uid)
+	u.treeWidget.Select(uid)
 }
 
 // reset resets the app to it's initial state
