@@ -1,26 +1,42 @@
 package main
 
 import (
+	"bufio"
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math"
 	"math/rand"
 	"os"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 const (
-	maxKeys   = 11
-	maxLevels = 6
-	fileName  = "test.json"
+	keysDefault   = 8
+	levelsDefault = 3
+	fileName      = "test.json"
 )
 
 var n = 0
 
+var keysFlag = flag.Int("k", keysDefault, "number of keys generated per object")
+var levelsFlag = flag.Int("l", levelsDefault, "number of generated levels")
+
 func main() {
-	fmt.Printf("Generating JSON file with %d keys per object and %d levels...\n", maxKeys, maxLevels)
+	flag.Parse()
+	fmt.Printf("You have selected %d keys and %d levels.\n", *keysFlag, *levelsFlag)
+	fmt.Println("This can take a while. Are you sure you want to continue (Y/n)?")
+	consoleReader := bufio.NewReaderSize(os.Stdin, 1)
+	input, _ := consoleReader.ReadByte()
+	if input == 'n' {
+		return
+	}
+	fmt.Println("Generating JSON file...")
 	obj := makeObj(0)
 	fmt.Println("Marshalling into JSON...")
 	b, err := json.Marshal(obj)
@@ -31,17 +47,18 @@ func main() {
 	if err := os.WriteFile(fileName, b, 0644); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Generated JSON file with %d elements.\n", n)
+	p := message.NewPrinter(language.English)
+	p.Printf("Generated JSON file with %d elements.\n", n+1)
 }
 
 func makeObj(level int) map[string]any {
 	o := make(map[string]any)
-	for i := range maxKeys {
+	for i := range *keysFlag {
 		if level == 0 {
-			fmt.Printf("Generating %d / %d\r", i+1, maxKeys)
+			fmt.Printf("Generating %d / %d\r", i+1, *keysFlag)
 		}
 		k := randomBase16String(10)
-		if level < maxLevels {
+		if level < *levelsFlag {
 			o[k] = makeObj(level + 1)
 		} else {
 			o[k] = rand.Intn(10_000)
