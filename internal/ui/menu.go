@@ -256,8 +256,10 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		out := p.Sprintf("%d elements", u.document.Size())
 		u.statusTreeSize.SetText(out)
 		u.welcomeMessage.Hide()
+		u.searchButton.Enable()
+		u.searchEntry.Enable()
+		u.collapseButton.Enable()
 		u.treeWidget.Refresh()
-		u.detailCopyValue.Show()
 		uri := reader.URI()
 		if uri.Scheme() == "file" {
 			u.addRecentFile(uri)

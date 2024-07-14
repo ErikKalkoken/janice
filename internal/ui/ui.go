@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -38,21 +39,24 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 // UI represents the user interface of this app.
 type UI struct {
 	app                fyne.App
+	currentFile        fyne.URI
 	currentSelectedUID widget.TreeNodeID
 	detailCopyValue    *widget.Button
+	jumpToSelection    *widget.Button
+	collapseButton     *widget.Button
 	detailPath         *widget.Label
 	detailType         *widget.Label
 	detailValueMD      *widget.RichText
 	detailValueRaw     string
 	document           *jsondocument.JSONDocument
 	fileMenu           *fyne.Menu
+	searchEntry        *widget.Entry
+	searchButton       *widget.Button
 	statusPath         *widget.Label
 	statusTreeSize     *widget.Label
 	treeWidget         *widget.Tree
 	welcomeMessage     *fyne.Container
-	currentFile        fyne.URI
 	window             fyne.Window
-	searchEntry        *widget.Entry
 }
 
 // NewUI returns a new UI object.
@@ -77,48 +81,55 @@ func NewUI() (*UI, error) {
 		u.window.Clipboard().SetContent(u.detailValueRaw)
 	})
 	u.detailCopyValue.Disable()
-	u.detailCopyValue.Hide()
-	b := widget.NewButton("Show in tree", func() {
+	u.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
 		u.showInTree(u.currentSelectedUID)
 	})
+	u.jumpToSelection.Disable()
+	u.searchEntry.OnSubmitted = func(s string) {
+		u.searchKey()
+	}
 	detail := container.NewBorder(
-		container.NewBorder(
-			b,
-			u.detailType,
-			nil,
-			nil,
-			u.detailPath,
-		),
+		container.NewBorder(nil, u.detailType, nil, nil, u.detailPath),
 		nil,
 		nil,
-		container.NewVBox(u.detailCopyValue),
+		nil,
 		u.detailValueMD,
 	)
 	welcomeText := widget.NewLabel(
-		"Welcome to JSON Viewer.\nOpen a JSON file by dropping it on the window\nor through the File menu.",
+		"Welcome to JSON Viewer.\n" +
+			"Open a JSON file by dropping it on the window\n" +
+			"or through the File menu.",
 	)
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
 	hsplit := container.NewHSplit(container.NewStack(u.welcomeMessage, u.treeWidget), detail)
 	hsplit.Offset = 0.75
-	searchButton := widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
-		key := u.searchEntry.Text
-		uid, err := u.document.SearchKey(u.currentSelectedUID, key)
-		if errors.Is(err, jsondocument.ErrNotFound) {
-			d := dialog.NewInformation("Not found", fmt.Sprintf("The key %s was not found", key), u.window)
-			d.Show()
-			return
-		} else if err != nil {
-			u.showErrorDialog("Search failed", err)
-			return
-		}
-		u.showInTree(uid)
+	u.searchEntry.Disable()
+	u.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
+		u.searchKey()
 	})
-	collapseButton := widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
+	u.searchButton.Disable()
+	u.collapseButton = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
 		u.treeWidget.CloseAllBranches()
 	})
-	searchBar := container.NewBorder(nil, nil, nil, container.NewHBox(searchButton, collapseButton), u.searchEntry)
+	u.collapseButton.Disable()
+	searchBar := container.NewBorder(
+		nil,
+		nil,
+		nil,
+		container.NewHBox(
+			u.searchButton,
+			layout.NewSpacer(),
+			container.NewPadded(),
+			u.collapseButton,
+			container.NewPadded(),
+			layout.NewSpacer(),
+			u.jumpToSelection,
+			u.detailCopyValue,
+		),
+		u.searchEntry,
+	)
 	c := container.NewBorder(
 		searchBar,
 		container.NewVBox(widget.NewSeparator(), u.statusTreeSize),
@@ -155,6 +166,23 @@ func NewUI() (*UI, error) {
 	return u, nil
 }
 
+func (u *UI) searchKey() {
+	text := u.searchEntry.Text
+	if len(text) == 0 {
+		return
+	}
+	uid, err := u.document.SearchKey(u.currentSelectedUID, text)
+	if errors.Is(err, jsondocument.ErrNotFound) {
+		d := dialog.NewInformation("Not found", fmt.Sprintf("The key %s was not found", text), u.window)
+		d.Show()
+		return
+	} else if err != nil {
+		u.showErrorDialog("Search failed", err)
+		return
+	}
+	u.showInTree(uid)
+}
+
 // ShowAndRun shows the main window and runs the app. This method is blocking.
 func (u *UI) ShowAndRun() {
 	u.window.ShowAndRun()
@@ -186,11 +214,14 @@ func (u *UI) reset() {
 	u.setTitle("")
 	u.statusTreeSize.SetText("")
 	u.welcomeMessage.Show()
+	u.searchButton.Disable()
+	u.searchEntry.Disable()
+	u.collapseButton.Disable()
 	u.detailPath.SetText("")
 	u.detailType.SetText("")
 	u.detailValueMD.ParseMarkdown("")
 	u.detailCopyValue.Disable()
-	u.detailCopyValue.Hide()
+	u.jumpToSelection.Disable()
 	u.currentSelectedUID = ""
 }
 
@@ -269,12 +300,13 @@ func (u *UI) makeTree() *widget.Tree {
 		node := u.document.Value(uid)
 		u.detailPath.SetText(path)
 		u.detailType.SetText(fmt.Sprint(node.Type))
+		u.detailCopyValue.Enable()
 		var v string
 		if u.document.IsBranch(uid) {
 			u.detailCopyValue.Disable()
 			v = "..."
 		} else {
-			u.detailCopyValue.Enable()
+			u.jumpToSelection.Enable()
 			u.detailValueRaw = fmt.Sprint(node.Value)
 			switch node.Type {
 			case jsondocument.String:
