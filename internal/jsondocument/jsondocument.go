@@ -22,9 +22,14 @@ const (
 	progressUpdateTick = 10_000
 	// Total number of load steps
 	totalLoadSteps = 4
+	// Parent ID of root node
+	rootNodeParentID = -1
+	// Search target not found
+	notFound = -1
 )
 
 var ErrLoadCanceled = errors.New("load canceled by caller")
+var ErrNotFound = errors.New("key not found")
 
 // JSONType represents the type of a JSON value.
 type JSONType uint8
@@ -61,6 +66,7 @@ func (t JSONType) String() string {
 
 // Node represents a node in the JSON data tree.
 type Node struct {
+	UID   string
 	Key   string
 	Value any
 	Type  JSONType
@@ -253,8 +259,14 @@ func (j *JSONDocument) render(ctx context.Context, data any, size int) error {
 	var err error
 	switch v := data.(type) {
 	case map[string]any:
+		if _, err := j.addNode(ctx, -1, "", Empty, Object); err != nil {
+			return err
+		}
 		err = j.addObject(ctx, 0, v)
 	case []any:
+		if _, err := j.addNode(ctx, -1, "", Empty, Array); err != nil {
+			return err
+		}
 		err = j.addArray(ctx, 0, v)
 	default:
 		err = fmt.Errorf("unrecognized format")
@@ -336,24 +348,25 @@ func (j *JSONDocument) addValue(ctx context.Context, parentID int, k string, v a
 
 // addNode adds a node to the tree and returns the UID.
 // Nodes will be rendered in the same order they are added.
-// Use "" as parentUID for adding nodes at the top level.
+// parentID == -1 denotes the root node
 // Returns the generated UID for this node and the incremented ID
 func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, value any, typ JSONType) (int, error) {
-	if parentID != 0 {
+	if parentID != rootNodeParentID {
 		n := j.values[parentID]
 		if n.Type == Undefined {
 			return 0, fmt.Errorf("parent ID does not exist: %d", parentID)
 		}
 	}
-	j.n++
 	id := j.n
 	n := j.values[id]
 	if n.Type != Undefined {
 		return 0, fmt.Errorf("ID for this node already exists: %v", id)
 	}
-	j.ids[parentID] = append(j.ids[parentID], id)
-	j.values[id] = Node{Key: key, Value: value, Type: typ}
+	j.values[id] = Node{UID: id2uid(id), Key: key, Value: value, Type: typ}
 	j.parents[id] = parentID
+	if parentID != rootNodeParentID {
+		j.ids[parentID] = append(j.ids[parentID], id)
+	}
 	if j.n%j.ProgressUpdateTick == 0 {
 		select {
 		case <-ctx.Done():
@@ -365,14 +378,17 @@ func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, va
 			slog.Warn("Failed to set progress", "err", err)
 		}
 	}
+	j.n++
 	return id, nil
 }
 
 // initialize initializes the tree and allocates needed memory.
+//
+// A valid tree includes a root node (ID=0) and at least one normal node.
 func (j *JSONDocument) initialize(size int) {
 	j.ids = make(map[int][]int)
-	j.values = make([]Node, size+1) // we are starting at ID 1, so we need one more
-	j.parents = make([]int, size+1) // ditto
+	j.values = make([]Node, size)
+	j.parents = make([]int, size)
 	j.n = 0
 }
 
@@ -383,6 +399,62 @@ func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 		return err
 	}
 	return nil
+}
+
+// SearchKey returns the next node with a matching key or an error if not found.
+// The starting node will be ignored, so that is is possible to find successive nodes with the same key.
+// The search direction is from top to bottom.
+func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, key string) (widget.TreeNodeID, error) {
+	var foundID int
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+	id := uid2id(uid)
+	startID := id
+	n := j.values[id]
+	if n.Type != Array && n.Type != Object {
+		id = j.parents[id]
+	}
+	for {
+		switch n := j.values[id]; n.Type {
+		case Array, Object:
+			foundID = j.searchKey(id, key)
+		}
+		if foundID != startID && foundID != notFound {
+			return id2uid(foundID), nil
+		}
+		for {
+			parentID := j.parents[id]
+			childIDs := j.ids[parentID]
+			idx := slices.Index(childIDs, id)
+			if idx < len(childIDs)-1 {
+				id = childIDs[idx+1]
+				break
+			}
+			if parentID == rootNodeParentID || j.parents[parentID] == rootNodeParentID {
+				return "", ErrNotFound
+			}
+			id = parentID
+		}
+	}
+}
+
+func (j *JSONDocument) searchKey(id int, key string) int {
+	for _, childID := range j.ids[id] {
+		n := j.values[childID]
+		if n.Key == key {
+			return childID
+		}
+	}
+	for _, childID := range j.ids[id] {
+		n := j.values[childID]
+		switch n.Type {
+		case Array, Object:
+			if foundID := j.searchKey(childID, key); foundID != notFound {
+				return foundID
+			}
+		}
+	}
+	return notFound
 }
 
 // Extract returns a segment of the JSON document, with the given UID as new root container.
@@ -404,24 +476,6 @@ func (j *JSONDocument) Extract(uid widget.TreeNodeID) ([]byte, error) {
 	return json.Marshal(data)
 }
 
-func (j *JSONDocument) extractObject(id int) map[string]any {
-	data := make(map[string]any)
-	for _, childID := range j.ids[id] {
-		n := j.values[childID]
-		var v any
-		switch n.Type {
-		case Array:
-			v = j.extractArray(childID)
-		case Object:
-			v = j.extractObject(childID)
-		default:
-			v = n.Value
-		}
-		data[n.Key] = v
-	}
-	return data
-}
-
 func (j *JSONDocument) extractArray(id int) []any {
 	data := make([]any, len(j.ids[id]))
 	for i, childID := range j.ids[id] {
@@ -436,6 +490,24 @@ func (j *JSONDocument) extractArray(id int) []any {
 			v = n.Value
 		}
 		data[i] = v
+	}
+	return data
+}
+
+func (j *JSONDocument) extractObject(id int) map[string]any {
+	data := make(map[string]any)
+	for _, childID := range j.ids[id] {
+		n := j.values[childID]
+		var v any
+		switch n.Type {
+		case Array:
+			v = j.extractArray(childID)
+		case Object:
+			v = j.extractObject(childID)
+		default:
+			v = n.Value
+		}
+		data[n.Key] = v
 	}
 	return data
 }

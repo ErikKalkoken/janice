@@ -20,7 +20,7 @@ func TestCounter(t *testing.T) {
 		c := jsondocument.JSONTreeSizer{}
 		x, err := c.Calculate(data)
 		if assert.NoError(t, err) {
-			assert.Equal(t, 9, x)
+			assert.Equal(t, 10, x)
 		}
 	})
 	t.Run("can size array based tree", func(t *testing.T) {
@@ -34,7 +34,7 @@ func TestCounter(t *testing.T) {
 		c := jsondocument.JSONTreeSizer{}
 		x, err := c.Calculate(data)
 		if assert.NoError(t, err) {
-			assert.Equal(t, 8, x)
+			assert.Equal(t, 9, x)
 		}
 	})
 	t.Run("should return error when trying to size invalid structure", func(t *testing.T) {

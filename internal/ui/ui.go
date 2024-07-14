@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -51,6 +52,7 @@ type UI struct {
 	welcomeMessage     *fyne.Container
 	currentFile        fyne.URI
 	window             fyne.Window
+	searchEntry        *widget.Entry
 }
 
 // NewUI returns a new UI object.
@@ -64,6 +66,7 @@ func NewUI() (*UI, error) {
 		detailValueMD:  widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
 		statusPath:     widget.NewLabel(""),
+		searchEntry:    widget.NewEntry(),
 		window:         a.NewWindow(appTitle),
 	}
 	u.treeWidget = u.makeTree()
@@ -97,12 +100,39 @@ func NewUI() (*UI, error) {
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
+	searchButton := widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
+		key := u.searchEntry.Text
+		uid, err := u.document.SearchKey(u.currentSelectedUID, key)
+		if errors.Is(err, jsondocument.ErrNotFound) {
+			d := dialog.NewInformation("Not found", fmt.Sprintf("The key %s was not found", key), u.window)
+			d.Show()
+			return
+		} else if err != nil {
+			u.showErrorDialog("Search failed", err)
+			return
+		}
+		u.showInTree(uid)
+		u.treeWidget.Select(uid)
+	})
+	searchBar := container.NewBorder(nil, nil, nil, searchButton, u.searchEntry)
 	hsplit := container.NewHSplit(
-		container.NewStack(u.welcomeMessage, u.treeWidget),
+		container.NewBorder(
+			searchBar,
+			nil,
+			nil,
+			nil,
+			container.NewStack(u.welcomeMessage, u.treeWidget),
+		),
 		detail,
 	)
 	hsplit.Offset = 0.75
-	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), u.statusTreeSize), nil, nil, hsplit)
+	c := container.NewBorder(
+		nil,
+		container.NewVBox(widget.NewSeparator(), u.statusTreeSize),
+		nil,
+		nil,
+		hsplit,
+	)
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()

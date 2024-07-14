@@ -15,8 +15,10 @@ func (t *JSONTreeSizer) Calculate(data any) (int, error) {
 	t.count = 0
 	switch v := data.(type) {
 	case map[string]any:
+		t.count++
 		t.parseObject(v)
 	case []any:
+		t.count++
 		t.parseArray(v)
 	default:
 		return 0, fmt.Errorf("unrecognized format")

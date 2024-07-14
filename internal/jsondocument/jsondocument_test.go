@@ -33,7 +33,7 @@ func TestJsonDocument(t *testing.T) {
 	ids = j.ChildUIDs(charlieID)
 	deltaID := ids[0]
 	t.Run("should return tree size", func(t *testing.T) {
-		assert.Equal(t, 4, j.Size())
+		assert.Equal(t, 5, j.Size())
 	})
 	t.Run("should return true when branch", func(t *testing.T) {
 		assert.True(t, j.IsBranch(alphaID))
@@ -41,12 +41,12 @@ func TestJsonDocument(t *testing.T) {
 	})
 	t.Run("should return value of parent node", func(t *testing.T) {
 		got := j.Value(alphaID)
-		want := jsondocument.Node{Key: "alpha", Value: jsondocument.Empty, Type: jsondocument.Object}
+		want := jsondocument.Node{UID: alphaID, Key: "alpha", Value: jsondocument.Empty, Type: jsondocument.Object}
 		assert.Equal(t, want, got)
 	})
 	t.Run("should return value of child node", func(t *testing.T) {
 		got := j.Value(deltaID)
-		want := jsondocument.Node{Key: "delta", Value: float64(1), Type: jsondocument.Number}
+		want := jsondocument.Node{UID: deltaID, Key: "delta", Value: float64(1), Type: jsondocument.Number}
 		assert.Equal(t, want, got)
 	})
 	t.Run("should return empty path for parent node", func(t *testing.T) {
@@ -77,20 +77,20 @@ func TestJsonDocumentLoad(t *testing.T) {
 		err := j.Load(ctx, makeDataReader(data), dummy)
 		// then
 		if assert.NoError(t, err) {
-			assert.Equal(t, 9, j.Size())
+			assert.Equal(t, 10, j.Size())
 			for i, id := range j.ChildUIDs("") {
 				node := j.Value(id)
 				switch i {
 				case 0:
-					assert.Equal(t, node, jsondocument.Node{Key: "alpha", Value: "abc", Type: jsondocument.String})
+					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "alpha", Value: "abc", Type: jsondocument.String})
 				case 1:
-					assert.Equal(t, node, jsondocument.Node{Key: "bravo", Value: float64(5), Type: jsondocument.Number})
+					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "bravo", Value: float64(5), Type: jsondocument.Number})
 				case 2:
-					assert.Equal(t, node, jsondocument.Node{Key: "charlie", Value: true, Type: jsondocument.Boolean})
+					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "charlie", Value: true, Type: jsondocument.Boolean})
 				case 3:
-					assert.Equal(t, node, jsondocument.Node{Key: "delta", Value: nil, Type: jsondocument.Null})
+					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "delta", Value: nil, Type: jsondocument.Null})
 				case 4:
-					assert.Equal(t, node, jsondocument.Node{Key: "echo", Value: jsondocument.Empty, Type: jsondocument.Array})
+					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "echo", Value: jsondocument.Empty, Type: jsondocument.Array})
 					for n, childId := range j.ChildUIDs(id) {
 						node := j.Value(childId)
 						switch n {
@@ -101,12 +101,12 @@ func TestJsonDocumentLoad(t *testing.T) {
 						}
 					}
 				case 5:
-					assert.Equal(t, node, jsondocument.Node{Key: "foxtrot", Value: jsondocument.Empty, Type: jsondocument.Object})
+					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "foxtrot", Value: jsondocument.Empty, Type: jsondocument.Object})
 					for n, childId := range j.ChildUIDs(id) {
 						node := j.Value(childId)
 						switch n {
 						case 0:
-							assert.Equal(t, node, jsondocument.Node{Key: "child", Value: float64(1), Type: jsondocument.Number})
+							assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "child", Value: float64(1), Type: jsondocument.Number})
 						}
 					}
 				}
@@ -121,14 +121,14 @@ func TestJsonDocumentLoad(t *testing.T) {
 		err := j.Load(ctx, makeDataReader(data), dummy)
 		// then
 		if assert.NoError(t, err) {
-			assert.Equal(t, 2, j.Size())
+			assert.Equal(t, 3, j.Size())
 			for i, id := range j.ChildUIDs("") {
 				node := j.Value(id)
 				switch i {
 				case 0:
-					assert.Equal(t, node, jsondocument.Node{Key: "[0]", Value: "one", Type: jsondocument.String})
+					assert.Equal(t, node, jsondocument.Node{UID: "1", Key: "[0]", Value: "one", Type: jsondocument.String})
 				case 1:
-					assert.Equal(t, node, jsondocument.Node{Key: "[1]", Value: "two", Type: jsondocument.String})
+					assert.Equal(t, node, jsondocument.Node{UID: "2", Key: "[1]", Value: "two", Type: jsondocument.String})
 				}
 			}
 		}
@@ -143,11 +143,11 @@ func TestJsonDocumentLoad(t *testing.T) {
 		err := j.Load(ctx, makeDataReader(data), info)
 		// then
 		if assert.NoError(t, err) {
-			assert.Equal(t, 2, j.Size())
+			assert.Equal(t, 3, j.Size())
 			x, err := info.Get()
 			if assert.NoError(t, err) {
 				p := x.(jsondocument.ProgressInfo)
-				assert.Equal(t, 2, p.Size)
+				assert.Equal(t, 3, p.Size)
 				assert.Equal(t, 4, p.CurrentStep)
 				assert.Equal(t, 4, p.TotalSteps)
 			}
@@ -193,15 +193,6 @@ func TestJsonDocumentExtract(t *testing.T) {
 	})
 }
 
-func makeDataReader(data any) fyne.URIReadCloser {
-	x, err := json.Marshal(data)
-	if err != nil {
-		panic(err)
-	}
-	r := bytes.NewReader(x)
-	return jsondocument.MakeURIReadCloser(r, "test")
-}
-
 func TestJSONType(t *testing.T) {
 	cases := []struct {
 		typ  jsondocument.JSONType
@@ -222,4 +213,74 @@ func TestJSONType(t *testing.T) {
 			assert.Equal(t, tc.name, got)
 		})
 	}
+}
+
+func TestJsonDocumentSearchKey(t *testing.T) {
+	ctx := context.TODO()
+	var dummy = binding.NewUntyped()
+	j := jsondocument.New()
+	data := map[string]any{
+		"alpha": []any{1, 2, 3},
+		"bravo": map[string]any{
+			"charlie": 5,
+			"delta":   map[string]any{"echo": 1, "foxtrot": 2},
+		},
+		"golf": []any{
+			9,
+			map[string]any{"echo": 5, "india": 9},
+		},
+	}
+	if err := j.Load(ctx, makeDataReader(data), dummy); err != nil {
+		t.Fatal(err)
+	}
+	ids := j.ChildUIDs("")
+	alphaID, bravoID, golfID := ids[0], ids[1], ids[2]
+	ids = j.ChildUIDs(bravoID)
+	charlieID, deltaID := ids[0], ids[1]
+	ids = j.ChildUIDs(deltaID)
+	echo1ID, foxtrotID := ids[0], ids[1]
+	ids = j.ChildUIDs(golfID)
+	ids2 := j.ChildUIDs(ids[1])
+	echo2ID, indiaID := ids2[0], ids2[1]
+	cases := []struct {
+		startUID   string
+		key        string
+		foundUID   string
+		shouldFind bool
+	}{
+		{echo1ID, "echo", echo2ID, true},
+		{"", "alpha", alphaID, true},
+		{"", "bravo", bravoID, true},
+		{"", "charlie", charlieID, true},
+		{"", "delta", deltaID, true},
+		{"", "echo", echo1ID, true},
+		{"", "foxtrot", foxtrotID, true},
+		{"", "golf", golfID, true},
+		{"", "india", indiaID, true},
+		{bravoID, "foxtrot", foxtrotID, true},
+		{echo1ID, "india", indiaID, true},
+		{echo1ID, "india", indiaID, true},
+		{golfID, "echo", echo2ID, true},
+		{indiaID, "alpha", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("can find %s from %v", tc.key, tc.startUID), func(t *testing.T) {
+			got, err := j.SearchKey(tc.startUID, tc.key)
+			if !tc.shouldFind {
+				assert.ErrorIs(t, err, jsondocument.ErrNotFound)
+			} else if assert.NoError(t, err) {
+				assert.Equal(t, tc.foundUID, got)
+			}
+		})
+	}
+
+}
+
+func makeDataReader(data any) fyne.URIReadCloser {
+	x, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	r := bytes.NewReader(x)
+	return jsondocument.MakeURIReadCloser(r, "test")
 }
