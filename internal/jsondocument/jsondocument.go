@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"slices"
 	"strconv"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -92,7 +91,6 @@ type JSONDocument struct {
 	progressInfo  binding.Untyped
 	elementsCount int
 
-	mu      sync.RWMutex
 	ids     map[int][]int
 	values  []Node // using a slice here instead of a map for better load time
 	parents []int  // ditto
@@ -112,12 +110,6 @@ func New() *JSONDocument {
 // ChildUIDs returns the child UIDs for a given node.
 // This can be used directly in the tree widget childUIDs() function.
 func (j *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
-	if !j.mu.TryRLock() {
-		// This method can be called by another goroutine from the Fyne library while a new tree is loaded.
-		// This can not block, or it would block the whole Fyne app.
-		return []widget.TreeNodeID{}
-	}
-	defer j.mu.RUnlock()
 	id := uid2id(uid)
 	return ids2uids(j.ids[id])
 }
@@ -125,10 +117,6 @@ func (j *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
 // IsBranch reports wether a node is a branch.
 // This can be used directly in the tree widget isBranch() function.
 func (j *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
-	if !j.mu.TryRLock() {
-		return false
-	}
-	defer j.mu.RUnlock()
 	id := uid2id(uid)
 	_, found := j.ids[id]
 	return found
@@ -136,10 +124,6 @@ func (j *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
 
 // Value returns the value of a node
 func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
-	if !j.mu.TryRLock() {
-		return Node{}
-	}
-	defer j.mu.RUnlock()
 	id := uid2id(uid)
 	return j.values[id]
 }
@@ -193,18 +177,12 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 
 // Size returns the number of nodes.
 func (j *JSONDocument) Reset() {
-	j.mu.Lock()
-	defer j.mu.Unlock()
 	j.initialize(0)
 }
 
 // Path returns the path of a node in the tree.
 func (j *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 	path := make([]int, 0)
-	if !j.mu.TryRLock() {
-		return []widget.TreeNodeID{}
-	}
-	defer j.mu.RUnlock()
 	id := uid2id(uid)
 	for {
 		id = j.parents[id]
@@ -219,10 +197,6 @@ func (j *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 
 // Size returns the number of nodes.
 func (j *JSONDocument) Size() int {
-	if !j.mu.TryRLock() {
-		return 0
-	}
-	defer j.mu.RUnlock()
 	return j.n
 }
 
@@ -253,8 +227,6 @@ func (j *JSONDocument) parseFile(dat []byte) (any, error) {
 
 // render is the main method for rendering the JSON data into a tree.
 func (j *JSONDocument) render(ctx context.Context, data any, size int) error {
-	j.mu.Lock()
-	defer j.mu.Unlock()
 	j.initialize(size)
 	var err error
 	switch v := data.(type) {
@@ -406,8 +378,6 @@ func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 // The search direction is from top to bottom.
 func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, key string) (widget.TreeNodeID, error) {
 	var foundID int
-	j.mu.RLock()
-	defer j.mu.RUnlock()
 	id := uid2id(uid)
 	startID := id
 	n := j.values[id]
@@ -461,8 +431,6 @@ func (j *JSONDocument) searchKey(id int, key string) int {
 // Note that only arrays and objects can be extracted
 func (j *JSONDocument) Extract(uid widget.TreeNodeID) ([]byte, error) {
 	var data any
-	j.mu.RLock()
-	defer j.mu.RUnlock()
 	id := uid2id(uid)
 	n := j.values[id]
 	switch n.Type {

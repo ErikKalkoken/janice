@@ -120,9 +120,6 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		fyne.NewMenuItem("Expand All", func() {
 			u.treeWidget.OpenAllBranches()
 		}),
-		fyne.NewMenuItem("Expand All", func() {
-			u.treeWidget.OpenAllBranches()
-		}),
 		fyne.NewMenuItem("Collapse All", func() {
 			u.treeWidget.CloseAllBranches()
 		}),
