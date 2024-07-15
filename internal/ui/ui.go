@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
+	"net/url"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -17,10 +19,15 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/ErikKalkoken/jsonviewer/internal/github"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 )
 
-const appTitle = "JSON Viewer"
+const (
+	appTitle    = "JSON Viewer"
+	githubOwner = "ErikKalkoken"
+	githubRepo  = "jsonviewer"
+)
 
 // setting keys
 const (
@@ -144,13 +151,22 @@ func NewUI() (*UI, error) {
 	hsplit := container.NewHSplit(document, detail)
 	hsplit.Offset = 0.75
 
-	c := container.NewBorder(
-		nil,
-		container.NewVBox(widget.NewSeparator(), u.statusTreeSize),
-		nil,
-		nil,
-		hsplit,
-	)
+	statusBar := container.NewHBox(u.statusTreeSize)
+	go func() {
+		current := u.app.Metadata().Version
+		latestVersion, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
+		if err != nil {
+			log.Printf("ERROR: Failed to fetch latest version from github: %s\n", err)
+			return
+		}
+		if !isNewer {
+			return
+		}
+		url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer/releases")
+		statusBar.Add(layout.NewSpacer())
+		statusBar.Add(widget.NewHyperlink(fmt.Sprintf("New version %s available", latestVersion), url))
+	}()
+	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), statusBar), nil, nil, hsplit)
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()

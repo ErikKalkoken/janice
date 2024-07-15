@@ -4,6 +4,7 @@ go 1.22.4
 
 require (
 	fyne.io/fyne/v2 v2.5.0
+	github.com/hashicorp/go-version v1.7.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/text v0.16.0
 )
