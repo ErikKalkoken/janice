@@ -21,12 +21,16 @@ tar xvfJ "$appname".tar.xz -C "$source"
 sed -i -- "s/;/\nCategories=$categories;/g" "$source/usr/local/share/applications/$appname.desktop"
 # desktop-file-validate "$dest/$appname.desktop"
 
+# Copy additional fiels into appdir
+# mkdir -p $dest/usr/share/metainfo
+# cp "JSON Viewer.appdata.xml" "$dest/usr/share/metainfo"
+
 # Create appimage
 wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy
 chmod +x linuxdeploy
 ./linuxdeploy --appdir "$dest" -v 2 -o appimage -e "$source/usr/local/bin/$packagename"  -d "$source/usr/local/share/applications/$appname.desktop" -i "$source/usr/local/share/pixmaps/$appname.png"
 
 # Cleanup
-rm -rf "$source"
-rm -rf "$dest"
-rm linuxdeploy
+# rm -rf "$source"
+# rm -rf "$dest"
+# rm linuxdeploy

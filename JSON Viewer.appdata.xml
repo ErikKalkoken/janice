@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.erikkalkoken.jsonviewer</id>
+
+  <name>JSON Viewer</name>
+  <summary>A desktop app for viewing large JSON files</summary>
+
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+
+  <description>
+    <p>
+      JSON Viewer is a desktop all for viewing large JSON files. It's key features are:
+    </p>
+    <ul>
+      <li>Browse through a JSON document in classic tree structure</li>
+      <li>JSON files can be opened via file dialog, from clipboard or drag-and-drop</li>
+      <li>Supports viewing very large JSON files (&gt;100MB, &gt;10M elements)</li>
+      <li>Search for keys in the document. Supports wildcards.</li>
+      <li>Export segments of a JSON file into a new file</li>
+      <li>Copy values to clipboard</li>
+      <li>Single executable file, no installation required</li>
+      <li>Desktop app that runs on Windows, Linux and macOS (experimental)</li>
+      <li>Automatic dark and light mode</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">jsonviewer.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://cdn.imgpile.com/f/Nqv5wTv_xl.png</image>
+    </screenshot>
+  </screenshots>
+</component>

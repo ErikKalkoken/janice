@@ -5,3 +5,4 @@ jsonviewer
 *.AppImage
 tools/generate_json/generate_json
 test.json
+temp.*/

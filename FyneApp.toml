@@ -3,6 +3,6 @@ Website = "https://github.com/ErikKalkoken/jsonviewer"
 [Details]
   Icon = "icon.png"
   Name = "JSON Viewer"
-  ID = "com.github.ErikKalkoken.jsonviewer"
+  ID = "io.github.erikkalkoken.jsonviewer"
   Version = "0.1.0"
-  Build = 1
+  Build = 2

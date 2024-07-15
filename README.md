@@ -1,6 +1,6 @@
 # JSON Viewer
 
-JSON Viewer is a desktop app for browsing large JSON files. It runs on Linux, Windows and Mac (Experimental).
+A desktop app for viewing large JSON files
 
 [![GitHub Release](https://img.shields.io/github/v/release/ErikKalkoken/jsonviewer)](https://github.com/ErikKalkoken/jsonviewer)
 [![build status](https://github.com/ErikKalkoken/jsonviewer/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ErikKalkoken/jsonviewer/actions/workflows/ci-cd.yml)
@@ -8,12 +8,14 @@ JSON Viewer is a desktop app for browsing large JSON files. It runs on Linux, Wi
 
 ## Contents
 
-- [Key Features](#key-features)
+- [Description](#description)
 - [Screenshots](#screenshots)
 - [How to run](#how-to-run)
 - [Attributions](#attributions)
 
-## Key Features
+## Description
+
+JSON Viewer is a desktop all for viewing large JSON files. It's key features are:
 
 - Browse through a JSON document in classic tree structure
 - JSON files can be opened via file dialog, from clipboard or drag-and-drop
