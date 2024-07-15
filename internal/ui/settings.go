@@ -16,12 +16,18 @@ func (u *UI) showSettingsDialog() {
 	recentEntry.SetText(strconv.Itoa(x))
 	recentEntry.Validator = newPositiveNumberValidator()
 
-	extFilterCheck := widget.NewCheck("enabled", func(bool) {})
+	extFilter := widget.NewCheck("enabled", func(bool) {})
 	y := u.app.Preferences().BoolWithFallback(settingsExtensionFilter, settingsExtensionDefault)
-	extFilterCheck.SetChecked(y)
+	extFilter.SetChecked(y)
+
+	notifyUpdates := widget.NewCheck("enabled", func(bool) {})
+	z := u.app.Preferences().BoolWithFallback(settingsNotifyUpdates, settingsNotifyUpdatesDefault)
+	notifyUpdates.SetChecked(z)
+
 	items := []*widget.FormItem{
 		{Text: "Max recent files", Widget: recentEntry, HintText: "Maximum number of recent files remembered"},
-		{Text: "JSON file filter", Widget: extFilterCheck, HintText: "Filter applied in file open dialog"},
+		{Text: "JSON file filter", Widget: extFilter, HintText: "Wether to apply the JSON extension filter in file lists"},
+		{Text: "Notify about updates", Widget: notifyUpdates, HintText: "Wether to notify when a new version is available (requires restart)"},
 	}
 	d := dialog.NewForm(
 		"Preferences", "Apply", "Cancel", items, func(applied bool) {
@@ -34,7 +40,8 @@ func (u *UI) showSettingsDialog() {
 				return
 			}
 			u.app.Preferences().SetInt(settingsRecentFileCount, x)
-			u.app.Preferences().SetBool(settingsExtensionFilter, extFilterCheck.Checked)
+			u.app.Preferences().SetBool(settingsExtensionFilter, extFilter.Checked)
+			u.app.Preferences().SetBool(settingsNotifyUpdates, notifyUpdates.Checked)
 		}, u.window)
 	d.Show()
 }

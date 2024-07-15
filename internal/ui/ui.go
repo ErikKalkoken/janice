@@ -152,20 +152,23 @@ func NewUI() (*UI, error) {
 	hsplit.Offset = 0.75
 
 	statusBar := container.NewHBox(u.statusTreeSize)
-	go func() {
-		current := u.app.Metadata().Version
-		latestVersion, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
-		if err != nil {
-			log.Printf("ERROR: Failed to fetch latest version from github: %s\n", err)
-			return
-		}
-		if !isNewer {
-			return
-		}
-		url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer/releases")
-		statusBar.Add(layout.NewSpacer())
-		statusBar.Add(widget.NewHyperlink(fmt.Sprintf("New version %s available", latestVersion), url))
-	}()
+	notifyUpdates := u.app.Preferences().BoolWithFallback(settingsNotifyUpdates, settingsNotifyUpdatesDefault)
+	if notifyUpdates {
+		go func() {
+			current := u.app.Metadata().Version
+			latestVersion, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
+			if err != nil {
+				log.Printf("ERROR: Failed to fetch latest version from github: %s\n", err)
+				return
+			}
+			if !isNewer {
+				return
+			}
+			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer/releases")
+			statusBar.Add(layout.NewSpacer())
+			statusBar.Add(widget.NewHyperlink(fmt.Sprintf("New version %s available", latestVersion), url))
+		}()
+	}
 	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), statusBar), nil, nil, hsplit)
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())

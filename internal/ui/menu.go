@@ -27,6 +27,8 @@ const (
 	settingsRecentFileCountDefault = 5
 	settingsExtensionFilter        = "settings-extension-filter"
 	settingsExtensionDefault       = true
+	settingsNotifyUpdates          = "settings-notify-updates"
+	settingsNotifyUpdatesDefault   = true
 )
 
 func (u *UI) makeMenu() *fyne.MainMenu {
