@@ -388,13 +388,15 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 	if n.Type != Array && n.Type != Object {
 		id = j.parents[id]
 	}
-	search2 := wildCardToRegexp(search)
+	pattern, err := regexp.Compile(wildCardToRegexp(search))
+	if err != nil {
+		return "", err
+	}
 	var foundID int
-	var err error
 	for {
 		switch n := j.values[id]; n.Type {
 		case Array, Object:
-			foundID, err = j.searchKey(ctx, id, search2)
+			foundID, err = j.searchKey(ctx, id, pattern)
 			if err != nil {
 				return "", err
 			}
@@ -418,10 +420,31 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 	}
 }
 
-func (j *JSONDocument) searchKey(ctx context.Context, id int, search2 string) (int, error) {
+func wildCardToRegexp(pattern string) string {
+	components := strings.Split(pattern, "*")
+	if len(components) == 1 {
+		// if len is 1, there are no *'s, return exact match pattern
+		return "^" + pattern + "$"
+	}
+	var result strings.Builder
+	for i, literal := range components {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString(".*")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return "^" + result.String() + "$"
+}
+
+func (j *JSONDocument) searchKey(ctx context.Context, id int, pattern *regexp.Regexp) (int, error) {
 	for _, childID := range j.ids[id] {
 		n := j.values[childID]
-		if found, _ := regexp.MatchString(search2, n.Key); found {
+		if pattern.MatchString(n.Key) {
 			return childID, nil
 		}
 	}
@@ -434,7 +457,7 @@ func (j *JSONDocument) searchKey(ctx context.Context, id int, search2 string) (i
 		n := j.values[childID]
 		switch n.Type {
 		case Array, Object:
-			foundID, err := j.searchKey(ctx, childID, search2)
+			foundID, err := j.searchKey(ctx, childID, pattern)
 			if err != nil {
 				return 0, err
 			}
@@ -523,25 +546,4 @@ func ids2uids(ids []int) []widget.TreeNodeID {
 		uids[i] = id2uid(id)
 	}
 	return uids
-}
-
-func wildCardToRegexp(pattern string) string {
-	components := strings.Split(pattern, "*")
-	if len(components) == 1 {
-		// if len is 1, there are no *'s, return exact match pattern
-		return "^" + pattern + "$"
-	}
-	var result strings.Builder
-	for i, literal := range components {
-
-		// Replace * with .*
-		if i > 0 {
-			result.WriteString(".*")
-		}
-
-		// Quote any regular expression meta characters in the
-		// literal text.
-		result.WriteString(regexp.QuoteMeta(literal))
-	}
-	return "^" + result.String() + "$"
 }

@@ -27,7 +27,7 @@ JSON Viewer is a desktop app for browsing large JSON files. It runs on Linux, Wi
 
 ## Screenshots
 
-![screenshot](https://cdn.imgpile.com/f/fkuNdSB_xl.png)
+![screenshot](https://cdn.imgpile.com/f/Nqv5wTv_xl.png)
 
 ## How to run
 

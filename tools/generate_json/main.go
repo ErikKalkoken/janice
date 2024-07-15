@@ -1,3 +1,4 @@
+// This is a tool for generating large JSON files with random content for testing.
 package main
 
 import (
