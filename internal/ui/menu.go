@@ -245,7 +245,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		doc := jsondocument.New()
 		if err := doc.Load(ctx, reader, progressInfo); err != nil {
 			d2.Hide()
-			if errors.Is(err, jsondocument.ErrLoadCanceled) {
+			if errors.Is(err, jsondocument.ErrCallerCanceled) {
 				return
 			}
 			u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)

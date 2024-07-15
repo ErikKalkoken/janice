@@ -265,7 +265,7 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("can find %s from %v", tc.key, tc.startUID), func(t *testing.T) {
-			got, err := j.SearchKey(tc.startUID, tc.key)
+			got, err := j.SearchKey(ctx, tc.startUID, tc.key)
 			if !tc.shouldFind {
 				assert.ErrorIs(t, err, jsondocument.ErrNotFound)
 			} else if assert.NoError(t, err) {

@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -79,7 +80,7 @@ func NewUI() (*UI, error) {
 	u.statusPath.Wrapping = fyne.TextWrapWord
 
 	// search frame
-	u.searchEntry.SetPlaceHolder("Enter pattern for key to search for... use * as wildcard")
+	u.searchEntry.SetPlaceHolder("Enter pattern to search for a key. Can contain * as wildcard. Search starts/continues at selection.")
 	u.searchEntry.OnSubmitted = func(s string) {
 		u.searchKey()
 	}
@@ -180,20 +181,37 @@ func NewUI() (*UI, error) {
 }
 
 func (u *UI) searchKey() {
-	text := u.searchEntry.Text
-	if len(text) == 0 {
+	pattern := u.searchEntry.Text
+	if len(pattern) == 0 {
 		return
 	}
-	uid, err := u.document.SearchKey(u.currentSelectedUID, text)
-	if errors.Is(err, jsondocument.ErrNotFound) {
-		d := dialog.NewInformation("Not found", fmt.Sprintf("The key %s was not found", text), u.window)
-		d.Show()
-		return
-	} else if err != nil {
-		u.showErrorDialog("Search failed", err)
-		return
-	}
-	u.showInTree(uid)
+	ctx, cancel := context.WithCancel(context.Background())
+	spinner := widget.NewActivity()
+	spinner.Start()
+	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for key with pattern: %s", pattern)), spinner)
+	b := widget.NewButton("Cancel", func() {
+		cancel()
+	})
+	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), u.window)
+	d.Show()
+	d.SetOnClosed(func() {
+		cancel()
+	})
+	go func() {
+		uid, err := u.document.SearchKey(ctx, u.currentSelectedUID, pattern)
+		d.Hide()
+		if errors.Is(err, jsondocument.ErrCallerCanceled) {
+			return
+		} else if errors.Is(err, jsondocument.ErrNotFound) {
+			d2 := dialog.NewInformation("No match", fmt.Sprintf("No key found matching %s", pattern), u.window)
+			d2.Show()
+			return
+		} else if err != nil {
+			u.showErrorDialog("Search failed", err)
+			return
+		}
+		u.showInTree(uid)
+	}()
 }
 
 // ShowAndRun shows the main window and runs the app. This method is blocking.
@@ -314,10 +332,13 @@ func (u *UI) makeTree() *widget.Tree {
 		u.detailPath.SetText(path)
 		u.detailType.SetText(fmt.Sprint(node.Type))
 		u.jumpToSelection.Enable()
+		typeText := fmt.Sprint(node.Type)
 		var v string
 		if u.document.IsBranch(uid) {
 			u.detailCopyValue.Disable()
 			v = "..."
+			ids := u.document.ChildUIDs(uid)
+			typeText += fmt.Sprintf(", %d elements", len(ids))
 		} else {
 			u.detailCopyValue.Enable()
 			u.detailValueRaw = fmt.Sprint(node.Value)
@@ -330,6 +351,7 @@ func (u *UI) makeTree() *widget.Tree {
 				v = u.detailValueRaw
 			}
 		}
+		u.detailType.SetText(typeText)
 		u.detailValueMD.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
 	}
 	return tree

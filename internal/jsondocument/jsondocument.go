@@ -29,7 +29,7 @@ const (
 	notFound = -1
 )
 
-var ErrLoadCanceled = errors.New("load canceled by caller")
+var ErrCallerCanceled = errors.New("process canceled by caller")
 var ErrNotFound = errors.New("key not found")
 
 // JSONType represents the type of a JSON value.
@@ -140,7 +140,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 	}
 	select {
 	case <-ctx.Done():
-		return ErrLoadCanceled
+		return ErrCallerCanceled
 	default:
 	}
 	data, err := j.parseFile(byt)
@@ -149,7 +149,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 	}
 	select {
 	case <-ctx.Done():
-		return ErrLoadCanceled
+		return ErrCallerCanceled
 	default:
 	}
 	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 3}); err != nil {
@@ -162,7 +162,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 	}
 	select {
 	case <-ctx.Done():
-		return ErrLoadCanceled
+		return ErrCallerCanceled
 	default:
 	}
 	j.elementsCount = size
@@ -344,7 +344,7 @@ func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, va
 	if j.n%j.ProgressUpdateTick == 0 {
 		select {
 		case <-ctx.Done():
-			return 0, ErrLoadCanceled
+			return 0, ErrCallerCanceled
 		default:
 		}
 		p := float64(j.n) / float64(j.elementsCount)
@@ -375,10 +375,10 @@ func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 	return nil
 }
 
-// SearchKey returns the next node with a matching key or an error if not found.
+// SearchKey returns the next node with a matching key or an error if not found or canceled.
 // The starting node will be ignored, so that is is possible to find successive nodes with the same key.
 // The search direction is from top to bottom.
-func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, search string) (widget.TreeNodeID, error) {
+func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, search string) (widget.TreeNodeID, error) {
 	if search == "" {
 		return "", ErrNotFound
 	}
@@ -390,10 +390,14 @@ func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, search string) (widget.T
 	}
 	search2 := wildCardToRegexp(search)
 	var foundID int
+	var err error
 	for {
 		switch n := j.values[id]; n.Type {
 		case Array, Object:
-			foundID = j.searchKey(id, search2)
+			foundID, err = j.searchKey(ctx, id, search2)
+			if err != nil {
+				return "", err
+			}
 		}
 		if foundID != startID && foundID != notFound {
 			return id2uid(foundID), nil
@@ -414,23 +418,32 @@ func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, search string) (widget.T
 	}
 }
 
-func (j *JSONDocument) searchKey(id int, search2 string) int {
+func (j *JSONDocument) searchKey(ctx context.Context, id int, search2 string) (int, error) {
 	for _, childID := range j.ids[id] {
 		n := j.values[childID]
 		if found, _ := regexp.MatchString(search2, n.Key); found {
-			return childID
+			return childID, nil
 		}
+	}
+	select {
+	case <-ctx.Done():
+		return 0, ErrCallerCanceled
+	default:
 	}
 	for _, childID := range j.ids[id] {
 		n := j.values[childID]
 		switch n.Type {
 		case Array, Object:
-			if foundID := j.searchKey(childID, search2); foundID != notFound {
-				return foundID
+			foundID, err := j.searchKey(ctx, childID, search2)
+			if err != nil {
+				return 0, err
+			}
+			if foundID != notFound {
+				return foundID, nil
 			}
 		}
 	}
-	return notFound
+	return notFound, nil
 }
 
 // Extract returns a segment of the JSON document, with the given UID as new root container.
