@@ -83,3 +83,19 @@ func TestAddNode(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestWildcard2Regex(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"test*", "^test.*$"},
+		{"*test", "^.*test$"},
+		{"test", "^test$"},
+		{"first*second", "^first.*second$"},
+	}
+	for _, tc := range cases {
+		got := wildCardToRegexp(tc.in)
+		assert.Equal(t, tc.want, got)
+	}
+}

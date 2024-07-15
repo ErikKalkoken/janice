@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -376,18 +378,22 @@ func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 // SearchKey returns the next node with a matching key or an error if not found.
 // The starting node will be ignored, so that is is possible to find successive nodes with the same key.
 // The search direction is from top to bottom.
-func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, key string) (widget.TreeNodeID, error) {
-	var foundID int
+func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, search string) (widget.TreeNodeID, error) {
+	if search == "" {
+		return "", ErrNotFound
+	}
 	id := uid2id(uid)
 	startID := id
 	n := j.values[id]
 	if n.Type != Array && n.Type != Object {
 		id = j.parents[id]
 	}
+	search2 := wildCardToRegexp(search)
+	var foundID int
 	for {
 		switch n := j.values[id]; n.Type {
 		case Array, Object:
-			foundID = j.searchKey(id, key)
+			foundID = j.searchKey(id, search2)
 		}
 		if foundID != startID && foundID != notFound {
 			return id2uid(foundID), nil
@@ -408,10 +414,10 @@ func (j *JSONDocument) SearchKey(uid widget.TreeNodeID, key string) (widget.Tree
 	}
 }
 
-func (j *JSONDocument) searchKey(id int, key string) int {
+func (j *JSONDocument) searchKey(id int, search2 string) int {
 	for _, childID := range j.ids[id] {
 		n := j.values[childID]
-		if n.Key == key {
+		if found, _ := regexp.MatchString(search2, n.Key); found {
 			return childID
 		}
 	}
@@ -419,7 +425,7 @@ func (j *JSONDocument) searchKey(id int, key string) int {
 		n := j.values[childID]
 		switch n.Type {
 		case Array, Object:
-			if foundID := j.searchKey(childID, key); foundID != notFound {
+			if foundID := j.searchKey(childID, search2); foundID != notFound {
 				return foundID
 			}
 		}
@@ -504,4 +510,25 @@ func ids2uids(ids []int) []widget.TreeNodeID {
 		uids[i] = id2uid(id)
 	}
 	return uids
+}
+
+func wildCardToRegexp(pattern string) string {
+	components := strings.Split(pattern, "*")
+	if len(components) == 1 {
+		// if len is 1, there are no *'s, return exact match pattern
+		return "^" + pattern + "$"
+	}
+	var result strings.Builder
+	for i, literal := range components {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString(".*")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return "^" + result.String() + "$"
 }

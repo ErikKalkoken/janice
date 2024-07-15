@@ -2,13 +2,10 @@ package main
 
 import (
 	"bufio"
-	cryptorand "crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"math/rand"
 	"os"
 
@@ -26,6 +23,59 @@ var n = 0
 
 var keysFlag = flag.Int("k", keysDefault, "number of keys generated per object")
 var levelsFlag = flag.Int("l", levelsDefault, "number of generated levels")
+
+var words = []string{
+	"appointment",
+	"auction",
+	"bind",
+	"brush",
+	"carriage",
+	"chair",
+	"figure",
+	"fist",
+	"flexible",
+	"forestry",
+	"full",
+	"glory",
+	"goal",
+	"guitar",
+	"hole",
+	"identification",
+	"import",
+	"information",
+	"interference",
+	"jacket",
+	"leaf",
+	"lesson",
+	"mold",
+	"monarch",
+	"notorious",
+	"pillow",
+	"portrait",
+	"project",
+	"publication",
+	"radio",
+	"reality",
+	"restrict",
+	"sell",
+	"sensitivity",
+	"series",
+	"spot",
+	"staircase",
+	"summer",
+	"Sunday",
+	"thumb",
+	"tooth",
+	"tread",
+	"treaty",
+	"tribute",
+	"unfortunate",
+	"us",
+	"vegetable",
+	"victory",
+	"war",
+	"watch",
+}
 
 func main() {
 	flag.Parse()
@@ -57,7 +107,14 @@ func makeObj(level int) map[string]any {
 		if level == 0 {
 			fmt.Printf("Generating %d / %d\r", i+1, *keysFlag)
 		}
-		k := randomBase16String(10)
+		var k string
+		for {
+			k = words[rand.Intn(len(words))]
+			_, found := o[k]
+			if !found {
+				break
+			}
+		}
 		if level < *levelsFlag {
 			o[k] = makeObj(level + 1)
 		} else {
@@ -66,11 +123,4 @@ func makeObj(level int) map[string]any {
 		n++
 	}
 	return o
-}
-
-func randomBase16String(l int) string {
-	buff := make([]byte, int(math.Ceil(float64(l)/2)))
-	cryptorand.Read(buff)
-	str := hex.EncodeToString(buff)
-	return str[:l] // strip 1 extra character we get from odd length results
 }

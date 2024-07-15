@@ -79,7 +79,7 @@ func NewUI() (*UI, error) {
 	u.statusPath.Wrapping = fyne.TextWrapWord
 
 	// search frame
-	u.searchEntry.SetPlaceHolder("Enter name of a key to search for...")
+	u.searchEntry.SetPlaceHolder("Enter pattern for key to search for... use * as wildcard")
 	u.searchEntry.OnSubmitted = func(s string) {
 		u.searchKey()
 	}
