@@ -16,12 +16,14 @@ JSON Viewer is a desktop app for browsing large JSON files. It runs on Linux, Wi
 ## Key Features
 
 - Browse through a JSON document in classic tree structure
-- Ability to view large JSON files (>100MB, >1M elements)
-- Ability to export segments of a JSON file into a new file
+- JSON files can be opened via file dialog, from clipboard or drag-and-drop
+- Supports viewing very large JSON files (>100MB, >10M elements)
+- Search for keys in the document
+- Export segments of a JSON file into a new file
+- Copy values to clipboard
 - Single executable file, no installation required
 - Desktop app that runs on Windows, Linux and macOS (experimental)
 - Automatic dark and light mode
-- JSON files can be opened via file dialog, from clipboard or drag-and-drop
 
 ## Screenshots
 
@@ -29,16 +31,14 @@ JSON Viewer is a desktop app for browsing large JSON files. It runs on Linux, Wi
 
 ## How to run
 
-JSON Viewer is designed to run on all supported platforms without requiring installation. You find the latest packages for all supported platforms on the [releases page](https://github.com/ErikKalkoken/jsonviewer/releases).
+JSON Viewer is shipped as a single executable and designed to run without requiring any installation. You find the latest packages for download on the [releases page](https://github.com/ErikKalkoken/jsonviewer/releases).
 
 ### Linux
 
-Download the latest AppImage file from the releases page and place it a local folder of your choosing (e.g. `~/Applications` or `~/.local/bin`).
-
-Make the AppImage file executable. The execute it ot start the app.
+The app is shipped in the [AppImage](https://appimage.org/) format, so it can be used without requiring installation and on many different Linux distributions. Download the latest AppImage file from the releases page and make it executable. Then execute it to start the app.
 
 > [!TIP]
-> Should you get the following error: `AppImages require FUSE to run.`, you need to first install FUSE on your system. Please see [this page](https://docs.appimage.org/user-guide/troubleshooting/fuse.html#the-appimage-tells-me-it-needs-fuse-to-run) for details.
+> Should you get the following error: `AppImages require FUSE to run.`, you need to first install FUSE on your system. Thi s is a library required by all AppImages to function. Please see [this page](https://docs.appimage.org/user-guide/troubleshooting/fuse.html#the-appimage-tells-me-it-needs-fuse-to-run) for details.
 
 ### Windows
 

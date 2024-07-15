@@ -77,34 +77,12 @@ func NewUI() (*UI, error) {
 	u.detailPath.Wrapping = fyne.TextWrapBreak
 	u.detailValueMD.Wrapping = fyne.TextWrapWord
 	u.statusPath.Wrapping = fyne.TextWrapWord
-	u.detailCopyValue = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		u.window.Clipboard().SetContent(u.detailValueRaw)
-	})
-	u.detailCopyValue.Disable()
-	u.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
-		u.showInTree(u.currentSelectedUID)
-	})
-	u.jumpToSelection.Disable()
+
+	// search frame
+	u.searchEntry.SetPlaceHolder("Enter name of a key to search for...")
 	u.searchEntry.OnSubmitted = func(s string) {
 		u.searchKey()
 	}
-	detail := container.NewBorder(
-		container.NewBorder(nil, u.detailType, nil, nil, u.detailPath),
-		nil,
-		nil,
-		nil,
-		u.detailValueMD,
-	)
-	welcomeText := widget.NewLabel(
-		"Welcome to JSON Viewer.\n" +
-			"Open a JSON file by dropping it on the window\n" +
-			"or through the File menu.",
-	)
-	welcomeText.Importance = widget.LowImportance
-	welcomeText.Alignment = fyne.TextAlignCenter
-	u.welcomeMessage = container.NewCenter(welcomeText)
-	hsplit := container.NewHSplit(container.NewStack(u.welcomeMessage, u.treeWidget), detail)
-	hsplit.Offset = 0.75
 	u.searchEntry.Disable()
 	u.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		u.searchKey()
@@ -118,20 +96,55 @@ func NewUI() (*UI, error) {
 		nil,
 		nil,
 		nil,
-		container.NewHBox(
-			u.searchButton,
-			layout.NewSpacer(),
-			container.NewPadded(),
-			u.collapseButton,
-			container.NewPadded(),
-			layout.NewSpacer(),
-			u.jumpToSelection,
-			u.detailCopyValue,
-		),
+		container.NewHBox(u.searchButton, u.collapseButton),
 		u.searchEntry,
 	)
-	c := container.NewBorder(
+
+	// main frame
+	welcomeText := widget.NewLabel(
+		"Welcome to JSON Viewer.\n" +
+			"Open a JSON file by dropping it on the window\n" +
+			"or through the File menu.",
+	)
+	welcomeText.Importance = widget.LowImportance
+	welcomeText.Alignment = fyne.TextAlignCenter
+	u.welcomeMessage = container.NewCenter(welcomeText)
+	document := container.NewBorder(
 		searchBar,
+		nil,
+		nil,
+		nil,
+		container.NewStack(u.welcomeMessage, u.treeWidget),
+	)
+
+	// detail frame
+	u.detailCopyValue = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		u.window.Clipboard().SetContent(u.detailValueRaw)
+	})
+	u.detailCopyValue.Disable()
+	u.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
+		u.showInTree(u.currentSelectedUID)
+	})
+	u.jumpToSelection.Disable()
+	detail := container.NewBorder(
+		container.NewBorder(
+			container.NewHBox(layout.NewSpacer(), u.jumpToSelection, u.detailCopyValue),
+			u.detailType,
+			nil,
+			nil,
+			u.detailPath,
+		),
+		nil,
+		nil,
+		nil,
+		u.detailValueMD,
+	)
+
+	hsplit := container.NewHSplit(document, detail)
+	hsplit.Offset = 0.75
+
+	c := container.NewBorder(
+		nil,
 		container.NewVBox(widget.NewSeparator(), u.statusTreeSize),
 		nil,
 		nil,
@@ -300,13 +313,13 @@ func (u *UI) makeTree() *widget.Tree {
 		node := u.document.Value(uid)
 		u.detailPath.SetText(path)
 		u.detailType.SetText(fmt.Sprint(node.Type))
-		u.detailCopyValue.Enable()
+		u.jumpToSelection.Enable()
 		var v string
 		if u.document.IsBranch(uid) {
 			u.detailCopyValue.Disable()
 			v = "..."
 		} else {
-			u.jumpToSelection.Enable()
+			u.detailCopyValue.Enable()
 			u.detailValueRaw = fmt.Sprint(node.Value)
 			switch node.Type {
 			case jsondocument.String:
