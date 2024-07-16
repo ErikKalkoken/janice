@@ -182,6 +182,12 @@ func (j *JSONDocument) Reset() {
 	j.initialize(0)
 }
 
+// Parent returns the UID of the parent node.
+func (j *JSONDocument) Parent(uid widget.TreeNodeID) widget.TreeNodeID {
+	id := uid2id(uid)
+	return id2uid(j.parents[id])
+}
+
 // Path returns the path of a node in the tree.
 func (j *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 	path := make([]int, 0)

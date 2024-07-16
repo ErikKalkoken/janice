@@ -75,16 +75,10 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.loadDocument(reader)
 		}),
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Export selection...", func() {
-			n := u.document.Value(u.currentSelectedUID)
-			if n.Type != jsondocument.Array && n.Type != jsondocument.Object {
-				u.showErrorDialog("Can only export array and objects", nil)
-				return
-			}
-			byt, err := u.document.Extract(u.currentSelectedUID)
+		fyne.NewMenuItem("Export Selection To File...", func() {
+			byt, err := u.extractSelection()
 			if err != nil {
-				u.showErrorDialog("Failed to extract document", err)
-				return
+				u.showErrorDialog("Failed to extract selection", err)
 			}
 			d := dialog.NewFileSave(func(f fyne.URIWriteCloser, err error) {
 				if err != nil {
@@ -101,6 +95,13 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				}
 			}, u.window)
 			d.Show()
+		}),
+		fyne.NewMenuItem("Export Selection To Clipboard", func() {
+			byt, err := u.extractSelection()
+			if err != nil {
+				u.showErrorDialog("Failed to extract selection", err)
+			}
+			u.window.Clipboard().SetContent(string(byt))
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Preferences...", func() {
@@ -141,6 +142,19 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	)
 	main := fyne.NewMainMenu(u.fileMenu, viewMenu, helpMenu)
 	return main
+}
+
+func (u *UI) extractSelection() ([]byte, error) {
+	uid := u.currentSelectedUID
+	n := u.document.Value(uid)
+	if n.Type != jsondocument.Array && n.Type != jsondocument.Object {
+		uid = u.document.Parent(uid)
+	}
+	byt, err := u.document.Extract(uid)
+	if err != nil {
+		return nil, err
+	}
+	return byt, nil
 }
 
 func (u *UI) addRecentFile(uri fyne.URI) {

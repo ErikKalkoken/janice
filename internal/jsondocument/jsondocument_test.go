@@ -58,6 +58,14 @@ func TestJsonDocument(t *testing.T) {
 		want := []widget.TreeNodeID{alphaID, charlieID}
 		assert.Equal(t, want, got)
 	})
+	t.Run("should return parent of a normal node", func(t *testing.T) {
+		got := j.Parent(deltaID)
+		assert.Equal(t, charlieID, got)
+	})
+	t.Run("should return parent of a top node", func(t *testing.T) {
+		got := j.Parent(alphaID)
+		assert.Equal(t, "", got)
+	})
 }
 func TestJsonDocumentLoad(t *testing.T) {
 	ctx := context.TODO()

@@ -86,8 +86,7 @@ func NewUI(app fyne.App) (*UI, error) {
 
 	// search frame
 	u.searchEntry.SetPlaceHolder(
-		"Enter pattern to search for a key. " +
-			"Can contain * as wildcard. Search starts/continues at selection.")
+		"Enter pattern with wildcards to search for a key...")
 	u.searchEntry.OnSubmitted = func(s string) {
 		u.searchKey()
 	}
@@ -112,7 +111,8 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText := widget.NewLabel(
 		"Welcome to JSON Viewer.\n" +
 			"Open a JSON file by dropping it on the window\n" +
-			"or through the File menu.",
+			"or through File / Open File\n" +
+			"or by importing it from clipboard.\n",
 	)
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
