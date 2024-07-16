@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 
@@ -240,12 +239,12 @@ func (u *UI) searchKey() {
 func (u *UI) ShowAndRun(path string) {
 	if path != "" {
 		u.app.Lifecycle().SetOnStarted(func() {
-			f, err := os.Open(path)
+			uri := storage.NewFileURI(path)
+			reader, err := storage.Reader(uri)
 			if err != nil {
-				u.showErrorDialog("Failed to open file", err)
+				u.showErrorDialog(fmt.Sprintf("Failed to open file: %s", uri), err)
 				return
 			}
-			reader := jsondocument.MakeURIReadCloser(f, "TEST")
 			u.loadDocument(reader)
 		})
 	}
