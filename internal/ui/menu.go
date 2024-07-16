@@ -272,6 +272,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		u.statusTreeSize.SetText(out)
 		u.welcomeMessage.Hide()
 		u.searchButton.Enable()
+		u.searchType.Enable()
 		u.searchEntry.Enable()
 		u.collapseButton.Enable()
 		u.treeWidget.Refresh()

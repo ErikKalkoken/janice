@@ -30,7 +30,7 @@ const (
 )
 
 var ErrCallerCanceled = errors.New("process canceled by caller")
-var ErrNotFound = errors.New("key not found")
+var ErrNotFound = errors.New("not found")
 
 // JSONType represents the type of a JSON value.
 type JSONType uint8
@@ -390,8 +390,7 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 	}
 	id := uid2id(uid)
 	startID := id
-	n := j.values[id]
-	if n.Type != Array && n.Type != Object {
+	if n := j.values[id]; n.Type != Array && n.Type != Object {
 		id = j.parents[id]
 	}
 	pattern, err := regexp.Compile(wildCardToRegexp(search))
@@ -426,27 +425,6 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 	}
 }
 
-func wildCardToRegexp(pattern string) string {
-	components := strings.Split(pattern, "*")
-	if len(components) == 1 {
-		// if len is 1, there are no *'s, return exact match pattern
-		return "^" + pattern + "$"
-	}
-	var result strings.Builder
-	for i, literal := range components {
-
-		// Replace * with .*
-		if i > 0 {
-			result.WriteString(".*")
-		}
-
-		// Quote any regular expression meta characters in the
-		// literal text.
-		result.WriteString(regexp.QuoteMeta(literal))
-	}
-	return "^" + result.String() + "$"
-}
-
 func (j *JSONDocument) searchKey(ctx context.Context, id int, pattern *regexp.Regexp) (int, error) {
 	for _, childID := range j.ids[id] {
 		n := j.values[childID]
@@ -473,6 +451,103 @@ func (j *JSONDocument) searchKey(ctx context.Context, id int, pattern *regexp.Re
 		}
 	}
 	return notFound, nil
+}
+
+// SearchValue returns the next node with a matching value or an error if not found or canceled.
+// The starting node will be ignored, so that is is possible to find successive nodes with the same value.
+// The search direction is from top to bottom.
+func (j *JSONDocument) SearchValue(ctx context.Context, uid widget.TreeNodeID, search string) (widget.TreeNodeID, error) {
+	if search == "" {
+		return "", ErrNotFound
+	}
+	id := uid2id(uid)
+	startID := id
+	if n := j.values[id]; n.Type != Array && n.Type != Object {
+		id = j.parents[id]
+	}
+	pattern, err := regexp.Compile(wildCardToRegexp(search))
+	if err != nil {
+		return "", err
+	}
+	var foundID int
+	for {
+		switch n := j.values[id]; n.Type {
+		case Array, Object:
+			foundID, err = j.searchValue(ctx, id, startID, pattern)
+			if err != nil {
+				return "", err
+			}
+		}
+		if foundID != startID && foundID != notFound {
+			return id2uid(foundID), nil
+		}
+		for {
+			parentID := j.parents[id]
+			childIDs := j.ids[parentID]
+			idx := slices.Index(childIDs, id)
+			if idx < len(childIDs)-1 {
+				id = childIDs[idx+1]
+				break
+			}
+			if parentID == rootNodeParentID || j.parents[parentID] == rootNodeParentID {
+				return "", ErrNotFound
+			}
+			id = parentID
+		}
+	}
+}
+
+func (j *JSONDocument) searchValue(ctx context.Context, id, startID int, pattern *regexp.Regexp) (int, error) {
+	for _, childID := range j.ids[id] {
+		if childID == startID {
+			continue
+		}
+		n := j.values[childID]
+		v := fmt.Sprint(n.Value)
+		if pattern.MatchString(v) {
+			return childID, nil
+		}
+	}
+	select {
+	case <-ctx.Done():
+		return 0, ErrCallerCanceled
+	default:
+	}
+	for _, childID := range j.ids[id] {
+		n := j.values[childID]
+		switch n.Type {
+		case Array, Object:
+			foundID, err := j.searchValue(ctx, childID, startID, pattern)
+			if err != nil {
+				return 0, err
+			}
+			if foundID != notFound {
+				return foundID, nil
+			}
+		}
+	}
+	return notFound, nil
+}
+
+func wildCardToRegexp(pattern string) string {
+	components := strings.Split(pattern, "*")
+	if len(components) == 1 {
+		// if len is 1, there are no *'s, return exact match pattern
+		return "^" + pattern + "$"
+	}
+	var result strings.Builder
+	for i, literal := range components {
+
+		// Replace * with .*
+		if i > 0 {
+			result.WriteString(".*")
+		}
+
+		// Quote any regular expression meta characters in the
+		// literal text.
+		result.WriteString(regexp.QuoteMeta(literal))
+	}
+	return "^" + result.String() + "$"
 }
 
 // Extract returns a segment of the JSON document, with the given UID as new root container.

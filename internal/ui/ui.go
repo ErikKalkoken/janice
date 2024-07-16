@@ -34,6 +34,11 @@ const (
 	settingWindowHeight = "main-window-height"
 )
 
+const (
+	searchTypeKey   = "key"
+	searchTypeValue = "value"
+)
+
 var type2importance = map[jsondocument.JSONType]widget.Importance{
 	jsondocument.Array:   widget.HighImportance,
 	jsondocument.Object:  widget.HighImportance,
@@ -59,6 +64,7 @@ type UI struct {
 	fileMenu           *fyne.Menu
 	searchEntry        *widget.Entry
 	searchButton       *widget.Button
+	searchType         *widget.Select
 	statusPath         *widget.Label
 	statusTreeSize     *widget.Label
 	treeWidget         *widget.Tree
@@ -88,22 +94,25 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.searchEntry.SetPlaceHolder(
 		"Enter pattern with wildcards to search for a key...")
 	u.searchEntry.OnSubmitted = func(s string) {
-		u.searchKey()
+		u.doSearch()
 	}
 	u.searchEntry.Disable()
 	u.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
-		u.searchKey()
+		u.doSearch()
 	})
 	u.searchButton.Disable()
 	u.collapseButton = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
 		u.treeWidget.CloseAllBranches()
 	})
 	u.collapseButton.Disable()
+	u.searchType = widget.NewSelect([]string{searchTypeKey, searchTypeValue}, nil)
+	u.searchType.SetSelected(searchTypeKey)
+	u.searchType.Disable()
 	searchBar := container.NewBorder(
 		nil,
 		nil,
 		nil,
-		container.NewHBox(u.searchButton, u.collapseButton),
+		container.NewHBox(u.searchType, u.searchButton, u.collapseButton),
 		u.searchEntry,
 	)
 
@@ -201,7 +210,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	return u, nil
 }
 
-func (u *UI) searchKey() {
+func (u *UI) doSearch() {
 	pattern := u.searchEntry.Text
 	if len(pattern) == 0 {
 		return
@@ -209,7 +218,8 @@ func (u *UI) searchKey() {
 	ctx, cancel := context.WithCancel(context.Background())
 	spinner := widget.NewActivity()
 	spinner.Start()
-	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for key with pattern: %s", pattern)), spinner)
+	searchType := u.searchType.Selected
+	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for %s with pattern: %s", searchType, pattern)), spinner)
 	b := widget.NewButton("Cancel", func() {
 		cancel()
 	})
@@ -219,12 +229,19 @@ func (u *UI) searchKey() {
 		cancel()
 	})
 	go func() {
-		uid, err := u.document.SearchKey(ctx, u.currentSelectedUID, pattern)
+		var uid string
+		var err error
+		switch searchType {
+		case searchTypeKey:
+			uid, err = u.document.SearchKey(ctx, u.currentSelectedUID, pattern)
+		case searchTypeValue:
+			uid, err = u.document.SearchValue(ctx, u.currentSelectedUID, pattern)
+		}
 		d.Hide()
 		if errors.Is(err, jsondocument.ErrCallerCanceled) {
 			return
 		} else if errors.Is(err, jsondocument.ErrNotFound) {
-			d2 := dialog.NewInformation("No match", fmt.Sprintf("No key found matching %s", pattern), u.window)
+			d2 := dialog.NewInformation("No match", fmt.Sprintf("No %s found matching %s", searchType, pattern), u.window)
 			d2.Show()
 			return
 		} else if err != nil {
@@ -278,6 +295,7 @@ func (u *UI) reset() {
 	u.statusTreeSize.SetText("")
 	u.welcomeMessage.Show()
 	u.searchButton.Disable()
+	u.searchType.Disable()
 	u.searchEntry.Disable()
 	u.collapseButton.Disable()
 	u.detailPath.SetText("")

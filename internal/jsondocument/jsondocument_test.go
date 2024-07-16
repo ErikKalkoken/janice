@@ -235,21 +235,21 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 		},
 		"golf": []any{
 			9,
-			map[string]any{"echo": 5, "india": 9},
+			map[string]any{"alpha": 99, "echo": 5, "india": 9},
 		},
 	}
 	if err := j.Load(ctx, makeDataReader(data), dummy); err != nil {
 		t.Fatal(err)
 	}
 	ids := j.ChildUIDs("")
-	alphaID, bravoID, golfID := ids[0], ids[1], ids[2]
+	alpha1ID, bravoID, golfID := ids[0], ids[1], ids[2]
 	ids = j.ChildUIDs(bravoID)
 	charlieID, deltaID := ids[0], ids[1]
 	ids = j.ChildUIDs(deltaID)
 	echo1ID, foxtrotID := ids[0], ids[1]
 	ids = j.ChildUIDs(golfID)
 	ids2 := j.ChildUIDs(ids[1])
-	echo2ID, indiaID := ids2[0], ids2[1]
+	alpha2ID, echo2ID, indiaID := ids2[0], ids2[1], ids2[2]
 	cases := []struct {
 		startUID   string
 		key        string
@@ -257,7 +257,7 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 		shouldFind bool
 	}{
 		{echo1ID, "echo", echo2ID, true},
-		{"", "alpha", alphaID, true},
+		{"", "alpha", alpha1ID, true},
 		{"", "bravo", bravoID, true},
 		{"", "charlie", charlieID, true},
 		{"", "delta", deltaID, true},
@@ -267,13 +267,61 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 		{"", "india", indiaID, true},
 		{bravoID, "foxtrot", foxtrotID, true},
 		{echo1ID, "india", indiaID, true},
-		{echo1ID, "india", indiaID, true},
 		{golfID, "echo", echo2ID, true},
-		{indiaID, "alpha", "", false},
+		{indiaID, "bravo", "", false},
+		{alpha1ID, "alpha", alpha2ID, true},
 	}
-	for _, tc := range cases {
-		t.Run(fmt.Sprintf("can find %s from %v", tc.key, tc.startUID), func(t *testing.T) {
+	for i, tc := range cases {
+		t.Run(fmt.Sprintf("can find key %s from %v (%d)", tc.key, tc.startUID, i+1), func(t *testing.T) {
 			got, err := j.SearchKey(ctx, tc.startUID, tc.key)
+			if !tc.shouldFind {
+				assert.ErrorIs(t, err, jsondocument.ErrNotFound)
+			} else if assert.NoError(t, err) {
+				assert.Equal(t, tc.foundUID, got)
+			}
+		})
+	}
+
+}
+
+func TestJsonDocumentSearchValue(t *testing.T) {
+	ctx := context.TODO()
+	var dummy = binding.NewUntyped()
+	j := jsondocument.New()
+	data := map[string]any{
+		"alpha": 1,
+		"bravo": 2,
+		"charlie": map[string]any{
+			"delta": 3,
+		},
+		"foxtrot": []any{4, 5, 2},
+	}
+	if err := j.Load(ctx, makeDataReader(data), dummy); err != nil {
+		t.Fatal(err)
+	}
+	ids := j.ChildUIDs("")
+	alphaID, bravoID, charlieID, foxtrotID := ids[0], ids[1], ids[2], ids[3]
+	ids = j.ChildUIDs(charlieID)
+	deltaID := ids[0]
+	ids = j.ChildUIDs(foxtrotID)
+	foxtrotID1, foxtrotID2, foxtrotID3 := ids[0], ids[1], ids[2]
+	cases := []struct {
+		startUID   string
+		key        string
+		foundUID   string
+		shouldFind bool
+	}{
+		{bravoID, "2", foxtrotID3, true},
+		{"", "1", alphaID, true},
+		{"", "2", bravoID, true},
+		{"", "3", deltaID, true},
+		{"", "4", foxtrotID1, true},
+		{"", "5", foxtrotID2, true},
+		{deltaID, "5", foxtrotID2, true},
+	}
+	for i, tc := range cases {
+		t.Run(fmt.Sprintf("can find value %s from %v (%d)", tc.key, tc.startUID, i+1), func(t *testing.T) {
+			got, err := j.SearchValue(ctx, tc.startUID, tc.key)
 			if !tc.shouldFind {
 				assert.ErrorIs(t, err, jsondocument.ErrNotFound)
 			} else if assert.NoError(t, err) {
