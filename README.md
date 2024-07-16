@@ -18,7 +18,7 @@ A desktop app for viewing large JSON files
 JSON Viewer is a desktop all for viewing large JSON files. It's key features are:
 
 - Browse through a JSON document in classic tree structure
-- JSON files can be opened via file dialog, from clipboard or drag-and-drop
+- JSON files can be opened via file dialog, from clipboard, dropped on the window or given as command line argument
 - Supports viewing very large JSON files (>100MB, >10M elements)
 - Search for keys in the document. Supports wildcards.
 - Export segments of a JSON file into a new file

@@ -5,13 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
@@ -68,10 +68,9 @@ type UI struct {
 }
 
 // NewUI returns a new UI object.
-func NewUI() (*UI, error) {
-	a := app.NewWithID("com.github.ErikKalkoken.jsonviewer")
+func NewUI(app fyne.App) (*UI, error) {
 	u := &UI{
-		app:            a,
+		app:            app,
 		document:       jsondocument.New(),
 		detailPath:     widget.NewLabel(""),
 		detailType:     widget.NewLabel(""),
@@ -79,7 +78,7 @@ func NewUI() (*UI, error) {
 		statusTreeSize: widget.NewLabel(""),
 		statusPath:     widget.NewLabel(""),
 		searchEntry:    widget.NewEntry(),
-		window:         a.NewWindow(appTitle),
+		window:         app.NewWindow(appTitle),
 	}
 	u.treeWidget = u.makeTree()
 	u.detailPath.Wrapping = fyne.TextWrapBreak
@@ -87,7 +86,9 @@ func NewUI() (*UI, error) {
 	u.statusPath.Wrapping = fyne.TextWrapWord
 
 	// search frame
-	u.searchEntry.SetPlaceHolder("Enter pattern to search for a key. Can contain * as wildcard. Search starts/continues at selection.")
+	u.searchEntry.SetPlaceHolder(
+		"Enter pattern to search for a key. " +
+			"Can contain * as wildcard. Search starts/continues at selection.")
 	u.searchEntry.OnSubmitted = func(s string) {
 		u.searchKey()
 	}
@@ -158,7 +159,7 @@ func NewUI() (*UI, error) {
 			current := u.app.Metadata().Version
 			latestVersion, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
 			if err != nil {
-				log.Printf("ERROR: Failed to fetch latest version from github: %s\n", err)
+				slog.Error("Failed to fetch latest version from github", "err", err)
 				return
 			}
 			if !isNewer {
@@ -169,7 +170,9 @@ func NewUI() (*UI, error) {
 			statusBar.Add(widget.NewHyperlink(fmt.Sprintf("New version %s available", latestVersion), url))
 		}()
 	}
+
 	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), statusBar), nil, nil, hsplit)
+
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
 	u.updateRecentFilesMenu()
@@ -188,13 +191,13 @@ func NewUI() (*UI, error) {
 		u.loadDocument(reader)
 	})
 	s := fyne.Size{
-		Width:  float32(a.Preferences().FloatWithFallback(settingWindowWidth, 800)),
-		Height: float32(a.Preferences().FloatWithFallback(settingWindowHeight, 600)),
+		Width:  float32(app.Preferences().FloatWithFallback(settingWindowWidth, 800)),
+		Height: float32(app.Preferences().FloatWithFallback(settingWindowHeight, 600)),
 	}
 	u.window.Resize(s)
 	u.window.SetOnClosed(func() {
-		a.Preferences().SetFloat(settingWindowWidth, float64(u.window.Canvas().Size().Width))
-		a.Preferences().SetFloat(settingWindowHeight, float64(u.window.Canvas().Size().Height))
+		app.Preferences().SetFloat(settingWindowWidth, float64(u.window.Canvas().Size().Width))
+		app.Preferences().SetFloat(settingWindowHeight, float64(u.window.Canvas().Size().Height))
 	})
 	return u, nil
 }
@@ -234,7 +237,18 @@ func (u *UI) searchKey() {
 }
 
 // ShowAndRun shows the main window and runs the app. This method is blocking.
-func (u *UI) ShowAndRun() {
+func (u *UI) ShowAndRun(path string) {
+	if path != "" {
+		u.app.Lifecycle().SetOnStarted(func() {
+			f, err := os.Open(path)
+			if err != nil {
+				u.showErrorDialog("Failed to open file", err)
+				return
+			}
+			reader := jsondocument.MakeURIReadCloser(f, "TEST")
+			u.loadDocument(reader)
+		})
+	}
 	u.window.ShowAndRun()
 }
 
@@ -332,7 +346,8 @@ func (u *UI) makeTree() *widget.Tree {
 			case jsondocument.String:
 				text = fmt.Sprintf("\"%s\"", v)
 			case jsondocument.Number:
-				text = fmt.Sprintf("%v", v)
+				x := v.(float64)
+				text = strconv.FormatFloat(x, 'f', -1, 64)
 			case jsondocument.Boolean:
 				text = fmt.Sprintf("%v", v)
 			case jsondocument.Null:
@@ -364,6 +379,9 @@ func (u *UI) makeTree() *widget.Tree {
 			switch node.Type {
 			case jsondocument.String:
 				v = fmt.Sprintf("\"%s\"", node.Value)
+			case jsondocument.Number:
+				x := node.Value.(float64)
+				v = strconv.FormatFloat(x, 'f', -1, 64)
 			case jsondocument.Null:
 				v = "null"
 			default:
