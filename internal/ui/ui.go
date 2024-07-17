@@ -229,14 +229,14 @@ func (u *UI) doSearch() {
 		cancel()
 	})
 	go func() {
-		var uid string
-		var err error
+		var typ jsondocument.SearchType
 		switch searchType {
 		case searchTypeKey:
-			uid, err = u.document.SearchKey(ctx, u.currentSelectedUID, pattern)
+			typ = jsondocument.SearchKey
 		case searchTypeValue:
-			uid, err = u.document.SearchValue(ctx, u.currentSelectedUID, pattern)
+			typ = jsondocument.SearchValue
 		}
+		uid, err := u.document.Search(ctx, u.currentSelectedUID, pattern, typ)
 		d.Hide()
 		if errors.Is(err, jsondocument.ErrCallerCanceled) {
 			return

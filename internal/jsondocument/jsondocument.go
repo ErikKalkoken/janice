@@ -73,15 +73,6 @@ type Node struct {
 	Type  JSONType
 }
 
-// ProgressInfo represents the current progress while loading a document
-// and is used to communicate the the UI.
-type ProgressInfo struct {
-	CurrentStep int
-	Progress    float64
-	Size        int
-	TotalSteps  int
-}
-
 // This singleton represents an empty value in a Node.
 var Empty = struct{}{}
 
@@ -128,6 +119,15 @@ func (j *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
 func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
 	id := uid2id(uid)
 	return j.values[id]
+}
+
+// ProgressInfo represents the current progress while loading a document
+// and is used to communicate the the UI.
+type ProgressInfo struct {
+	CurrentStep int
+	Progress    float64
+	Size        int
+	TotalSteps  int
 }
 
 // Load loads JSON data from a reader and builds a new JSON document from it.
@@ -381,10 +381,17 @@ func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 	return nil
 }
 
-// SearchKey returns the next node with a matching key or an error if not found or canceled.
+type SearchType uint
+
+const (
+	SearchKey SearchType = iota
+	SearchValue
+)
+
+// Search returns the next node with a matching key or an error if not found or canceled.
 // The starting node will be ignored, so that is is possible to find successive nodes with the same key.
 // The search direction is from top to bottom.
-func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, search string) (widget.TreeNodeID, error) {
+func (j *JSONDocument) Search(ctx context.Context, uid widget.TreeNodeID, search string, typ SearchType) (widget.TreeNodeID, error) {
 	if search == "" {
 		return "", ErrNotFound
 	}
@@ -394,8 +401,21 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 	if err != nil {
 		return "", err
 	}
+	var matcher func(*Node) bool
+	switch typ {
+	case SearchKey:
+		matcher = func(n *Node) bool {
+			return pattern.MatchString(n.Key)
+		}
+	case SearchValue:
+		matcher = func(n *Node) bool {
+			return pattern.MatchString(fmt.Sprint(n.Value))
+		}
+	default:
+		panic("Undefined type")
+	}
 	for {
-		foundID, err := j.searchKey(ctx, id, pattern)
+		foundID, err := j.searchNode(ctx, id, matcher, pattern)
 		if err != nil {
 			return "", err
 		}
@@ -423,117 +443,6 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 	}
 }
 
-func (j *JSONDocument) searchKey(ctx context.Context, id int, pattern *regexp.Regexp) (int, error) {
-	n := j.values[id]
-	if n.Type == Array || n.Type == Object {
-		foundID, err := j.searchKeyInContainer(ctx, id, pattern)
-		if err != nil {
-			return 0, err
-		}
-		if foundID != notFound {
-			return foundID, nil
-		}
-	}
-	if pattern.MatchString(n.Key) {
-		return id, nil
-	}
-	return notFound, nil
-}
-
-func (j *JSONDocument) searchKeyInContainer(ctx context.Context, id int, pattern *regexp.Regexp) (int, error) {
-	select {
-	case <-ctx.Done():
-		return 0, ErrCallerCanceled
-	default:
-	}
-	for _, childID := range j.ids[id] {
-		foundID, err := j.searchKey(ctx, childID, pattern)
-		if err != nil {
-			return 0, err
-		}
-		if foundID != notFound {
-			return foundID, nil
-		}
-	}
-	return notFound, nil
-}
-
-// SearchValue returns the next node with a matching value or an error if not found or canceled.
-// The starting node will be ignored, so that is is possible to find successive nodes with the same value.
-// The search direction is from top to bottom.
-func (j *JSONDocument) SearchValue(ctx context.Context, uid widget.TreeNodeID, search string) (widget.TreeNodeID, error) {
-	if search == "" {
-		return "", ErrNotFound
-	}
-	id := uid2id(uid)
-	startID := id
-	if n := j.values[id]; n.Type != Array && n.Type != Object {
-		id = j.parents[id]
-	}
-	pattern, err := regexp.Compile(wildCardToRegexp(search))
-	if err != nil {
-		return "", err
-	}
-	var foundID int
-	for {
-		switch n := j.values[id]; n.Type {
-		case Array, Object:
-			foundID, err = j.searchValue(ctx, id, startID, pattern)
-			if err != nil {
-				return "", err
-			}
-		}
-		if foundID != startID && foundID != notFound {
-			return id2uid(foundID), nil
-		}
-		for {
-			parentID := j.parents[id]
-			childIDs := j.ids[parentID]
-			idx := slices.Index(childIDs, id)
-			if idx < len(childIDs)-1 {
-				id = childIDs[idx+1]
-				break
-			}
-			if parentID == rootNodeParentID || j.parents[parentID] == rootNodeParentID {
-				return "", ErrNotFound
-			}
-			id = parentID
-		}
-	}
-}
-
-func (j *JSONDocument) searchValue(ctx context.Context, id, startID int, pattern *regexp.Regexp) (int, error) {
-	for _, childID := range j.ids[id] {
-		if childID == startID {
-			continue
-		}
-		n := j.values[childID]
-		v := fmt.Sprint(n.Value)
-		if pattern.MatchString(v) {
-			return childID, nil
-		}
-	}
-	select {
-	case <-ctx.Done():
-		return 0, ErrCallerCanceled
-	default:
-	}
-	for _, childID := range j.ids[id] {
-		n := j.values[childID]
-		switch n.Type {
-		case Array, Object:
-			foundID, err := j.searchValue(ctx, childID, startID, pattern)
-			if err != nil {
-				return 0, err
-			}
-			if foundID != notFound {
-				return foundID, nil
-			}
-		}
-	}
-	return notFound, nil
-}
-
 func wildCardToRegexp(pattern string) string {
 	components := strings.Split(pattern, "*")
 	if len(components) == 1 {
@@ -553,6 +462,41 @@ func wildCardToRegexp(pattern string) string {
 		result.WriteString(regexp.QuoteMeta(literal))
 	}
 	return "^" + result.String() + "$"
+}
+
+func (j *JSONDocument) searchNode(ctx context.Context, id int, matcher func(*Node) bool, pattern *regexp.Regexp) (int, error) {
+	n := j.values[id]
+	if n.Type == Array || n.Type == Object {
+		foundID, err := j.searchContainer(ctx, id, matcher, pattern)
+		if err != nil {
+			return 0, err
+		}
+		if foundID != notFound {
+			return foundID, nil
+		}
+	}
+	if matcher(&n) {
+		return id, nil
+	}
+	return notFound, nil
+}
+
+func (j *JSONDocument) searchContainer(ctx context.Context, id int, matcher func(*Node) bool, pattern *regexp.Regexp) (int, error) {
+	select {
+	case <-ctx.Done():
+		return 0, ErrCallerCanceled
+	default:
+	}
+	for _, childID := range j.ids[id] {
+		foundID, err := j.searchNode(ctx, childID, matcher, pattern)
+		if err != nil {
+			return 0, err
+		}
+		if foundID != notFound {
+			return foundID, nil
+		}
+	}
+	return notFound, nil
 }
 
 // Extract returns a segment of the JSON document, with the given UID as new root container.
