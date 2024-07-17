@@ -1,24 +1,15 @@
 package ui
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"log/slog"
 	"net/url"
 	"slices"
 	"strings"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
-	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 const (
@@ -208,89 +199,4 @@ func (u *UI) updateRecentFilesMenu() {
 	}
 	u.fileMenu.Items[3].ChildMenu.Items = items
 	u.fileMenu.Refresh()
-}
-
-// loadDocument loads a JSON file
-// Shows a loader modal while loading
-func (u *UI) loadDocument(reader fyne.URIReadCloser) {
-	infoText := widget.NewLabel("")
-	pb1 := widget.NewProgressBarInfinite()
-	pb2 := widget.NewProgressBar()
-	pb2.Hide()
-	progressInfo := binding.NewUntyped()
-	progressInfo.AddListener(binding.NewDataListener(func() {
-		x, err := progressInfo.Get()
-		if err != nil {
-			slog.Warn("Failed to get progress info", "err", err)
-			return
-		}
-		info, ok := x.(jsondocument.ProgressInfo)
-		if !ok {
-			return
-		}
-		uri := reader.URI()
-		name := uri.Name()
-		var text string
-		switch info.CurrentStep {
-		case 1:
-			text = fmt.Sprintf("Loading file from disk: %s", name)
-		case 2:
-			text = fmt.Sprintf("Parsing file: %s", name)
-		case 3:
-			text = fmt.Sprintf("Calculating document size: %s", name)
-		case 4:
-			if pb2.Hidden {
-				pb1.Stop()
-				pb1.Hide()
-				pb2.Show()
-			}
-			p := message.NewPrinter(language.English)
-			text = p.Sprintf("Rendering document with %d elements: %s", info.Size, name)
-			pb2.SetValue(info.Progress)
-		default:
-			text = "?"
-		}
-		message := fmt.Sprintf("%d / %d: %s", info.CurrentStep, info.TotalSteps, text)
-		infoText.SetText(message)
-	}))
-	ctx, cancel := context.WithCancel(context.TODO())
-	b := widget.NewButtonWithIcon("", theme.CancelIcon(), func() {
-		cancel()
-	})
-	c := container.NewVBox(infoText, container.NewBorder(nil, nil, nil, b, container.NewStack(pb1, pb2)))
-	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
-	d2.SetOnClosed(func() {
-		cancel()
-	})
-	d2.Show()
-	go func() {
-		doc := jsondocument.New()
-		if err := doc.Load(ctx, reader, progressInfo); err != nil {
-			d2.Hide()
-			if errors.Is(err, jsondocument.ErrCallerCanceled) {
-				return
-			}
-			u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)
-			return
-		}
-		u.document = doc
-		p := message.NewPrinter(language.English)
-		out := p.Sprintf("%d elements", u.document.Size())
-		u.statusTreeSize.SetText(out)
-		u.welcomeMessage.Hide()
-		u.searchButton.Enable()
-		u.searchType.Enable()
-		u.searchEntry.Enable()
-		u.scrollBottom.Enable()
-		u.scrollTop.Enable()
-		u.collapseAll.Enable()
-		u.treeWidget.Refresh()
-		uri := reader.URI()
-		if uri.Scheme() == "file" {
-			u.addRecentFile(uri)
-		}
-		u.setTitle(uri.Name())
-		u.currentFile = uri
-		d2.Hide()
-	}()
 }

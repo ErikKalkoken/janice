@@ -12,11 +12,14 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	"github.com/ErikKalkoken/jsonviewer/internal/github"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
@@ -102,23 +105,18 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.searchEntry.OnSubmitted = func(s string) {
 		u.doSearch()
 	}
-	u.searchEntry.Disable()
 	u.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		u.doSearch()
 	})
-	u.searchButton.Disable()
 	u.scrollBottom = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
 		u.treeWidget.ScrollToBottom()
 	})
-	u.scrollBottom.Disable()
 	u.scrollTop = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
 		u.treeWidget.ScrollToTop()
 	})
-	u.scrollTop.Disable()
 	u.collapseAll = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
 		u.treeWidget.CloseAllBranches()
 	})
-	u.collapseAll.Disable()
 	searchBar := container.NewBorder(
 		nil,
 		nil,
@@ -133,7 +131,7 @@ func NewUI(app fyne.App) (*UI, error) {
 		),
 		u.searchEntry,
 	)
-
+	u.toogleSearchBar(false)
 	// main frame
 	welcomeText := widget.NewLabel(
 		"Welcome to JSON Viewer.\n" +
@@ -227,132 +225,6 @@ func NewUI(app fyne.App) (*UI, error) {
 		app.Preferences().SetString(settingLastSearchType, u.searchType.Selected)
 	})
 	return u, nil
-}
-
-func (u *UI) doSearch() {
-	search := u.searchEntry.Text
-	if len(search) == 0 {
-		return
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	spinner := widget.NewActivity()
-	spinner.Start()
-	searchType := u.searchType.Selected
-	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for %s with pattern: %s", searchType, search)), spinner)
-	b := widget.NewButton("Cancel", func() {
-		cancel()
-	})
-	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), u.window)
-	d.Show()
-	d.SetOnClosed(func() {
-		cancel()
-	})
-	go func() {
-		var typ jsondocument.SearchType
-		switch searchType {
-		case searchTypeKey:
-			typ = jsondocument.SearchKey
-		case searchTypeKeyword:
-			typ = jsondocument.SearchKeyword
-			search = strings.ToLower(search)
-			if search != "true" && search != "false" && search != "null" {
-				d.Hide()
-				u.showErrorDialog("Allowed keywords are: true, false, null", nil)
-				return
-			}
-		case searchTypeString:
-			typ = jsondocument.SearchString
-		case searchTypeNumber:
-			typ = jsondocument.SearchNumber
-		}
-		uid, err := u.document.Search(ctx, u.currentSelectedUID, search, typ)
-		d.Hide()
-		if errors.Is(err, jsondocument.ErrCallerCanceled) {
-			return
-		} else if errors.Is(err, jsondocument.ErrNotFound) {
-			d2 := dialog.NewInformation("No match", fmt.Sprintf("No %s found matching %s", searchType, search), u.window)
-			d2.Show()
-			return
-		} else if err != nil {
-			u.showErrorDialog("Search failed", err)
-			return
-		}
-		u.showInTree(uid)
-	}()
-}
-
-// ShowAndRun shows the main window and runs the app. This method is blocking.
-func (u *UI) ShowAndRun(path string) {
-	if path != "" {
-		u.app.Lifecycle().SetOnStarted(func() {
-			uri := storage.NewFileURI(path)
-			reader, err := storage.Reader(uri)
-			if err != nil {
-				u.showErrorDialog(fmt.Sprintf("Failed to open file: %s", uri), err)
-				return
-			}
-			u.loadDocument(reader)
-		})
-	}
-	u.window.ShowAndRun()
-}
-
-func (u *UI) showErrorDialog(message string, err error) {
-	if err != nil {
-		slog.Error(message, "err", err)
-	}
-	d := dialog.NewInformation("Error", message, u.window)
-	d.Show()
-}
-
-func (u *UI) showInTree(uid widget.TreeNodeID) {
-	if uid == "" {
-		return
-	}
-	p := u.document.Path(uid)
-	for _, uid2 := range p {
-		u.treeWidget.OpenBranch(uid2)
-	}
-	u.treeWidget.ScrollTo(uid)
-	u.treeWidget.Select(uid)
-}
-
-// reset resets the app to it's initial state
-func (u *UI) reset() {
-	u.document.Reset()
-	u.setTitle("")
-	u.statusTreeSize.SetText("")
-	u.welcomeMessage.Show()
-	u.searchButton.Disable()
-	u.searchType.Disable()
-	u.searchEntry.Disable()
-	u.collapseAll.Disable()
-	u.scrollBottom.Disable()
-	u.scrollTop.Disable()
-	u.detailPath.SetText("")
-	u.detailType.SetText("")
-	u.detailValueMD.ParseMarkdown("")
-	u.detailCopyValue.Disable()
-	u.jumpToSelection.Disable()
-	u.currentSelectedUID = ""
-}
-
-func (u *UI) setTitle(fileName string) {
-	var s string
-	if fileName != "" {
-		s = fmt.Sprintf("%s - %s", fileName, u.appName())
-	} else {
-		s = u.appName()
-	}
-	u.window.SetTitle(s)
-}
-
-func (u *UI) appName() string {
-	info := u.app.Metadata()
-	if info.Name != "" {
-		return info.Name
-	}
-	return appTitle
 }
 
 func (u *UI) makeTree() *widget.Tree {
@@ -456,4 +328,223 @@ func (u *UI) renderPath(uid string) string {
 	node := u.document.Value(uid)
 	keys = append(keys, node.Key)
 	return strings.Join(keys, ".")
+}
+
+func (u *UI) doSearch() {
+	search := u.searchEntry.Text
+	if len(search) == 0 {
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	spinner := widget.NewActivity()
+	spinner.Start()
+	searchType := u.searchType.Selected
+	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for %s with pattern: %s", searchType, search)), spinner)
+	b := widget.NewButton("Cancel", func() {
+		cancel()
+	})
+	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), u.window)
+	d.Show()
+	d.SetOnClosed(func() {
+		cancel()
+	})
+	go func() {
+		var typ jsondocument.SearchType
+		switch searchType {
+		case searchTypeKey:
+			typ = jsondocument.SearchKey
+		case searchTypeKeyword:
+			typ = jsondocument.SearchKeyword
+			search = strings.ToLower(search)
+			if search != "true" && search != "false" && search != "null" {
+				d.Hide()
+				u.showErrorDialog("Allowed keywords are: true, false, null", nil)
+				return
+			}
+		case searchTypeString:
+			typ = jsondocument.SearchString
+		case searchTypeNumber:
+			typ = jsondocument.SearchNumber
+		}
+		uid, err := u.document.Search(ctx, u.currentSelectedUID, search, typ)
+		d.Hide()
+		if errors.Is(err, jsondocument.ErrCallerCanceled) {
+			return
+		} else if errors.Is(err, jsondocument.ErrNotFound) {
+			d2 := dialog.NewInformation("No match", fmt.Sprintf("No %s found matching %s", searchType, search), u.window)
+			d2.Show()
+			return
+		} else if err != nil {
+			u.showErrorDialog("Search failed", err)
+			return
+		}
+		u.showInTree(uid)
+	}()
+}
+
+// ShowAndRun shows the main window and runs the app. This method is blocking.
+func (u *UI) ShowAndRun(path string) {
+	if path != "" {
+		u.app.Lifecycle().SetOnStarted(func() {
+			uri := storage.NewFileURI(path)
+			reader, err := storage.Reader(uri)
+			if err != nil {
+				u.showErrorDialog(fmt.Sprintf("Failed to open file: %s", uri), err)
+				return
+			}
+			u.loadDocument(reader)
+		})
+	}
+	u.window.ShowAndRun()
+}
+
+func (u *UI) showErrorDialog(message string, err error) {
+	if err != nil {
+		slog.Error(message, "err", err)
+	}
+	d := dialog.NewInformation("Error", message, u.window)
+	d.Show()
+}
+
+func (u *UI) showInTree(uid widget.TreeNodeID) {
+	if uid == "" {
+		return
+	}
+	p := u.document.Path(uid)
+	for _, uid2 := range p {
+		u.treeWidget.OpenBranch(uid2)
+	}
+	u.treeWidget.ScrollTo(uid)
+	u.treeWidget.Select(uid)
+}
+
+// reset resets the app to it's initial state
+func (u *UI) reset() {
+	u.document.Reset()
+	u.setTitle("")
+	u.statusTreeSize.SetText("")
+	u.welcomeMessage.Show()
+	u.toogleSearchBar(false)
+	u.detailPath.SetText("")
+	u.detailType.SetText("")
+	u.detailValueMD.ParseMarkdown("")
+	u.detailCopyValue.Disable()
+	u.jumpToSelection.Disable()
+	u.currentSelectedUID = ""
+}
+
+func (u *UI) setTitle(fileName string) {
+	var s string
+	if fileName != "" {
+		s = fmt.Sprintf("%s - %s", fileName, u.appName())
+	} else {
+		s = u.appName()
+	}
+	u.window.SetTitle(s)
+}
+
+func (u *UI) appName() string {
+	info := u.app.Metadata()
+	if info.Name != "" {
+		return info.Name
+	}
+	return appTitle
+}
+
+// loadDocument loads a JSON file
+// Shows a loader modal while loading
+func (u *UI) loadDocument(reader fyne.URIReadCloser) {
+	infoText := widget.NewLabel("")
+	pb1 := widget.NewProgressBarInfinite()
+	pb2 := widget.NewProgressBar()
+	pb2.Hide()
+	progressInfo := binding.NewUntyped()
+	progressInfo.AddListener(binding.NewDataListener(func() {
+		x, err := progressInfo.Get()
+		if err != nil {
+			slog.Warn("Failed to get progress info", "err", err)
+			return
+		}
+		info, ok := x.(jsondocument.ProgressInfo)
+		if !ok {
+			return
+		}
+		uri := reader.URI()
+		name := uri.Name()
+		var text string
+		switch info.CurrentStep {
+		case 1:
+			text = fmt.Sprintf("Loading file from disk: %s", name)
+		case 2:
+			text = fmt.Sprintf("Parsing file: %s", name)
+		case 3:
+			text = fmt.Sprintf("Calculating document size: %s", name)
+		case 4:
+			if pb2.Hidden {
+				pb1.Stop()
+				pb1.Hide()
+				pb2.Show()
+			}
+			p := message.NewPrinter(language.English)
+			text = p.Sprintf("Rendering document with %d elements: %s", info.Size, name)
+			pb2.SetValue(info.Progress)
+		default:
+			text = "?"
+		}
+		message := fmt.Sprintf("%d / %d: %s", info.CurrentStep, info.TotalSteps, text)
+		infoText.SetText(message)
+	}))
+	ctx, cancel := context.WithCancel(context.TODO())
+	b := widget.NewButtonWithIcon("", theme.CancelIcon(), func() {
+		cancel()
+	})
+	c := container.NewVBox(infoText, container.NewBorder(nil, nil, nil, b, container.NewStack(pb1, pb2)))
+	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
+	d2.SetOnClosed(func() {
+		cancel()
+	})
+	d2.Show()
+	go func() {
+		doc := jsondocument.New()
+		if err := doc.Load(ctx, reader, progressInfo); err != nil {
+			d2.Hide()
+			if errors.Is(err, jsondocument.ErrCallerCanceled) {
+				return
+			}
+			u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)
+			return
+		}
+		u.document = doc
+		p := message.NewPrinter(language.English)
+		out := p.Sprintf("%d elements", u.document.Size())
+		u.statusTreeSize.SetText(out)
+		u.welcomeMessage.Hide()
+		u.toogleSearchBar(true)
+		u.treeWidget.Refresh()
+		uri := reader.URI()
+		if uri.Scheme() == "file" {
+			u.addRecentFile(uri)
+		}
+		u.setTitle(uri.Name())
+		u.currentFile = uri
+		d2.Hide()
+	}()
+}
+
+func (u *UI) toogleSearchBar(enabled bool) {
+	if enabled {
+		u.searchButton.Enable()
+		u.searchType.Enable()
+		u.searchEntry.Enable()
+		u.scrollBottom.Enable()
+		u.scrollTop.Enable()
+		u.collapseAll.Enable()
+	} else {
+		u.searchButton.Disable()
+		u.searchType.Disable()
+		u.searchEntry.Disable()
+		u.scrollBottom.Disable()
+		u.scrollTop.Disable()
+		u.collapseAll.Disable()
+	}
 }
