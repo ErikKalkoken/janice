@@ -390,21 +390,14 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 	}
 	id := uid2id(uid)
 	startID := id
-	if n := j.values[id]; n.Type != Array && n.Type != Object {
-		id = j.parents[id]
-	}
 	pattern, err := regexp.Compile(wildCardToRegexp(search))
 	if err != nil {
 		return "", err
 	}
-	var foundID int
 	for {
-		switch n := j.values[id]; n.Type {
-		case Array, Object:
-			foundID, err = j.searchKey(ctx, id, pattern)
-			if err != nil {
-				return "", err
-			}
+		foundID, err := j.searchKey(ctx, id, pattern)
+		if err != nil {
+			return "", err
 		}
 		if foundID != startID && foundID != notFound {
 			return id2uid(foundID), nil
@@ -421,33 +414,45 @@ func (j *JSONDocument) SearchKey(ctx context.Context, uid widget.TreeNodeID, sea
 				return "", ErrNotFound
 			}
 			id = parentID
+			select {
+			case <-ctx.Done():
+				return "", ErrCallerCanceled
+			default:
+			}
 		}
 	}
 }
 
 func (j *JSONDocument) searchKey(ctx context.Context, id int, pattern *regexp.Regexp) (int, error) {
-	for _, childID := range j.ids[id] {
-		n := j.values[childID]
-		if pattern.MatchString(n.Key) {
-			return childID, nil
+	n := j.values[id]
+	if n.Type == Array || n.Type == Object {
+		foundID, err := j.searchKeyInContainer(ctx, id, pattern)
+		if err != nil {
+			return 0, err
+		}
+		if foundID != notFound {
+			return foundID, nil
 		}
 	}
+	if pattern.MatchString(n.Key) {
+		return id, nil
+	}
+	return notFound, nil
+}
+
+func (j *JSONDocument) searchKeyInContainer(ctx context.Context, id int, pattern *regexp.Regexp) (int, error) {
 	select {
 	case <-ctx.Done():
 		return 0, ErrCallerCanceled
 	default:
 	}
 	for _, childID := range j.ids[id] {
-		n := j.values[childID]
-		switch n.Type {
-		case Array, Object:
-			foundID, err := j.searchKey(ctx, childID, pattern)
-			if err != nil {
-				return 0, err
-			}
-			if foundID != notFound {
-				return foundID, nil
-			}
+		foundID, err := j.searchKey(ctx, childID, pattern)
+		if err != nil {
+			return 0, err
+		}
+		if foundID != notFound {
+			return foundID, nil
 		}
 	}
 	return notFound, nil

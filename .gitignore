@@ -4,5 +4,5 @@ jsonviewer
 *.tar.xz
 *.AppImage
 tools/generate_json/generate_json
-test.json
+test*.json
 temp.*/

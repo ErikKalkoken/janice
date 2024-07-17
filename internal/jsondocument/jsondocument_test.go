@@ -233,6 +233,7 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 			"charlie": 5,
 			"delta":   map[string]any{"echo": 1, "foxtrot": 2},
 		},
+		"delta": 42,
 		"golf": []any{
 			9,
 			map[string]any{"alpha": 99, "echo": 5, "india": 9},
@@ -242,10 +243,10 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	ids := j.ChildUIDs("")
-	alpha1ID, bravoID, golfID := ids[0], ids[1], ids[2]
+	alpha1ID, bravoID, delta1ID, golfID := ids[0], ids[1], ids[2], ids[3]
 	ids = j.ChildUIDs(bravoID)
-	charlieID, deltaID := ids[0], ids[1]
-	ids = j.ChildUIDs(deltaID)
+	charlieID, delta2ID := ids[0], ids[1]
+	ids = j.ChildUIDs(delta2ID)
 	echo1ID, foxtrotID := ids[0], ids[1]
 	ids = j.ChildUIDs(golfID)
 	ids2 := j.ChildUIDs(ids[1])
@@ -256,11 +257,12 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 		foundUID   string
 		shouldFind bool
 	}{
+		{delta2ID, "delta", delta1ID, true},
 		{echo1ID, "echo", echo2ID, true},
 		{"", "alpha", alpha1ID, true},
 		{"", "bravo", bravoID, true},
 		{"", "charlie", charlieID, true},
-		{"", "delta", deltaID, true},
+		{"", "delta", delta2ID, true},
 		{"", "echo", echo1ID, true},
 		{"", "foxtrot", foxtrotID, true},
 		{"", "golf", golfID, true},
@@ -268,14 +270,16 @@ func TestJsonDocumentSearchKey(t *testing.T) {
 		{bravoID, "foxtrot", foxtrotID, true},
 		{echo1ID, "india", indiaID, true},
 		{golfID, "echo", echo2ID, true},
-		{indiaID, "bravo", "", false},
 		{alpha1ID, "alpha", alpha2ID, true},
+		{delta1ID, "delta", indiaID, false},
 	}
 	for i, tc := range cases {
-		t.Run(fmt.Sprintf("can find key %s from %v (%d)", tc.key, tc.startUID, i+1), func(t *testing.T) {
+		t.Run(fmt.Sprintf("can find key %s from %v (%d)", tc.key, j.Value(tc.startUID), i+1), func(t *testing.T) {
 			got, err := j.SearchKey(ctx, tc.startUID, tc.key)
 			if !tc.shouldFind {
-				assert.ErrorIs(t, err, jsondocument.ErrNotFound)
+				if !assert.ErrorIs(t, err, jsondocument.ErrNotFound) {
+					panic("STOP")
+				}
 			} else if assert.NoError(t, err) {
 				assert.Equal(t, tc.foundUID, got)
 			}

@@ -111,8 +111,8 @@ func NewUI(app fyne.App) (*UI, error) {
 	searchBar := container.NewBorder(
 		nil,
 		nil,
-		nil,
-		container.NewHBox(u.searchType, u.searchButton, u.collapseButton),
+		u.searchType,
+		container.NewHBox(u.searchButton, container.NewPadded(), layout.NewSpacer(), u.collapseButton),
 		u.searchEntry,
 	)
 
