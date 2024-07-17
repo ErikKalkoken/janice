@@ -404,44 +404,9 @@ func (j *JSONDocument) Search(ctx context.Context, uid widget.TreeNodeID, search
 	if err != nil {
 		return "", err
 	}
-	var matcher func(*Node) bool
-	switch typ {
-	case SearchKey:
-		matcher = func(n *Node) bool {
-			return pattern.MatchString(n.Key)
-		}
-	case SearchKeyword:
-		matcher = func(n *Node) bool {
-			switch n.Type {
-			case Boolean:
-				return fmt.Sprint(n.Value) == search
-			case Null:
-				return search == "null"
-			default:
-				return false
-			}
-		}
-	case SearchNumber:
-		matcher = func(n *Node) bool {
-			if n.Type != Number {
-				return false
-			}
-			v := n.Value.(float64)
-			return pattern.MatchString(strconv.FormatFloat(v, 'f', -1, 64))
-		}
-	case SearchString:
-		matcher = func(n *Node) bool {
-			if n.Type != String {
-				return false
-			}
-			v := n.Value.(string)
-			return pattern.MatchString(v)
-		}
-	default:
-		panic("Undefined type")
-	}
+
 	for {
-		foundID, err := j.searchNode(ctx, id, matcher)
+		foundID, err := j.searchNode(ctx, id, pattern, typ)
 		if err != nil {
 			return "", err
 		}
@@ -469,6 +434,75 @@ func (j *JSONDocument) Search(ctx context.Context, uid widget.TreeNodeID, search
 	}
 }
 
+func (j *JSONDocument) searchNode(ctx context.Context, id int, pattern *regexp.Regexp, typ SearchType) (int, error) {
+	n := j.values[id]
+	if n.Type == Array || n.Type == Object {
+		foundID, err := j.searchContainer(ctx, id, pattern, typ)
+		if err != nil {
+			return 0, err
+		}
+		if foundID != notFound {
+			return foundID, nil
+		}
+	}
+	switch typ {
+	case SearchKey:
+		if pattern.MatchString(n.Key) {
+			return id, nil
+		}
+	case SearchKeyword:
+		switch n.Type {
+		case Boolean:
+			if pattern.MatchString(fmt.Sprint(n.Value)) {
+				return id, nil
+			}
+		case Null:
+			if pattern.MatchString("null") {
+				return id, nil
+			}
+		default:
+			return notFound, nil
+		}
+	case SearchNumber:
+		if n.Type != Number {
+			return notFound, nil
+		}
+		v := n.Value.(float64)
+		if pattern.MatchString(strconv.FormatFloat(v, 'f', -1, 64)) {
+			return id, nil
+		}
+	case SearchString:
+		if n.Type != String {
+			return notFound, nil
+		}
+		v := n.Value.(string)
+		if pattern.MatchString(v) {
+			return id, nil
+		}
+	default:
+		panic("Undefined search type")
+	}
+	return notFound, nil
+}
+
+func (j *JSONDocument) searchContainer(ctx context.Context, id int, pattern *regexp.Regexp, typ SearchType) (int, error) {
+	select {
+	case <-ctx.Done():
+		return 0, ErrCallerCanceled
+	default:
+	}
+	for _, childID := range j.ids[id] {
+		foundID, err := j.searchNode(ctx, childID, pattern, typ)
+		if err != nil {
+			return 0, err
+		}
+		if foundID != notFound {
+			return foundID, nil
+		}
+	}
+	return notFound, nil
+}
+
 func wildCardToRegexp(pattern string) string {
 	components := strings.Split(pattern, "*")
 	if len(components) == 1 {
@@ -488,41 +522,6 @@ func wildCardToRegexp(pattern string) string {
 		result.WriteString(regexp.QuoteMeta(literal))
 	}
 	return "^" + result.String() + "$"
-}
-
-func (j *JSONDocument) searchNode(ctx context.Context, id int, matcher func(*Node) bool) (int, error) {
-	n := j.values[id]
-	if n.Type == Array || n.Type == Object {
-		foundID, err := j.searchContainer(ctx, id, matcher)
-		if err != nil {
-			return 0, err
-		}
-		if foundID != notFound {
-			return foundID, nil
-		}
-	}
-	if matcher(&n) {
-		return id, nil
-	}
-	return notFound, nil
-}
-
-func (j *JSONDocument) searchContainer(ctx context.Context, id int, matcher func(*Node) bool) (int, error) {
-	select {
-	case <-ctx.Done():
-		return 0, ErrCallerCanceled
-	default:
-	}
-	for _, childID := range j.ids[id] {
-		foundID, err := j.searchNode(ctx, childID, matcher)
-		if err != nil {
-			return 0, err
-		}
-		if foundID != notFound {
-			return foundID, nil
-		}
-	}
-	return notFound, nil
 }
 
 // Extract returns a segment of the JSON document, with the given UID as new root container.
