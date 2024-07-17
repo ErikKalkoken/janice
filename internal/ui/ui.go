@@ -51,7 +51,9 @@ type UI struct {
 	currentSelectedUID widget.TreeNodeID
 	detailCopyValue    *widget.Button
 	jumpToSelection    *widget.Button
-	collapseButton     *widget.Button
+	scrollBottom       *widget.Button
+	scrollTop          *widget.Button
+	collapseAll        *widget.Button
 	detailPath         *widget.Label
 	detailType         *widget.Label
 	detailValueMD      *widget.RichText
@@ -87,20 +89,6 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.statusPath.Wrapping = fyne.TextWrapWord
 
 	// search frame
-	u.searchEntry.SetPlaceHolder(
-		"Enter pattern with wildcards to search for a key...")
-	u.searchEntry.OnSubmitted = func(s string) {
-		u.doSearch()
-	}
-	u.searchEntry.Disable()
-	u.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
-		u.doSearch()
-	})
-	u.searchButton.Disable()
-	u.collapseButton = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
-		u.treeWidget.CloseAllBranches()
-	})
-	u.collapseButton.Disable()
 	u.searchType = widget.NewSelect([]string{
 		searchTypeKey,
 		searchTypeKeyword,
@@ -109,11 +97,40 @@ func NewUI(app fyne.App) (*UI, error) {
 	}, nil)
 	u.searchType.SetSelected(app.Preferences().StringWithFallback(settingLastSearchType, searchTypeKey))
 	u.searchType.Disable()
+	u.searchEntry.SetPlaceHolder(
+		"Enter pattern to search for...")
+	u.searchEntry.OnSubmitted = func(s string) {
+		u.doSearch()
+	}
+	u.searchEntry.Disable()
+	u.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
+		u.doSearch()
+	})
+	u.searchButton.Disable()
+	u.scrollBottom = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
+		u.treeWidget.ScrollToBottom()
+	})
+	u.scrollBottom.Disable()
+	u.scrollTop = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
+		u.treeWidget.ScrollToTop()
+	})
+	u.scrollTop.Disable()
+	u.collapseAll = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
+		u.treeWidget.CloseAllBranches()
+	})
+	u.collapseAll.Disable()
 	searchBar := container.NewBorder(
 		nil,
 		nil,
 		u.searchType,
-		container.NewHBox(u.searchButton, container.NewPadded(), layout.NewSpacer(), u.collapseButton),
+		container.NewHBox(
+			u.searchButton,
+			container.NewPadded(),
+			layout.NewSpacer(),
+			u.scrollTop,
+			u.scrollBottom,
+			u.collapseAll,
+		),
 		u.searchEntry,
 	)
 
@@ -309,7 +326,9 @@ func (u *UI) reset() {
 	u.searchButton.Disable()
 	u.searchType.Disable()
 	u.searchEntry.Disable()
-	u.collapseButton.Disable()
+	u.collapseAll.Disable()
+	u.scrollBottom.Disable()
+	u.scrollTop.Disable()
 	u.detailPath.SetText("")
 	u.detailType.SetText("")
 	u.detailValueMD.ParseMarkdown("")

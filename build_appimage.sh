@@ -31,6 +31,6 @@ chmod +x linuxdeploy
 ./linuxdeploy --appdir "$dest" -v 2 -o appimage -e "$source/usr/local/bin/$packagename"  -d "$source/usr/local/share/applications/$appname.desktop" -i "$source/usr/local/share/pixmaps/$appname.png"
 
 # Cleanup
-# rm -rf "$source"
-# rm -rf "$dest"
-# rm linuxdeploy
+rm -rf "$source"
+rm -rf "$dest"
+rm linuxdeploy

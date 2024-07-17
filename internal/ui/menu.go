@@ -281,7 +281,9 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		u.searchButton.Enable()
 		u.searchType.Enable()
 		u.searchEntry.Enable()
-		u.collapseButton.Enable()
+		u.scrollBottom.Enable()
+		u.scrollTop.Enable()
+		u.collapseAll.Enable()
 		u.treeWidget.Refresh()
 		uri := reader.URI()
 		if uri.Scheme() == "file" {
