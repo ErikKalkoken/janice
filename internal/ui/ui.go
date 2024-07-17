@@ -213,15 +213,15 @@ func NewUI(app fyne.App) (*UI, error) {
 }
 
 func (u *UI) doSearch() {
-	pattern := u.searchEntry.Text
-	if len(pattern) == 0 {
+	search := u.searchEntry.Text
+	if len(search) == 0 {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	spinner := widget.NewActivity()
 	spinner.Start()
 	searchType := u.searchType.Selected
-	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for %s with pattern: %s", searchType, pattern)), spinner)
+	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for %s with pattern: %s", searchType, search)), spinner)
 	b := widget.NewButton("Cancel", func() {
 		cancel()
 	})
@@ -237,17 +237,23 @@ func (u *UI) doSearch() {
 			typ = jsondocument.SearchKey
 		case searchTypeKeyword:
 			typ = jsondocument.SearchKeyword
+			search = strings.ToLower(search)
+			if search != "true" && search != "false" && search != "null" {
+				d.Hide()
+				u.showErrorDialog("Allowed keywords are: true, false, null", nil)
+				return
+			}
 		case searchTypeString:
 			typ = jsondocument.SearchString
 		case searchTypeNumber:
 			typ = jsondocument.SearchNumber
 		}
-		uid, err := u.document.Search(ctx, u.currentSelectedUID, pattern, typ)
+		uid, err := u.document.Search(ctx, u.currentSelectedUID, search, typ)
 		d.Hide()
 		if errors.Is(err, jsondocument.ErrCallerCanceled) {
 			return
 		} else if errors.Is(err, jsondocument.ErrNotFound) {
-			d2 := dialog.NewInformation("No match", fmt.Sprintf("No %s found matching %s", searchType, pattern), u.window)
+			d2 := dialog.NewInformation("No match", fmt.Sprintf("No %s found matching %s", searchType, search), u.window)
 			d2.Show()
 			return
 		} else if err != nil {
