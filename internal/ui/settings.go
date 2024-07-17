@@ -12,16 +12,16 @@ import (
 
 func (u *UI) showSettingsDialog() {
 	recentEntry := widget.NewEntry()
-	x := u.app.Preferences().IntWithFallback(settingsRecentFileCount, settingsRecentFileCountDefault)
+	x := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
 	recentEntry.SetText(strconv.Itoa(x))
 	recentEntry.Validator = newPositiveNumberValidator()
 
 	extFilter := widget.NewCheck("enabled", func(bool) {})
-	y := u.app.Preferences().BoolWithFallback(settingsExtensionFilter, settingsExtensionDefault)
+	y := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
 	extFilter.SetChecked(y)
 
 	notifyUpdates := widget.NewCheck("enabled", func(bool) {})
-	z := u.app.Preferences().BoolWithFallback(settingsNotifyUpdates, settingsNotifyUpdatesDefault)
+	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
 	notifyUpdates.SetChecked(z)
 
 	items := []*widget.FormItem{
@@ -39,9 +39,9 @@ func (u *UI) showSettingsDialog() {
 				slog.Error("Failed to convert", "err", err)
 				return
 			}
-			u.app.Preferences().SetInt(settingsRecentFileCount, x)
-			u.app.Preferences().SetBool(settingsExtensionFilter, extFilter.Checked)
-			u.app.Preferences().SetBool(settingsNotifyUpdates, notifyUpdates.Checked)
+			u.app.Preferences().SetInt(settingRecentFileCount, x)
+			u.app.Preferences().SetBool(settingExtensionFilter, extFilter.Checked)
+			u.app.Preferences().SetBool(settingNotifyUpdates, notifyUpdates.Checked)
 		}, u.window)
 	d.Show()
 }

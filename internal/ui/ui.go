@@ -28,12 +28,6 @@ const (
 	githubRepo  = "jsonviewer"
 )
 
-// setting keys
-const (
-	settingWindowWidth  = "main-window-width"
-	settingWindowHeight = "main-window-height"
-)
-
 const (
 	searchTypeKey   = "key"
 	searchTypeValue = "value"
@@ -106,7 +100,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	})
 	u.collapseButton.Disable()
 	u.searchType = widget.NewSelect([]string{searchTypeKey, searchTypeValue}, nil)
-	u.searchType.SetSelected(searchTypeKey)
+	u.searchType.SetSelected(app.Preferences().StringWithFallback(settingLastSearchType, searchTypeKey))
 	u.searchType.Disable()
 	searchBar := container.NewBorder(
 		nil,
@@ -161,7 +155,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	hsplit.Offset = 0.75
 
 	statusBar := container.NewHBox(u.statusTreeSize)
-	notifyUpdates := u.app.Preferences().BoolWithFallback(settingsNotifyUpdates, settingsNotifyUpdatesDefault)
+	notifyUpdates := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
 	if notifyUpdates {
 		go func() {
 			current := u.app.Metadata().Version
@@ -199,13 +193,14 @@ func NewUI(app fyne.App) (*UI, error) {
 		u.loadDocument(reader)
 	})
 	s := fyne.Size{
-		Width:  float32(app.Preferences().FloatWithFallback(settingWindowWidth, 800)),
-		Height: float32(app.Preferences().FloatWithFallback(settingWindowHeight, 600)),
+		Width:  float32(app.Preferences().FloatWithFallback(settingLastWindowWidth, 800)),
+		Height: float32(app.Preferences().FloatWithFallback(settingLastWindowHeight, 600)),
 	}
 	u.window.Resize(s)
 	u.window.SetOnClosed(func() {
-		app.Preferences().SetFloat(settingWindowWidth, float64(u.window.Canvas().Size().Width))
-		app.Preferences().SetFloat(settingWindowHeight, float64(u.window.Canvas().Size().Height))
+		app.Preferences().SetFloat(settingLastWindowWidth, float64(u.window.Canvas().Size().Width))
+		app.Preferences().SetFloat(settingLastWindowHeight, float64(u.window.Canvas().Size().Height))
+		app.Preferences().SetString(settingLastSearchType, u.searchType.Selected)
 	})
 	return u, nil
 }

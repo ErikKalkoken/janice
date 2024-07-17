@@ -22,13 +22,20 @@ import (
 )
 
 const (
-	preferencesRecentFiles         = "recent-files"
-	settingsRecentFileCount        = "settings-recent-files"
-	settingsRecentFileCountDefault = 5
-	settingsExtensionFilter        = "settings-extension-filter"
-	settingsExtensionDefault       = true
-	settingsNotifyUpdates          = "settings-notify-updates"
-	settingsNotifyUpdatesDefault   = true
+	preferencesRecentFiles = "recent-files"
+)
+
+// setting keys and defaults
+const (
+	settingExtensionDefault       = true
+	settingExtensionFilter        = "extension-filter"
+	settingNotifyUpdates          = "notify-updates"
+	settingNotifyUpdatesDefault   = true
+	settingRecentFileCount        = "recent-file-count"
+	settingRecentFileCountDefault = 5
+	settingLastWindowHeight       = "last-window-height"
+	settingLastWindowWidth        = "last-window-width"
+	settingLastSearchType         = "last-search-type"
 )
 
 func (u *UI) makeMenu() *fyne.MainMenu {
@@ -51,7 +58,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				u.loadDocument(reader)
 			}, u.window)
 			d.Show()
-			filterEnabled := u.app.Preferences().BoolWithFallback(settingsExtensionFilter, settingsExtensionDefault)
+			filterEnabled := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
 			if filterEnabled {
 				f := storage.NewExtensionFileFilter([]string{".json"})
 				d.SetFilter(f)
@@ -160,7 +167,7 @@ func (u *UI) extractSelection() ([]byte, error) {
 func (u *UI) addRecentFile(uri fyne.URI) {
 	files := u.app.Preferences().StringList(preferencesRecentFiles)
 	uri2 := uri.String()
-	max := u.app.Preferences().IntWithFallback(settingsRecentFileCount, settingsRecentFileCountDefault)
+	max := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
 	files = addToListWithRotation(files, uri2, max)
 	u.app.Preferences().SetStringList(preferencesRecentFiles, files)
 	u.updateRecentFilesMenu()
