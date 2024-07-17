@@ -73,6 +73,25 @@ type Node struct {
 	Type  JSONType
 }
 
+// SearchType represents the type of search to perform.
+type SearchType uint
+
+const (
+	SearchKey SearchType = iota
+	SearchString
+	SearchNumber
+	SearchKeyword
+)
+
+// ProgressInfo represents the current progress while loading a document
+// and is used to communicate the the UI.
+type ProgressInfo struct {
+	CurrentStep int
+	Progress    float64
+	Size        int
+	TotalSteps  int
+}
+
 // This singleton represents an empty value in a Node.
 var Empty = struct{}{}
 
@@ -119,15 +138,6 @@ func (j *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
 func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
 	id := uid2id(uid)
 	return j.values[id]
-}
-
-// ProgressInfo represents the current progress while loading a document
-// and is used to communicate the the UI.
-type ProgressInfo struct {
-	CurrentStep int
-	Progress    float64
-	Size        int
-	TotalSteps  int
 }
 
 // Load loads JSON data from a reader and builds a new JSON document from it.
@@ -381,13 +391,6 @@ func (j *JSONDocument) setProgressInfo(info ProgressInfo) error {
 	return nil
 }
 
-type SearchType uint
-
-const (
-	SearchKey SearchType = iota
-	SearchValue
-)
-
 // Search returns the next node with a matching key or an error if not found or canceled.
 // The starting node will be ignored, so that is is possible to find successive nodes with the same key.
 // The search direction is from top to bottom.
@@ -407,15 +410,38 @@ func (j *JSONDocument) Search(ctx context.Context, uid widget.TreeNodeID, search
 		matcher = func(n *Node) bool {
 			return pattern.MatchString(n.Key)
 		}
-	case SearchValue:
+	case SearchKeyword:
 		matcher = func(n *Node) bool {
-			return pattern.MatchString(fmt.Sprint(n.Value))
+			switch n.Type {
+			case Boolean:
+				return fmt.Sprint(n.Value) == search
+			case Null:
+				return search == "null"
+			default:
+				return false
+			}
+		}
+	case SearchNumber:
+		matcher = func(n *Node) bool {
+			if n.Type != Number {
+				return false
+			}
+			v := n.Value.(float64)
+			return pattern.MatchString(strconv.FormatFloat(v, 'f', -1, 64))
+		}
+	case SearchString:
+		matcher = func(n *Node) bool {
+			if n.Type != String {
+				return false
+			}
+			v := n.Value.(string)
+			return pattern.MatchString(v)
 		}
 	default:
 		panic("Undefined type")
 	}
 	for {
-		foundID, err := j.searchNode(ctx, id, matcher, pattern)
+		foundID, err := j.searchNode(ctx, id, matcher)
 		if err != nil {
 			return "", err
 		}
@@ -464,10 +490,10 @@ func wildCardToRegexp(pattern string) string {
 	return "^" + result.String() + "$"
 }
 
-func (j *JSONDocument) searchNode(ctx context.Context, id int, matcher func(*Node) bool, pattern *regexp.Regexp) (int, error) {
+func (j *JSONDocument) searchNode(ctx context.Context, id int, matcher func(*Node) bool) (int, error) {
 	n := j.values[id]
 	if n.Type == Array || n.Type == Object {
-		foundID, err := j.searchContainer(ctx, id, matcher, pattern)
+		foundID, err := j.searchContainer(ctx, id, matcher)
 		if err != nil {
 			return 0, err
 		}
@@ -481,14 +507,14 @@ func (j *JSONDocument) searchNode(ctx context.Context, id int, matcher func(*Nod
 	return notFound, nil
 }
 
-func (j *JSONDocument) searchContainer(ctx context.Context, id int, matcher func(*Node) bool, pattern *regexp.Regexp) (int, error) {
+func (j *JSONDocument) searchContainer(ctx context.Context, id int, matcher func(*Node) bool) (int, error) {
 	select {
 	case <-ctx.Done():
 		return 0, ErrCallerCanceled
 	default:
 	}
 	for _, childID := range j.ids[id] {
-		foundID, err := j.searchNode(ctx, childID, matcher, pattern)
+		foundID, err := j.searchNode(ctx, childID, matcher)
 		if err != nil {
 			return 0, err
 		}

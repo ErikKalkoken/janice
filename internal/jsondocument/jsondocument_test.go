@@ -296,36 +296,47 @@ func TestJsonDocumentSearchValue(t *testing.T) {
 		"alpha": 1,
 		"bravo": 2,
 		"charlie": map[string]any{
-			"delta": 3,
+			"delta": "johnny",
 		},
 		"foxtrot": []any{4, 5, 2},
+		"golf": map[string]any{
+			"hotel":    true,
+			"india":    false,
+			"november": nil,
+		},
 	}
 	if err := j.Load(ctx, makeDataReader(data), dummy); err != nil {
 		t.Fatal(err)
 	}
 	ids := j.ChildUIDs("")
-	alphaID, bravoID, charlieID, foxtrotID := ids[0], ids[1], ids[2], ids[3]
+	alphaID, bravoID, charlieID, foxtrotID, golfID := ids[0], ids[1], ids[2], ids[3], ids[4]
 	ids = j.ChildUIDs(charlieID)
 	deltaID := ids[0]
 	ids = j.ChildUIDs(foxtrotID)
 	foxtrotID1, foxtrotID2, foxtrotID3 := ids[0], ids[1], ids[2]
+	ids = j.ChildUIDs(golfID)
+	hotelID, indiaID, novemberID := ids[0], ids[1], ids[2]
 	cases := []struct {
 		startUID   string
-		key        string
+		value      string
+		searchType jsondocument.SearchType
 		foundUID   string
 		shouldFind bool
 	}{
-		{bravoID, "2", foxtrotID3, true},
-		{"", "1", alphaID, true},
-		{"", "2", bravoID, true},
-		{"", "3", deltaID, true},
-		{"", "4", foxtrotID1, true},
-		{"", "5", foxtrotID2, true},
-		{deltaID, "5", foxtrotID2, true},
+		{bravoID, "2", jsondocument.SearchNumber, foxtrotID3, true},
+		{"", "1", jsondocument.SearchNumber, alphaID, true},
+		{"", "2", jsondocument.SearchNumber, bravoID, true},
+		{"", "johnny", jsondocument.SearchString, deltaID, true},
+		{"", "4", jsondocument.SearchNumber, foxtrotID1, true},
+		{"", "5", jsondocument.SearchNumber, foxtrotID2, true},
+		{deltaID, "5", jsondocument.SearchNumber, foxtrotID2, true},
+		{"", "true", jsondocument.SearchKeyword, hotelID, true},
+		{"", "false", jsondocument.SearchKeyword, indiaID, true},
+		{"", "null", jsondocument.SearchKeyword, novemberID, true},
 	}
 	for i, tc := range cases {
-		t.Run(fmt.Sprintf("can find value %s from %v (%d)", tc.key, tc.startUID, i+1), func(t *testing.T) {
-			got, err := j.Search(ctx, tc.startUID, tc.key, jsondocument.SearchValue)
+		t.Run(fmt.Sprintf("can find value %s from %v (%d)", tc.value, j.Value(tc.startUID), i+1), func(t *testing.T) {
+			got, err := j.Search(ctx, tc.startUID, tc.value, tc.searchType)
 			if !tc.shouldFind {
 				assert.ErrorIs(t, err, jsondocument.ErrNotFound)
 			} else if assert.NoError(t, err) {

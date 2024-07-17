@@ -29,8 +29,10 @@ const (
 )
 
 const (
-	searchTypeKey   = "key"
-	searchTypeValue = "value"
+	searchTypeKey     = "key"
+	searchTypeString  = "string"
+	searchTypeNumber  = "number"
+	searchTypeKeyword = "keyword"
 )
 
 var type2importance = map[jsondocument.JSONType]widget.Importance{
@@ -99,7 +101,12 @@ func NewUI(app fyne.App) (*UI, error) {
 		u.treeWidget.CloseAllBranches()
 	})
 	u.collapseButton.Disable()
-	u.searchType = widget.NewSelect([]string{searchTypeKey, searchTypeValue}, nil)
+	u.searchType = widget.NewSelect([]string{
+		searchTypeKey,
+		searchTypeKeyword,
+		searchTypeNumber,
+		searchTypeString,
+	}, nil)
 	u.searchType.SetSelected(app.Preferences().StringWithFallback(settingLastSearchType, searchTypeKey))
 	u.searchType.Disable()
 	searchBar := container.NewBorder(
@@ -228,8 +235,12 @@ func (u *UI) doSearch() {
 		switch searchType {
 		case searchTypeKey:
 			typ = jsondocument.SearchKey
-		case searchTypeValue:
-			typ = jsondocument.SearchValue
+		case searchTypeKeyword:
+			typ = jsondocument.SearchKeyword
+		case searchTypeString:
+			typ = jsondocument.SearchString
+		case searchTypeNumber:
+			typ = jsondocument.SearchNumber
 		}
 		uid, err := u.document.Search(ctx, u.currentSelectedUID, pattern, typ)
 		d.Hide()
@@ -387,17 +398,21 @@ func (u *UI) makeTree() *widget.Tree {
 			typeText += fmt.Sprintf(", %d elements", len(ids))
 		} else {
 			u.detailCopyValue.Enable()
-			u.detailValueRaw = fmt.Sprint(node.Value)
 			switch node.Type {
 			case jsondocument.String:
-				v = fmt.Sprintf("\"%s\"", node.Value)
+				x := node.Value.(string)
+				v = fmt.Sprintf("\"%s\"", x)
+				u.detailValueRaw = x
 			case jsondocument.Number:
 				x := node.Value.(float64)
 				v = strconv.FormatFloat(x, 'f', -1, 64)
+				u.detailValueRaw = v
 			case jsondocument.Null:
 				v = "null"
+				u.detailValueRaw = v
 			default:
-				v = u.detailValueRaw
+				v = fmt.Sprint(node.Value)
+				u.detailValueRaw = v
 			}
 		}
 		u.detailType.SetText(typeText)
