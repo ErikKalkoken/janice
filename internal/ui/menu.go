@@ -106,7 +106,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.showSettingsDialog()
 		}),
 	)
-	viewMenu := fyne.NewMenu("View",
+	u.viewMenu = fyne.NewMenu("View",
 		fyne.NewMenuItem("Scroll to top", func() {
 			u.treeWidget.ScrollToTop()
 		}),
@@ -138,7 +138,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.showAboutDialog()
 		}),
 	)
-	main := fyne.NewMainMenu(u.fileMenu, viewMenu, helpMenu)
+	main := fyne.NewMainMenu(u.fileMenu, u.viewMenu, helpMenu)
 	return main
 }
 

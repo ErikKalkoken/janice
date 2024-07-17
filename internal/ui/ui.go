@@ -63,6 +63,7 @@ type UI struct {
 	detailValueRaw     string
 	document           *jsondocument.JSONDocument
 	fileMenu           *fyne.Menu
+	viewMenu           *fyne.Menu
 	searchEntry        *widget.Entry
 	searchButton       *widget.Button
 	searchType         *widget.Select
@@ -131,7 +132,6 @@ func NewUI(app fyne.App) (*UI, error) {
 		),
 		u.searchEntry,
 	)
-	u.toogleSearchBar(false)
 	// main frame
 	welcomeText := widget.NewLabel(
 		"Welcome to JSON Viewer.\n" +
@@ -199,6 +199,7 @@ func NewUI(app fyne.App) (*UI, error) {
 
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
+	u.toogleHasDocument(false)
 	u.updateRecentFilesMenu()
 	u.window.SetMaster()
 	u.window.SetOnDropped(func(p fyne.Position, uris []fyne.URI) {
@@ -314,6 +315,9 @@ func (u *UI) makeTree() *widget.Tree {
 		}
 		u.detailType.SetText(typeText)
 		u.detailValueMD.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
+		u.fileMenu.Items[7].Disabled = false
+		u.fileMenu.Items[8].Disabled = false
+		u.fileMenu.Refresh()
 	}
 	return tree
 }
@@ -424,7 +428,7 @@ func (u *UI) reset() {
 	u.setTitle("")
 	u.statusTreeSize.SetText("")
 	u.welcomeMessage.Show()
-	u.toogleSearchBar(false)
+	u.toogleHasDocument(false)
 	u.detailPath.SetText("")
 	u.detailType.SetText("")
 	u.detailValueMD.ParseMarkdown("")
@@ -516,10 +520,15 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		}
 		u.document = doc
 		p := message.NewPrinter(language.English)
-		out := p.Sprintf("%d elements", u.document.Size())
-		u.statusTreeSize.SetText(out)
+		u.statusTreeSize.SetText(p.Sprintf("%d elements", u.document.Size()))
 		u.welcomeMessage.Hide()
-		u.toogleSearchBar(true)
+		u.toogleHasDocument(true)
+		if doc.Size() > 1000 {
+			u.viewMenu.Items[4].Disabled = true
+		} else {
+			u.viewMenu.Items[4].Disabled = false
+		}
+		u.viewMenu.Refresh()
 		u.treeWidget.Refresh()
 		uri := reader.URI()
 		if uri.Scheme() == "file" {
@@ -531,7 +540,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 	}()
 }
 
-func (u *UI) toogleSearchBar(enabled bool) {
+func (u *UI) toogleHasDocument(enabled bool) {
 	if enabled {
 		u.searchButton.Enable()
 		u.searchType.Enable()
@@ -539,6 +548,13 @@ func (u *UI) toogleSearchBar(enabled bool) {
 		u.scrollBottom.Enable()
 		u.scrollTop.Enable()
 		u.collapseAll.Enable()
+		u.fileMenu.Items[0].Disabled = false
+		u.fileMenu.Items[5].Disabled = false
+		u.fileMenu.Items[7].Disabled = u.currentSelectedUID == ""
+		u.fileMenu.Items[8].Disabled = u.currentSelectedUID == ""
+		for _, o := range u.viewMenu.Items {
+			o.Disabled = false
+		}
 	} else {
 		u.searchButton.Disable()
 		u.searchType.Disable()
@@ -546,5 +562,14 @@ func (u *UI) toogleSearchBar(enabled bool) {
 		u.scrollBottom.Disable()
 		u.scrollTop.Disable()
 		u.collapseAll.Disable()
+		u.fileMenu.Items[0].Disabled = true
+		u.fileMenu.Items[5].Disabled = true
+		u.fileMenu.Items[7].Disabled = true
+		u.fileMenu.Items[8].Disabled = true
+		for _, o := range u.viewMenu.Items {
+			o.Disabled = true
+		}
 	}
+	u.fileMenu.Refresh()
+	u.viewMenu.Refresh()
 }
