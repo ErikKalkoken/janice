@@ -52,26 +52,29 @@ type UI struct {
 	app                fyne.App
 	currentFile        fyne.URI
 	currentSelectedUID widget.TreeNodeID
-	detailCopyValue    *widget.Button
-	jumpToSelection    *widget.Button
-	scrollBottom       *widget.Button
-	scrollTop          *widget.Button
-	collapseAll        *widget.Button
-	detailPath         *widget.Label
-	detailType         *widget.Label
-	detailValueMD      *widget.RichText
-	detailValueRaw     string
 	document           *jsondocument.JSONDocument
 	fileMenu           *fyne.Menu
 	viewMenu           *fyne.Menu
-	searchEntry        *widget.Entry
-	searchButton       *widget.Button
-	searchType         *widget.Select
-	statusPath         *widget.Label
-	statusTreeSize     *widget.Label
 	treeWidget         *widget.Tree
 	welcomeMessage     *fyne.Container
 	window             fyne.Window
+
+	searchEntry  *widget.Entry
+	searchButton *widget.Button
+	searchType   *widget.Select
+	scrollBottom *widget.Button
+	scrollTop    *widget.Button
+	collapseAll  *widget.Button
+
+	selectedPath     *widget.Label
+	jumpToSelection  *widget.Button
+	copyKeyClipboard *widget.Button
+
+	copyValueClipboard *widget.Button
+	valueDisplay       *widget.RichText
+	valueRaw           string
+
+	statusTreeSize *widget.Label
 }
 
 // NewUI returns a new UI object.
@@ -79,18 +82,13 @@ func NewUI(app fyne.App) (*UI, error) {
 	u := &UI{
 		app:            app,
 		document:       jsondocument.New(),
-		detailPath:     widget.NewLabel(""),
-		detailType:     widget.NewLabel(""),
-		detailValueMD:  widget.NewRichText(),
+		selectedPath:   widget.NewLabel(""),
+		valueDisplay:   widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
-		statusPath:     widget.NewLabel(""),
 		searchEntry:    widget.NewEntry(),
 		window:         app.NewWindow(appTitle),
 	}
 	u.treeWidget = u.makeTree()
-	u.detailPath.Wrapping = fyne.TextWrapBreak
-	u.detailValueMD.Wrapping = fyne.TextWrapWord
-	u.statusPath.Wrapping = fyne.TextWrapWord
 
 	// search frame
 	u.searchType = widget.NewSelect([]string{
@@ -132,6 +130,7 @@ func NewUI(app fyne.App) (*UI, error) {
 		),
 		u.searchEntry,
 	)
+
 	// main frame
 	welcomeText := widget.NewLabel(
 		"Welcome to JSON Viewer.\n" +
@@ -142,40 +141,39 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
-	document := container.NewBorder(
-		searchBar,
-		nil,
-		nil,
-		nil,
-		container.NewStack(u.welcomeMessage, u.treeWidget),
-	)
 
-	// detail frame
-	u.detailCopyValue = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		u.window.Clipboard().SetContent(u.detailValueRaw)
-	})
-	u.detailCopyValue.Disable()
+	// selection frame
 	u.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
 		u.showInTree(u.currentSelectedUID)
 	})
 	u.jumpToSelection.Disable()
-	detail := container.NewBorder(
-		container.NewBorder(
-			container.NewHBox(layout.NewSpacer(), u.jumpToSelection, u.detailCopyValue),
-			u.detailType,
-			nil,
-			nil,
-			u.detailPath,
-		),
+	u.copyKeyClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		n := u.document.Value(u.currentSelectedUID)
+		u.window.Clipboard().SetContent(n.Key)
+	})
+	u.copyKeyClipboard.Disable()
+	selection := container.NewBorder(
 		nil,
 		nil,
 		nil,
-		u.detailValueMD,
+		container.NewHBox(u.jumpToSelection, u.copyKeyClipboard),
+		container.NewHScroll(u.selectedPath),
 	)
 
-	hsplit := container.NewHSplit(document, detail)
-	hsplit.Offset = 0.75
+	// value frame
+	u.copyValueClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		u.window.Clipboard().SetContent(u.valueRaw)
+	})
+	u.copyValueClipboard.Disable()
+	detail := container.NewBorder(
+		nil,
+		nil,
+		nil,
+		u.copyValueClipboard,
+		container.NewScroll(u.valueDisplay),
+	)
 
+	// status bar frame
 	statusBar := container.NewHBox(u.statusTreeSize)
 	notifyUpdates := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
 	if notifyUpdates {
@@ -195,7 +193,12 @@ func NewUI(app fyne.App) (*UI, error) {
 		}()
 	}
 
-	c := container.NewBorder(nil, container.NewVBox(widget.NewSeparator(), statusBar), nil, nil, hsplit)
+	c := container.NewBorder(
+		container.NewVBox(searchBar, selection, detail, widget.NewSeparator()),
+		container.NewVBox(widget.NewSeparator(), statusBar),
+		nil,
+		nil,
+		container.NewStack(u.welcomeMessage, u.treeWidget))
 
 	u.window.SetContent(c)
 	u.window.SetMainMenu(u.makeMenu())
@@ -282,39 +285,37 @@ func (u *UI) makeTree() *widget.Tree {
 	tree.OnSelected = func(uid widget.TreeNodeID) {
 		u.currentSelectedUID = uid
 		path := u.renderPath(uid)
-		u.statusPath.SetText(path)
 		node := u.document.Value(uid)
-		u.detailPath.SetText(path)
-		u.detailType.SetText(fmt.Sprint(node.Type))
+		u.selectedPath.SetText(path)
 		u.jumpToSelection.Enable()
+		u.copyKeyClipboard.Enable()
 		typeText := fmt.Sprint(node.Type)
 		var v string
 		if u.document.IsBranch(uid) {
-			u.detailCopyValue.Disable()
+			u.copyValueClipboard.Disable()
 			v = "..."
 			ids := u.document.ChildUIDs(uid)
 			typeText += fmt.Sprintf(", %d elements", len(ids))
 		} else {
-			u.detailCopyValue.Enable()
+			u.copyValueClipboard.Enable()
 			switch node.Type {
 			case jsondocument.String:
 				x := node.Value.(string)
 				v = fmt.Sprintf("\"%s\"", x)
-				u.detailValueRaw = x
+				u.valueRaw = x
 			case jsondocument.Number:
 				x := node.Value.(float64)
 				v = strconv.FormatFloat(x, 'f', -1, 64)
-				u.detailValueRaw = v
+				u.valueRaw = v
 			case jsondocument.Null:
 				v = "null"
-				u.detailValueRaw = v
+				u.valueRaw = v
 			default:
 				v = fmt.Sprint(node.Value)
-				u.detailValueRaw = v
+				u.valueRaw = v
 			}
 		}
-		u.detailType.SetText(typeText)
-		u.detailValueMD.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
+		u.valueDisplay.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
 		u.fileMenu.Items[7].Disabled = false
 		u.fileMenu.Items[8].Disabled = false
 		u.fileMenu.Refresh()
@@ -324,14 +325,14 @@ func (u *UI) makeTree() *widget.Tree {
 
 func (u *UI) renderPath(uid string) string {
 	p := u.document.Path(uid)
-	keys := []string{"$"}
+	keys := []string{}
 	for _, id := range p {
 		node := u.document.Value(id)
 		keys = append(keys, node.Key)
 	}
 	node := u.document.Value(uid)
 	keys = append(keys, node.Key)
-	return strings.Join(keys, ".")
+	return strings.Join(keys, " ＞ ")
 }
 
 func (u *UI) doSearch() {
@@ -429,11 +430,11 @@ func (u *UI) reset() {
 	u.statusTreeSize.SetText("")
 	u.welcomeMessage.Show()
 	u.toogleHasDocument(false)
-	u.detailPath.SetText("")
-	u.detailType.SetText("")
-	u.detailValueMD.ParseMarkdown("")
-	u.detailCopyValue.Disable()
+	u.selectedPath.SetText("")
+	u.valueDisplay.ParseMarkdown("")
+	u.copyValueClipboard.Disable()
 	u.jumpToSelection.Disable()
+	u.copyKeyClipboard.Disable()
 	u.currentSelectedUID = ""
 }
 
