@@ -33,6 +33,14 @@ const (
 	githubRepo  = "jsonviewer"
 )
 
+// preference keys
+const (
+	preferenceLastSelectionFrameHidden = "last-selection-frame-hidden"
+	preferenceLastValueFrameHidden     = "last-value-frame-hidden"
+	preferenceLastWindowHeight         = "last-window-height"
+	preferenceLastWindowWidth          = "last-window-width"
+)
+
 const (
 	searchTypeKey     = "key"
 	searchTypeString  = "string"
@@ -68,11 +76,12 @@ type UI struct {
 	scrollTop    *widget.Button
 	collapseAll  *widget.Button
 
+	selectionFrame   *fyne.Container
 	selectedPath     *fyne.Container
 	jumpToSelection  *widget.Button
 	copyKeyClipboard *widget.Button
 
-	detail             *fyne.Container
+	detailFrame        *fyne.Container
 	copyValueClipboard *widget.Button
 	valueDisplay       *widget.RichText
 	valueRaw           string
@@ -156,27 +165,28 @@ func NewUI(app fyne.App) (*UI, error) {
 		u.window.Clipboard().SetContent(n.Key)
 	})
 	u.copyKeyClipboard.Disable()
-	selection := container.NewBorder(
+	u.selectionFrame = container.NewBorder(
 		nil,
 		nil,
 		nil,
 		container.NewHBox(u.jumpToSelection, u.copyKeyClipboard),
 		container.NewHScroll(u.selectedPath),
 	)
+	u.selectionFrame.Hidden = app.Preferences().BoolWithFallback(preferenceLastSelectionFrameHidden, false)
 
 	// value frame
 	u.copyValueClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		u.window.Clipboard().SetContent(u.valueRaw)
 	})
 	u.copyValueClipboard.Disable()
-	u.detail = container.NewBorder(
+	u.detailFrame = container.NewBorder(
 		nil,
 		nil,
 		nil,
 		u.copyValueClipboard,
 		container.NewScroll(u.valueDisplay),
 	)
-	u.detail.Hidden = app.Preferences().BoolWithFallback(settingLastValueFrameHidden, false)
+	u.detailFrame.Hidden = app.Preferences().BoolWithFallback(preferenceLastValueFrameHidden, false)
 
 	// status bar frame
 	statusBar := container.NewHBox(u.statusTreeSize)
@@ -199,7 +209,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	}
 
 	c := container.NewBorder(
-		container.NewVBox(searchBar, selection, u.detail, widget.NewSeparator()),
+		container.NewVBox(searchBar, u.selectionFrame, u.detailFrame, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), statusBar),
 		nil,
 		nil,
@@ -224,14 +234,15 @@ func NewUI(app fyne.App) (*UI, error) {
 		u.loadDocument(reader)
 	})
 	s := fyne.Size{
-		Width:  float32(app.Preferences().FloatWithFallback(settingLastWindowWidth, 800)),
-		Height: float32(app.Preferences().FloatWithFallback(settingLastWindowHeight, 600)),
+		Width:  float32(app.Preferences().FloatWithFallback(preferenceLastWindowWidth, 800)),
+		Height: float32(app.Preferences().FloatWithFallback(preferenceLastWindowHeight, 600)),
 	}
 	u.window.Resize(s)
 	u.window.SetOnClosed(func() {
-		app.Preferences().SetFloat(settingLastWindowWidth, float64(u.window.Canvas().Size().Width))
-		app.Preferences().SetFloat(settingLastWindowHeight, float64(u.window.Canvas().Size().Height))
-		app.Preferences().SetBool(settingLastValueFrameHidden, u.detail.Hidden)
+		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
+		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
+		app.Preferences().SetBool(preferenceLastValueFrameHidden, u.detailFrame.Hidden)
+		app.Preferences().SetBool(preferenceLastSelectionFrameHidden, u.selectionFrame.Hidden)
 	})
 	return u, nil
 }

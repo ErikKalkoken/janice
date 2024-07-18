@@ -24,9 +24,6 @@ const (
 	settingNotifyUpdatesDefault   = true
 	settingRecentFileCount        = "recent-file-count"
 	settingRecentFileCountDefault = 5
-	settingLastWindowHeight       = "last-window-height"
-	settingLastWindowWidth        = "last-window-width"
-	settingLastValueFrameHidden   = "last-show-value-detail"
 )
 
 func (u *UI) makeMenu() *fyne.MainMenu {
@@ -106,10 +103,14 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.showSettingsDialog()
 		}),
 	)
-	toogleValueDetail := fyne.NewMenuItem("Show value detail", func() {
+	toogleSelectionFrame := fyne.NewMenuItem("Show selected element", func() {
+		u.toogleViewSelection()
+	})
+	toogleSelectionFrame.Checked = !u.selectionFrame.Hidden
+	toogleDetailFrame := fyne.NewMenuItem("Show value detail", func() {
 		u.toogleViewDetail()
 	})
-	toogleValueDetail.Checked = !u.detail.Hidden
+	toogleDetailFrame.Checked = !u.detailFrame.Hidden
 	u.viewMenu = fyne.NewMenu("View",
 		fyne.NewMenuItem("Scroll to top", func() {
 			u.treeWidget.ScrollToTop()
@@ -128,7 +129,8 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.treeWidget.CloseAllBranches()
 		}),
 		fyne.NewMenuItemSeparator(),
-		toogleValueDetail,
+		toogleSelectionFrame,
+		toogleDetailFrame,
 	)
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("Report a bug", func() {
@@ -207,13 +209,24 @@ func (u *UI) updateRecentFilesMenu() {
 	u.fileMenu.Refresh()
 }
 
-func (u *UI) toogleViewDetail() {
-	if u.detail.Hidden {
-		u.detail.Show()
+func (u *UI) toogleViewSelection() {
+	if u.selectionFrame.Hidden {
+		u.selectionFrame.Show()
 	} else {
-		u.detail.Hide()
+		u.selectionFrame.Hide()
 	}
-	toogleValueDetail := u.viewMenu.Items[7]
-	toogleValueDetail.Checked = !u.detail.Hidden
+	menuItem := u.viewMenu.Items[7]
+	menuItem.Checked = !u.selectionFrame.Hidden
+	u.viewMenu.Refresh()
+}
+
+func (u *UI) toogleViewDetail() {
+	if u.detailFrame.Hidden {
+		u.detailFrame.Show()
+	} else {
+		u.detailFrame.Hide()
+	}
+	menuItem := u.viewMenu.Items[8]
+	menuItem.Checked = !u.detailFrame.Hidden
 	u.viewMenu.Refresh()
 }
