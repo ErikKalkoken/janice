@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -408,7 +409,12 @@ func (u *UI) doSearch() {
 func (u *UI) ShowAndRun(path string) {
 	if path != "" {
 		u.app.Lifecycle().SetOnStarted(func() {
-			uri := storage.NewFileURI(path)
+			path2, err := filepath.Abs(path)
+			if err != nil {
+				u.showErrorDialog(fmt.Sprintf("Not a valid path: %s", path), err)
+				return
+			}
+			uri := storage.NewFileURI(path2)
 			reader, err := storage.Reader(uri)
 			if err != nil {
 				u.showErrorDialog(fmt.Sprintf("Failed to open file: %s", uri), err)
