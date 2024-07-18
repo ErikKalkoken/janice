@@ -24,6 +24,7 @@ import (
 
 	"github.com/ErikKalkoken/jsonviewer/internal/github"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
+	"github.com/ErikKalkoken/jsonviewer/internal/widgets"
 )
 
 const (
@@ -340,14 +341,17 @@ func (u *UI) renderSelectedPath(uid string) {
 	u.selectedPath.RemoveAll()
 	for i, n := range path {
 		isLast := i == len(path)-1
-		l := newTappableLabel(n.Key, func() {
-			u.scrollTo(n.UID)
-			u.selectElement(n.UID)
-		})
-		if isLast {
+		if !isLast {
+			l := widgets.NewTappableLabel(n.Key, func() {
+				u.scrollTo(n.UID)
+				u.selectElement(n.UID)
+			})
+			u.selectedPath.Add(l)
+		} else {
+			l := widget.NewLabel(n.Key)
 			l.TextStyle.Bold = true
+			u.selectedPath.Add(l)
 		}
-		u.selectedPath.Add(l)
 		if !isLast {
 			l := widget.NewLabel("＞")
 			l.Importance = widget.LowImportance
