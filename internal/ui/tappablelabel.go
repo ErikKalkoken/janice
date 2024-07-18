@@ -8,18 +8,18 @@ import (
 type tappableLabel struct {
 	widget.Label
 
-	action func()
+	OnTapped func()
 }
 
-func newTappableLabel(text string, action func()) *tappableLabel {
-	l := &tappableLabel{action: action}
+func newTappableLabel(text string, tapped func()) *tappableLabel {
+	l := &tappableLabel{OnTapped: tapped}
 	l.ExtendBaseWidget(l)
 	l.SetText(text)
 	return l
 }
 
 func (l *tappableLabel) Tapped(_ *fyne.PointEvent) {
-	if l.action != nil {
-		l.action()
+	if l.OnTapped != nil {
+		l.OnTapped()
 	}
 }
