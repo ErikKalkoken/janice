@@ -245,11 +245,11 @@ func (u *UI) makeTree() *widget.Tree {
 			return u.document.IsBranch(id)
 		},
 		func(branch bool) fyne.CanvasObject {
-			return NewNodeWidget()
+			return widgets.NewTreeNode()
 		},
 		func(uid widget.TreeNodeID, branch bool, co fyne.CanvasObject) {
 			node := u.document.Value(uid)
-			obj := co.(*NodeWidget)
+			obj := co.(*widgets.TreeNode)
 			var text string
 			switch v := node.Value; node.Type {
 			case jsondocument.Array:
@@ -303,7 +303,12 @@ func (u *UI) selectElement(uid string) {
 	var v string
 	if u.document.IsBranch(uid) {
 		u.copyValueClipboard.Disable()
-		v = "..."
+		switch node.Type {
+		case jsondocument.Array:
+			v = "[...]"
+		case jsondocument.Object:
+			v = "{...}"
+		}
 		ids := u.document.ChildUIDs(uid)
 		typeText += fmt.Sprintf(", %d elements", len(ids))
 	} else {

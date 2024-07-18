@@ -1,4 +1,4 @@
-package ui
+package widgets
 
 import (
 	"fmt"
@@ -9,14 +9,16 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-type NodeWidget struct {
+// TreeNode represents a node in JSON document tree.
+type TreeNode struct {
 	widget.BaseWidget
 	key   *widget.Label
 	value *widget.Label
 }
 
-func NewNodeWidget() *NodeWidget {
-	n := &NodeWidget{
+// NewTreeNode returns a new TreeNode instance.
+func NewTreeNode() *TreeNode {
+	n := &TreeNode{
 		key:   widget.NewLabel(""),
 		value: widget.NewLabel(""),
 	}
@@ -24,7 +26,7 @@ func NewNodeWidget() *NodeWidget {
 	return n
 }
 
-func (n *NodeWidget) Set(key string, value string, importance widget.Importance) {
+func (n *TreeNode) Set(key string, value string, importance widget.Importance) {
 	n.key.SetText(fmt.Sprintf("%s :", key))
 	n.value.Importance = importance
 	n.value.Text = strings.ReplaceAll(value, "\n", " ")
@@ -32,7 +34,7 @@ func (n *NodeWidget) Set(key string, value string, importance widget.Importance)
 	n.value.Truncation = fyne.TextTruncateEllipsis
 }
 
-func (n *NodeWidget) CreateRenderer() fyne.WidgetRenderer {
+func (n *TreeNode) CreateRenderer() fyne.WidgetRenderer {
 	c := container.NewBorder(nil, nil, n.key, nil, n.value)
 	return widget.NewSimpleRenderer(c)
 }
