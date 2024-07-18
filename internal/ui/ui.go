@@ -71,6 +71,7 @@ type UI struct {
 	jumpToSelection  *widget.Button
 	copyKeyClipboard *widget.Button
 
+	detail             *fyne.Container
 	copyValueClipboard *widget.Button
 	valueDisplay       *widget.RichText
 	valueRaw           string
@@ -167,13 +168,14 @@ func NewUI(app fyne.App) (*UI, error) {
 		u.window.Clipboard().SetContent(u.valueRaw)
 	})
 	u.copyValueClipboard.Disable()
-	detail := container.NewBorder(
+	u.detail = container.NewBorder(
 		nil,
 		nil,
 		nil,
 		u.copyValueClipboard,
 		container.NewScroll(u.valueDisplay),
 	)
+	u.detail.Hidden = app.Preferences().BoolWithFallback(settingLastValueFrameHidden, false)
 
 	// status bar frame
 	statusBar := container.NewHBox(u.statusTreeSize)
@@ -196,7 +198,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	}
 
 	c := container.NewBorder(
-		container.NewVBox(searchBar, selection, detail, widget.NewSeparator()),
+		container.NewVBox(searchBar, selection, u.detail, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), statusBar),
 		nil,
 		nil,
@@ -228,6 +230,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(settingLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(settingLastWindowHeight, float64(u.window.Canvas().Size().Height))
+		app.Preferences().SetBool(settingLastValueFrameHidden, u.detail.Hidden)
 	})
 	return u, nil
 }

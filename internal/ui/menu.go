@@ -26,6 +26,7 @@ const (
 	settingRecentFileCountDefault = 5
 	settingLastWindowHeight       = "last-window-height"
 	settingLastWindowWidth        = "last-window-width"
+	settingLastValueFrameHidden   = "last-show-value-detail"
 )
 
 func (u *UI) makeMenu() *fyne.MainMenu {
@@ -105,6 +106,10 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.showSettingsDialog()
 		}),
 	)
+	toogleValueDetail := fyne.NewMenuItem("Show value detail", func() {
+		u.toogleViewDetail()
+	})
+	toogleValueDetail.Checked = !u.detail.Hidden
 	u.viewMenu = fyne.NewMenu("View",
 		fyne.NewMenuItem("Scroll to top", func() {
 			u.treeWidget.ScrollToTop()
@@ -122,6 +127,8 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		fyne.NewMenuItem("Collapse All", func() {
 			u.treeWidget.CloseAllBranches()
 		}),
+		fyne.NewMenuItemSeparator(),
+		toogleValueDetail,
 	)
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("Report a bug", func() {
@@ -198,4 +205,15 @@ func (u *UI) updateRecentFilesMenu() {
 	}
 	u.fileMenu.Items[3].ChildMenu.Items = items
 	u.fileMenu.Refresh()
+}
+
+func (u *UI) toogleViewDetail() {
+	if u.detail.Hidden {
+		u.detail.Show()
+	} else {
+		u.detail.Hide()
+	}
+	toogleValueDetail := u.viewMenu.Items[7]
+	toogleValueDetail.Checked = !u.detail.Hidden
+	u.viewMenu.Refresh()
 }
