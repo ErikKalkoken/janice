@@ -31,6 +31,7 @@ const (
 	appTitle    = "JSON Viewer"
 	githubOwner = "ErikKalkoken"
 	githubRepo  = "jsonviewer"
+	websiteURL  = "https://github.com/ErikKalkoken/jsonviewer"
 )
 
 // preference keys
@@ -194,7 +195,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	if notifyUpdates {
 		go func() {
 			current := u.app.Metadata().Version
-			latestVersion, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
+			latest, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
 			if err != nil {
 				slog.Error("Failed to fetch latest version from github", "err", err)
 				return
@@ -202,9 +203,12 @@ func NewUI(app fyne.App) (*UI, error) {
 			if !isNewer {
 				return
 			}
-			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer/releases")
 			statusBar.Add(layout.NewSpacer())
-			statusBar.Add(widget.NewHyperlink(fmt.Sprintf("New version %s available", latestVersion), url))
+			l := widgets.NewTappableLabel("Update available", func() {
+				u.showReleaseDialog(current, latest)
+			})
+			l.Importance = widget.HighImportance
+			statusBar.Add(l)
 		}()
 	}
 
@@ -619,4 +623,18 @@ func (u *UI) toogleHasDocument(enabled bool) {
 	}
 	u.fileMenu.Refresh()
 	u.viewMenu.Refresh()
+}
+
+func (u *UI) showReleaseDialog(current, latest string) {
+	x := websiteURL + "/releases"
+	y, _ := url.Parse(x)
+	link := widget.NewHyperlink(x, y)
+	c := container.NewVBox(
+		widget.NewLabel(fmt.Sprintf("New release %s available. You have release %s.", latest, current)),
+		widget.NewLabel("The link below will bring you to the releases page,\n"+
+			"where you can download the latest version:"),
+		link,
+	)
+	d := dialog.NewCustom("Update available", "OK", c, u.window)
+	d.Show()
 }

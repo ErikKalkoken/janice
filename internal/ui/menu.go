@@ -1,14 +1,17 @@
 package ui
 
 import (
+	"fmt"
 	"log/slog"
 	"net/url"
 	"slices"
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/widget"
 	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
 )
 
@@ -133,13 +136,8 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		toogleDetailFrame,
 	)
 	helpMenu := fyne.NewMenu("Help",
-		fyne.NewMenuItem("Report a bug", func() {
-			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer/issues")
-			_ = u.app.OpenURL(url)
-		}),
-		fyne.NewMenuItem("Website", func() {
-			url, _ := url.Parse("https://github.com/ErikKalkoken/jsonviewer")
-			_ = u.app.OpenURL(url)
+		fyne.NewMenuItem("Support...", func() {
+			u.showSupportDialog()
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("About...", func() {
@@ -229,4 +227,28 @@ func (u *UI) toogleViewDetail() {
 	menuItem := u.viewMenu.Items[8]
 	menuItem.Checked = !u.detailFrame.Hidden
 	u.viewMenu.Refresh()
+}
+
+func (u *UI) showSupportDialog() {
+	x, _ := url.Parse(websiteURL)
+	c := container.NewVBox(
+		widget.NewLabel("The link below will bring you to the main web page,\n"+
+			"where you find the documentation and report bugs.:"),
+		widget.NewHyperlink(websiteURL, x),
+	)
+	d := dialog.NewCustom("Support", "OK", c, u.window)
+	d.Show()
+}
+
+func (u *UI) showAboutDialog() {
+	c := container.NewVBox()
+	info := u.app.Metadata()
+	name := u.appName()
+	current := info.Version
+	appData := widget.NewRichTextFromMarkdown(fmt.Sprintf(
+		"## %s\n**Version:** %s", name, current))
+	c.Add(appData)
+	c.Add(widget.NewLabel("(c) 2024 Erik Kalkoken"))
+	d := dialog.NewCustom("About", "OK", c, u.window)
+	d.Show()
 }
