@@ -113,7 +113,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.treeWidget.ScrollToBottom()
 		}),
 		fyne.NewMenuItem("Scroll to selection", func() {
-			u.showInTree(u.currentSelectedUID)
+			u.scrollTo(u.currentSelectedUID)
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Expand All", func() {

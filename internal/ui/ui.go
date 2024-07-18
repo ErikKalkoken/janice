@@ -66,7 +66,7 @@ type UI struct {
 	scrollTop    *widget.Button
 	collapseAll  *widget.Button
 
-	selectedPath     *widget.Label
+	selectedPath     *fyne.Container
 	jumpToSelection  *widget.Button
 	copyKeyClipboard *widget.Button
 
@@ -79,10 +79,11 @@ type UI struct {
 
 // NewUI returns a new UI object.
 func NewUI(app fyne.App) (*UI, error) {
+	myHBox := layout.NewCustomPaddedHBoxLayout(-5)
 	u := &UI{
 		app:            app,
 		document:       jsondocument.New(),
-		selectedPath:   widget.NewLabel(""),
+		selectedPath:   container.New(myHBox),
 		valueDisplay:   widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
 		searchEntry:    widget.NewEntry(),
@@ -144,7 +145,7 @@ func NewUI(app fyne.App) (*UI, error) {
 
 	// selection frame
 	u.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
-		u.showInTree(u.currentSelectedUID)
+		u.scrollTo(u.currentSelectedUID)
 	})
 	u.jumpToSelection.Disable()
 	u.copyKeyClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
@@ -282,56 +283,73 @@ func (u *UI) makeTree() *widget.Tree {
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		u.currentSelectedUID = uid
-		u.setPath(uid)
-		node := u.document.Value(uid)
-		u.jumpToSelection.Enable()
-		u.copyKeyClipboard.Enable()
-		typeText := fmt.Sprint(node.Type)
-		var v string
-		if u.document.IsBranch(uid) {
-			u.copyValueClipboard.Disable()
-			v = "..."
-			ids := u.document.ChildUIDs(uid)
-			typeText += fmt.Sprintf(", %d elements", len(ids))
-		} else {
-			u.copyValueClipboard.Enable()
-			switch node.Type {
-			case jsondocument.String:
-				x := node.Value.(string)
-				v = fmt.Sprintf("\"%s\"", x)
-				u.valueRaw = x
-			case jsondocument.Number:
-				x := node.Value.(float64)
-				v = strconv.FormatFloat(x, 'f', -1, 64)
-				u.valueRaw = v
-			case jsondocument.Null:
-				v = "null"
-				u.valueRaw = v
-			default:
-				v = fmt.Sprint(node.Value)
-				u.valueRaw = v
-			}
-		}
-		u.valueDisplay.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
-		u.fileMenu.Items[7].Disabled = false
-		u.fileMenu.Items[8].Disabled = false
-		u.fileMenu.Refresh()
+		u.selectElement(uid)
 	}
 	return tree
 }
 
-func (u *UI) setPath(uid string) {
-	p := u.document.Path(uid)
-	keys := []string{}
-	for _, id := range p {
-		node := u.document.Value(id)
-		keys = append(keys, node.Key)
-	}
+func (u *UI) selectElement(uid string) {
+	u.currentSelectedUID = uid
+	u.renderSelectedPath(uid)
 	node := u.document.Value(uid)
-	keys = append(keys, node.Key)
-	path := strings.Join(keys, " ＞ ")
-	u.selectedPath.SetText(path)
+	u.jumpToSelection.Enable()
+	u.copyKeyClipboard.Enable()
+	typeText := fmt.Sprint(node.Type)
+	var v string
+	if u.document.IsBranch(uid) {
+		u.copyValueClipboard.Disable()
+		v = "..."
+		ids := u.document.ChildUIDs(uid)
+		typeText += fmt.Sprintf(", %d elements", len(ids))
+	} else {
+		u.copyValueClipboard.Enable()
+		switch node.Type {
+		case jsondocument.String:
+			x := node.Value.(string)
+			v = fmt.Sprintf("\"%s\"", x)
+			u.valueRaw = x
+		case jsondocument.Number:
+			x := node.Value.(float64)
+			v = strconv.FormatFloat(x, 'f', -1, 64)
+			u.valueRaw = v
+		case jsondocument.Null:
+			v = "null"
+			u.valueRaw = v
+		default:
+			v = fmt.Sprint(node.Value)
+			u.valueRaw = v
+		}
+	}
+	u.valueDisplay.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
+	u.fileMenu.Items[7].Disabled = false
+	u.fileMenu.Items[8].Disabled = false
+	u.fileMenu.Refresh()
+}
+
+func (u *UI) renderSelectedPath(uid string) {
+	p := u.document.Path(uid)
+	var path []jsondocument.Node
+	for _, id := range p {
+		path = append(path, u.document.Value(id))
+	}
+	path = append(path, u.document.Value(uid))
+	u.selectedPath.RemoveAll()
+	for i, n := range path {
+		isLast := i == len(path)-1
+		l := newTappableLabel(n.Key, func() {
+			u.scrollTo(n.UID)
+			u.selectElement(n.UID)
+		})
+		if isLast {
+			l.TextStyle.Bold = true
+		}
+		u.selectedPath.Add(l)
+		if !isLast {
+			l := widget.NewLabel("＞")
+			l.Importance = widget.LowImportance
+			u.selectedPath.Add(l)
+		}
+	}
 }
 
 func (u *UI) doSearch() {
@@ -382,7 +400,7 @@ func (u *UI) doSearch() {
 			u.showErrorDialog("Search failed", err)
 			return
 		}
-		u.showInTree(uid)
+		u.scrollTo(uid)
 	}()
 }
 
@@ -410,7 +428,7 @@ func (u *UI) showErrorDialog(message string, err error) {
 	d.Show()
 }
 
-func (u *UI) showInTree(uid widget.TreeNodeID) {
+func (u *UI) scrollTo(uid widget.TreeNodeID) {
 	if uid == "" {
 		return
 	}
@@ -429,7 +447,7 @@ func (u *UI) reset() {
 	u.statusTreeSize.SetText("")
 	u.welcomeMessage.Show()
 	u.toogleHasDocument(false)
-	u.selectedPath.SetText("")
+	u.selectedPath.RemoveAll()
 	u.valueDisplay.ParseMarkdown("")
 	u.copyValueClipboard.Disable()
 	u.jumpToSelection.Disable()
