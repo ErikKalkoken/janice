@@ -26,7 +26,6 @@ const (
 	settingRecentFileCountDefault = 5
 	settingLastWindowHeight       = "last-window-height"
 	settingLastWindowWidth        = "last-window-width"
-	settingLastSearchType         = "last-search-type"
 )
 
 func (u *UI) makeMenu() *fyne.MainMenu {

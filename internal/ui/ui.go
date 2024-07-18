@@ -97,7 +97,7 @@ func NewUI(app fyne.App) (*UI, error) {
 		searchTypeNumber,
 		searchTypeString,
 	}, nil)
-	u.searchType.SetSelected(app.Preferences().StringWithFallback(settingLastSearchType, searchTypeKey))
+	u.searchType.SetSelected(searchTypeKey)
 	u.searchType.Disable()
 	u.searchEntry.SetPlaceHolder(
 		"Enter pattern to search for...")
@@ -226,7 +226,6 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(settingLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(settingLastWindowHeight, float64(u.window.Canvas().Size().Height))
-		app.Preferences().SetString(settingLastSearchType, u.searchType.Selected)
 	})
 	return u, nil
 }
@@ -284,9 +283,8 @@ func (u *UI) makeTree() *widget.Tree {
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
 		u.currentSelectedUID = uid
-		path := u.renderPath(uid)
+		u.setPath(uid)
 		node := u.document.Value(uid)
-		u.selectedPath.SetText(path)
 		u.jumpToSelection.Enable()
 		u.copyKeyClipboard.Enable()
 		typeText := fmt.Sprint(node.Type)
@@ -323,7 +321,7 @@ func (u *UI) makeTree() *widget.Tree {
 	return tree
 }
 
-func (u *UI) renderPath(uid string) string {
+func (u *UI) setPath(uid string) {
 	p := u.document.Path(uid)
 	keys := []string{}
 	for _, id := range p {
@@ -332,7 +330,8 @@ func (u *UI) renderPath(uid string) string {
 	}
 	node := u.document.Value(uid)
 	keys = append(keys, node.Key)
-	return strings.Join(keys, " ＞ ")
+	path := strings.Join(keys, " ＞ ")
+	u.selectedPath.SetText(path)
 }
 
 func (u *UI) doSearch() {
