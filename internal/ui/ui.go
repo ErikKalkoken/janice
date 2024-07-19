@@ -480,12 +480,20 @@ func (u *UI) reset() {
 	u.statusTreeSize.SetText("")
 	u.welcomeMessage.Show()
 	u.toogleHasDocument(false)
+	u.resetSelectionFrame()
+	u.resetValueFrame()
+}
+
+func (u *UI) resetSelectionFrame() {
 	u.selectedPath.RemoveAll()
-	u.valueDisplay.ParseMarkdown("")
-	u.copyValueClipboard.Disable()
 	u.jumpToSelection.Disable()
 	u.copyKeyClipboard.Disable()
 	u.currentSelectedUID = ""
+}
+
+func (u *UI) resetValueFrame() {
+	u.valueDisplay.ParseMarkdown("")
+	u.copyValueClipboard.Disable()
 }
 
 func (u *UI) setTitle(fileName string) {
@@ -546,7 +554,10 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 	b := widget.NewButtonWithIcon("", theme.CancelIcon(), func() {
 		cancel()
 	})
-	c := container.NewVBox(infoText, container.NewBorder(nil, nil, nil, b, container.NewStack(pb1, pb2)))
+	c := container.NewVBox(
+		infoText,
+		container.NewBorder(nil, nil, nil, b, container.NewStack(pb1, pb2)),
+	)
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.SetOnClosed(func() {
 		cancel()
@@ -580,6 +591,8 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		}
 		u.setTitle(uri.Name())
 		u.currentFile = uri
+		u.resetSelectionFrame()
+		u.resetValueFrame()
 		d2.Hide()
 	}()
 }
