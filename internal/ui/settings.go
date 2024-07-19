@@ -26,11 +26,11 @@ func (u *UI) showSettingsDialog() {
 
 	items := []*widget.FormItem{
 		{Text: "Max recent files", Widget: recentEntry, HintText: "Maximum number of recent files remembered"},
-		{Text: "JSON file filter", Widget: extFilter, HintText: "Wether to apply the JSON extension filter in file lists"},
-		{Text: "Notify about updates", Widget: notifyUpdates, HintText: "Wether to notify when a new version is available (requires restart)"},
+		{Text: "JSON file filter", Widget: extFilter, HintText: "Wether to show files with .json extension only"},
+		{Text: "Notify about updates", Widget: notifyUpdates, HintText: "Wether to notify when an update is available (requires restart)"},
 	}
 	d := dialog.NewForm(
-		"Preferences", "Apply", "Cancel", items, func(applied bool) {
+		"Settings", "Apply", "Cancel", items, func(applied bool) {
 			if !applied {
 				return
 			}

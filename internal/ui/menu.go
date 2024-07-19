@@ -1,22 +1,20 @@
 package ui
 
 import (
-	"fmt"
 	"log/slog"
 	"net/url"
 	"slices"
 	"strings"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
-	"fyne.io/fyne/v2/widget"
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
 const (
 	preferencesRecentFiles = "recent-files"
+	websiteURL             = "https://github.com/ErikKalkoken/janice"
 )
 
 // setting keys and defaults
@@ -102,7 +100,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.window.Clipboard().SetContent(string(byt))
 		}),
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Preferences...", func() {
+		fyne.NewMenuItem("Settings...", func() {
 			u.showSettingsDialog()
 		}),
 	)
@@ -136,8 +134,9 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		toogleDetailFrame,
 	)
 	helpMenu := fyne.NewMenu("Help",
-		fyne.NewMenuItem("Support...", func() {
-			u.showSupportDialog()
+		fyne.NewMenuItem("Report a bug", func() {
+			url, _ := url.Parse(websiteURL + "/issues")
+			_ = u.app.OpenURL(url)
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("About...", func() {
@@ -186,24 +185,30 @@ func addToListWithRotation(s []string, v string, max int) []string {
 }
 
 func (u *UI) updateRecentFilesMenu() {
+	recentFiles := u.fileMenu.Items[3]
 	files := u.app.Preferences().StringList(preferencesRecentFiles)
-	items := make([]*fyne.MenuItem, len(files))
-	for i, f := range files {
-		uri, err := storage.ParseURI(f)
-		if err != nil {
-			slog.Error("Failed to parse URI", "URI", f, "err", err)
-			continue
-		}
-		items[i] = fyne.NewMenuItem(uri.Path(), func() {
-			reader, err := storage.Reader(uri)
+	if len(files) == 0 {
+		recentFiles.Disabled = true
+	} else {
+		recentFiles.Disabled = false
+		items := make([]*fyne.MenuItem, len(files))
+		for i, f := range files {
+			uri, err := storage.ParseURI(f)
 			if err != nil {
-				dialog.ShowError(err, u.window)
-				return
+				slog.Error("Failed to parse URI", "URI", f, "err", err)
+				continue
 			}
-			u.loadDocument(reader)
-		})
+			items[i] = fyne.NewMenuItem(uri.Path(), func() {
+				reader, err := storage.Reader(uri)
+				if err != nil {
+					dialog.ShowError(err, u.window)
+					return
+				}
+				u.loadDocument(reader)
+			})
+		}
+		recentFiles.ChildMenu.Items = items
 	}
-	u.fileMenu.Items[3].ChildMenu.Items = items
 	u.fileMenu.Refresh()
 }
 
@@ -227,28 +232,4 @@ func (u *UI) toogleViewDetail() {
 	menuItem := u.viewMenu.Items[8]
 	menuItem.Checked = u.value.isShown()
 	u.viewMenu.Refresh()
-}
-
-func (u *UI) showSupportDialog() {
-	x, _ := url.Parse(websiteURL)
-	c := container.NewVBox(
-		widget.NewLabel("The link below will bring you to the main web page,\n"+
-			"where you find the documentation and report bugs.:"),
-		widget.NewHyperlink(websiteURL, x),
-	)
-	d := dialog.NewCustom("Support", "OK", c, u.window)
-	d.Show()
-}
-
-func (u *UI) showAboutDialog() {
-	c := container.NewVBox()
-	info := u.app.Metadata()
-	current := info.Version
-	appData := widget.NewRichTextFromMarkdown(fmt.Sprintf(
-		"## %s\n**Version:** %s", info.Name, current))
-	c.Add(appData)
-	c.Add(widget.NewLabel("A desktop app for viewing large JSON files."))
-	c.Add(widget.NewLabel("(c) 2024 Erik Kalkoken"))
-	d := dialog.NewCustom("About", "OK", c, u.window)
-	d.Show()
 }

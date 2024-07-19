@@ -23,12 +23,6 @@ import (
 	"github.com/ErikKalkoken/janice/internal/widgets"
 )
 
-const (
-	githubOwner = "ErikKalkoken"
-	githubRepo  = "janice"
-	websiteURL  = "https://github.com/ErikKalkoken/janice"
-)
-
 // preference keys
 const (
 	preferenceLastSelectionFrameShown = "last-selection-frame-shown"
@@ -67,7 +61,7 @@ func NewUI(app fyne.App) (*UI, error) {
 
 	// main frame
 	welcomeText := widget.NewLabel(
-		"Welcome to " + appName + " JSON Viewer.\n" +
+		"Welcome to " + appName + ".\n" +
 			"Open a JSON file through the File Open menu\n" +
 			"or drag and drop the file on this window" +
 			"or import it from clipboard.\n",
@@ -345,18 +339,22 @@ func (u *UI) toogleHasDocument(enabled bool) {
 		u.fileMenu.Items[5].Disabled = false
 		u.fileMenu.Items[7].Disabled = u.selection.selectedUID == ""
 		u.fileMenu.Items[8].Disabled = u.selection.selectedUID == ""
-		for _, o := range u.viewMenu.Items {
-			o.Disabled = false
-		}
+		u.viewMenu.Items[0].Disabled = false
+		u.viewMenu.Items[1].Disabled = false
+		u.viewMenu.Items[2].Disabled = false
+		u.viewMenu.Items[4].Disabled = false
+		u.viewMenu.Items[5].Disabled = false
 	} else {
 		u.searchBar.disable()
 		u.fileMenu.Items[0].Disabled = true
 		u.fileMenu.Items[5].Disabled = true
 		u.fileMenu.Items[7].Disabled = true
 		u.fileMenu.Items[8].Disabled = true
-		for _, o := range u.viewMenu.Items {
-			o.Disabled = true
-		}
+		u.viewMenu.Items[0].Disabled = true
+		u.viewMenu.Items[1].Disabled = true
+		u.viewMenu.Items[2].Disabled = true
+		u.viewMenu.Items[4].Disabled = true
+		u.viewMenu.Items[5].Disabled = true
 	}
 	u.fileMenu.Refresh()
 	u.viewMenu.Refresh()

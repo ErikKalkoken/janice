@@ -1,19 +1,21 @@
 package ui
 
 import (
-	"fmt"
 	"log/slog"
 	"net/url"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ErikKalkoken/janice/internal/github"
-	"github.com/ErikKalkoken/janice/internal/widgets"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+)
+
+const (
+	githubOwner = "ErikKalkoken"
+	githubRepo  = "janice"
 )
 
 // statusBarFrame represents the status bar frame in the UI.
@@ -35,7 +37,7 @@ func (u *UI) newStatusBarFrame() *statusBarFrame {
 	if notifyUpdates {
 		go func() {
 			current := u.app.Metadata().Version
-			latest, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
+			_, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
 			if err != nil {
 				slog.Error("Failed to fetch latest version from github", "err", err)
 				return
@@ -44,10 +46,8 @@ func (u *UI) newStatusBarFrame() *statusBarFrame {
 				return
 			}
 			c.Add(layout.NewSpacer())
-			l := widgets.NewTappableLabel("Update available", func() {
-				f.showReleaseDialog(current, latest)
-			})
-			l.Importance = widget.HighImportance
+			x, _ := url.Parse(websiteURL + "/releases")
+			l := widget.NewHyperlink("Update available", x)
 			c.Add(l)
 		}()
 	}
@@ -61,18 +61,4 @@ func (f *statusBarFrame) reset() {
 func (f *statusBarFrame) set(size int) {
 	p := message.NewPrinter(language.English)
 	f.statusTreeSize.SetText(p.Sprintf("%d elements", size))
-}
-
-func (f *statusBarFrame) showReleaseDialog(current, latest string) {
-	x := websiteURL + "/releases"
-	y, _ := url.Parse(x)
-	link := widget.NewHyperlink(x, y)
-	c := container.NewVBox(
-		widget.NewLabel(fmt.Sprintf("New release %s available. You have release %s.", latest, current)),
-		widget.NewLabel("The link below will bring you to the releases page,\n"+
-			"where you can download the latest version:"),
-		link,
-	)
-	d := dialog.NewCustom("Update available", "OK", c, f.ui.window)
-	d.Show()
 }
