@@ -22,16 +22,15 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
-	"github.com/ErikKalkoken/jsonviewer/internal/github"
-	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
-	"github.com/ErikKalkoken/jsonviewer/internal/widgets"
+	"github.com/ErikKalkoken/janice/internal/github"
+	"github.com/ErikKalkoken/janice/internal/jsondocument"
+	"github.com/ErikKalkoken/janice/internal/widgets"
 )
 
 const (
-	appTitle    = "JSON Viewer"
 	githubOwner = "ErikKalkoken"
-	githubRepo  = "jsonviewer"
-	websiteURL  = "https://github.com/ErikKalkoken/jsonviewer"
+	githubRepo  = "janice"
+	websiteURL  = "https://github.com/ErikKalkoken/janice"
 )
 
 // preference keys
@@ -93,6 +92,7 @@ type UI struct {
 // NewUI returns a new UI object.
 func NewUI(app fyne.App) (*UI, error) {
 	myHBox := layout.NewCustomPaddedHBoxLayout(-5)
+	appName := app.Metadata().Name
 	u := &UI{
 		app:            app,
 		document:       jsondocument.New(),
@@ -100,7 +100,7 @@ func NewUI(app fyne.App) (*UI, error) {
 		valueDisplay:   widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
 		searchEntry:    widget.NewEntry(),
-		window:         app.NewWindow(appTitle),
+		window:         app.NewWindow(appName),
 	}
 	u.treeWidget = u.makeTree()
 
@@ -147,10 +147,10 @@ func NewUI(app fyne.App) (*UI, error) {
 
 	// main frame
 	welcomeText := widget.NewLabel(
-		"Welcome to JSON Viewer.\n" +
-			"Open a JSON file by dropping it on the window\n" +
-			"or through File / Open File\n" +
-			"or by importing it from clipboard.\n",
+		"Welcome to " + appName + " JSON Viewer.\n" +
+			"Open a JSON file through the File Open menu\n" +
+			"or drag and drop the file on this window" +
+			"or import it from clipboard.\n",
 	)
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
@@ -490,20 +490,13 @@ func (u *UI) reset() {
 
 func (u *UI) setTitle(fileName string) {
 	var s string
+	name := u.app.Metadata().Name
 	if fileName != "" {
-		s = fmt.Sprintf("%s - %s", fileName, u.appName())
+		s = fmt.Sprintf("%s - %s", fileName, name)
 	} else {
-		s = u.appName()
+		s = name
 	}
 	u.window.SetTitle(s)
-}
-
-func (u *UI) appName() string {
-	info := u.app.Metadata()
-	if info.Name != "" {
-		return info.Name
-	}
-	return appTitle
 }
 
 // loadDocument loads a JSON file

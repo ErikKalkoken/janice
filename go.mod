@@ -1,4 +1,4 @@
-module github.com/ErikKalkoken/jsonviewer
+module github.com/ErikKalkoken/janice
 
 go 1.22.4
 

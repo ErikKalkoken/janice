@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
+	"github.com/ErikKalkoken/janice/internal/jsondocument"
 	"github.com/stretchr/testify/assert"
 )
 

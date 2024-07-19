@@ -1,6 +1,6 @@
 .temp/
 .vscode/
-jsonviewer
+janice
 *.tar.xz
 *.AppImage
 tools/generate_json/generate_json

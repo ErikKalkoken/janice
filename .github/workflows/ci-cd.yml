@@ -4,10 +4,10 @@ name: CI/CD
 
 env:
   GOVERSION: "1.22.4"
-  NAME: "jsonviewer"
-  FULLNAME: "JSON Viewer"
-  APPIMAGENAME: "JSON_Viewer-x86_64"
-  PREFIX: "jsonviewer-${{  github.ref_name }}"
+  NAME: "janice"
+  FULLNAME: "Janice"
+  APPIMAGENAME: "Janice-x86_64"
+  PREFIX: "janice-${{  github.ref_name }}"
 
 on: push
 

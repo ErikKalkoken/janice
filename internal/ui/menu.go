@@ -12,7 +12,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
-	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
+	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
 const (
@@ -243,11 +243,11 @@ func (u *UI) showSupportDialog() {
 func (u *UI) showAboutDialog() {
 	c := container.NewVBox()
 	info := u.app.Metadata()
-	name := u.appName()
 	current := info.Version
 	appData := widget.NewRichTextFromMarkdown(fmt.Sprintf(
-		"## %s\n**Version:** %s", name, current))
+		"## %s\n**Version:** %s", info.Name, current))
 	c.Add(appData)
+	c.Add(widget.NewLabel("A desktop app for viewing large JSON files."))
 	c.Add(widget.NewLabel("(c) 2024 Erik Kalkoken"))
 	d := dialog.NewCustom("About", "OK", c, u.window)
 	d.Show()

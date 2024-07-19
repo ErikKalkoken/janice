@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2/app"
-	"github.com/ErikKalkoken/jsonviewer/internal/ui"
+	"github.com/ErikKalkoken/janice/internal/ui"
 )
 
 type logLevelFlag struct {
@@ -42,7 +42,7 @@ func main() {
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	slog.SetLogLoggerLevel(levelFlag.value)
-	a := app.NewWithID("io.github.erikkalkoken.jsonviewer")
+	a := app.NewWithID("io.github.erikkalkoken.janice")
 	if *versionFlag {
 		fmt.Printf("Current version is: %s", a.Metadata().Version)
 		return
@@ -57,9 +57,9 @@ func main() {
 
 // myUsage writes a custom usage message to configured output stream.
 func myUsage() {
-	s := "Usage: jsonviewer [options] [<inputfile>]\n\n" +
+	s := "Usage: janice [options] [<inputfile>]\n\n" +
 		"A desktop app for viewing large JSON files.\n" +
-		"For more information please see: https://github.com/ErikKalkoken/jsonviewer\n\n" +
+		"For more information please see: https://github.com/ErikKalkoken/janice\n\n" +
 		"Options:\n"
 	fmt.Fprint(flag.CommandLine.Output(), s)
 	flag.PrintDefaults()

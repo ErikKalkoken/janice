@@ -2,8 +2,8 @@
 
 # This script builds an AppImage from a bundeled Fyne app for x86_64 architectures
 
-appname="JSON Viewer"
-packagename="jsonviewer"
+appname="Janice"
+packagename="janice"
 categories="Utility"
 dest="temp.Appdir"
 source="temp.Source"

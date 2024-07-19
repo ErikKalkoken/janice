@@ -1,8 +1,8 @@
-Website = "https://github.com/ErikKalkoken/jsonviewer"
+Website = "https://github.com/ErikKalkoken/janice"
 
 [Details]
   Icon = "icon.png"
-  Name = "JSON Viewer"
-  ID = "io.github.erikkalkoken.jsonviewer"
+  Name = "Janice"
+  ID = "io.github.erikkalkoken.janice"
   Version = "0.1.0"
-  Build = 2
+  Build = 5

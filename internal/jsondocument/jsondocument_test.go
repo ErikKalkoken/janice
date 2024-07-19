@@ -10,7 +10,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
-	"github.com/ErikKalkoken/jsonviewer/internal/jsondocument"
+	"github.com/ErikKalkoken/janice/internal/jsondocument"
 	"github.com/stretchr/testify/assert"
 )
 
