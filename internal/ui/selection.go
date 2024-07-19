@@ -44,7 +44,7 @@ func (u *UI) newSelectionFrame() *selectionFrame {
 		container.NewHBox(f.jumpToSelection, f.copyKeyClipboard),
 		container.NewHScroll(f.selectedPath),
 	)
-	c.Hidden = u.app.Preferences().BoolWithFallback(preferenceLastSelectionFrameHidden, false)
+	c.Hidden = !u.app.Preferences().BoolWithFallback(preferenceLastSelectionFrameShown, false)
 	f.content = c
 	return f
 }

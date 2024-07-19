@@ -34,30 +34,27 @@ const (
 
 // preference keys
 const (
-	preferenceLastSelectionFrameHidden = "last-selection-frame-hidden"
-	preferenceLastValueFrameHidden     = "last-value-frame-hidden"
-	preferenceLastWindowHeight         = "last-window-height"
-	preferenceLastWindowWidth          = "last-window-width"
+	preferenceLastSelectionFrameShown = "last-selection-frame-shown"
+	preferenceLastValueFrameShown     = "last-value-frame-shown"
+	preferenceLastWindowHeight        = "last-window-height"
+	preferenceLastWindowWidth         = "last-window-width"
 )
 
 // UI represents the user interface of this app.
 type UI struct {
-	app            fyne.App
+	app    fyne.App
+	window fyne.Window
+
 	currentFile    fyne.URI
 	document       *jsondocument.JSONDocument
 	fileMenu       *fyne.Menu
 	viewMenu       *fyne.Menu
 	treeWidget     *widget.Tree
 	welcomeMessage *fyne.Container
-	window         fyne.Window
 
 	searchBar *searchBarFrame
 	selection *selectionFrame
-
-	detailFrame        *fyne.Container
-	copyValueClipboard *widget.Button
-	valueDisplay       *widget.RichText
-	valueRaw           string
+	value     *valueFrame
 
 	statusTreeSize *widget.Label
 }
@@ -68,7 +65,6 @@ func NewUI(app fyne.App) (*UI, error) {
 	u := &UI{
 		app:            app,
 		document:       jsondocument.New(),
-		valueDisplay:   widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
 		window:         app.NewWindow(appName),
 	}
@@ -87,20 +83,7 @@ func NewUI(app fyne.App) (*UI, error) {
 
 	u.searchBar = u.newSearchBarFrame()
 	u.selection = u.newSelectionFrame()
-
-	// value frame
-	u.copyValueClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		u.window.Clipboard().SetContent(u.valueRaw)
-	})
-	u.copyValueClipboard.Disable()
-	u.detailFrame = container.NewBorder(
-		nil,
-		nil,
-		nil,
-		u.copyValueClipboard,
-		container.NewScroll(u.valueDisplay),
-	)
-	u.detailFrame.Hidden = app.Preferences().BoolWithFallback(preferenceLastValueFrameHidden, false)
+	u.value = u.newValueFrame()
 
 	// status bar frame
 	statusBar := container.NewHBox(u.statusTreeSize)
@@ -126,7 +109,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	}
 
 	c := container.NewBorder(
-		container.NewVBox(u.searchBar.content, u.selection.content, u.detailFrame, widget.NewSeparator()),
+		container.NewVBox(u.searchBar.content, u.selection.content, u.value.content, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), statusBar),
 		nil,
 		nil,
@@ -158,8 +141,8 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
-		app.Preferences().SetBool(preferenceLastValueFrameHidden, u.detailFrame.Hidden)
-		app.Preferences().SetBool(preferenceLastSelectionFrameHidden, !u.selection.isShown())
+		app.Preferences().SetBool(preferenceLastValueFrameShown, u.value.isShown())
+		app.Preferences().SetBool(preferenceLastSelectionFrameShown, u.selection.isShown())
 	})
 	return u, nil
 }
@@ -223,40 +206,8 @@ func (u *UI) makeTree() *widget.Tree {
 
 func (u *UI) selectElement(uid string) {
 	u.selection.set(uid)
-	node := u.document.Value(uid)
 	u.selection.enable()
-	typeText := fmt.Sprint(node.Type)
-	var v string
-	if u.document.IsBranch(uid) {
-		u.copyValueClipboard.Disable()
-		switch node.Type {
-		case jsondocument.Array:
-			v = "[...]"
-		case jsondocument.Object:
-			v = "{...}"
-		}
-		ids := u.document.ChildUIDs(uid)
-		typeText += fmt.Sprintf(", %d elements", len(ids))
-	} else {
-		u.copyValueClipboard.Enable()
-		switch node.Type {
-		case jsondocument.String:
-			x := node.Value.(string)
-			v = fmt.Sprintf("\"%s\"", x)
-			u.valueRaw = x
-		case jsondocument.Number:
-			x := node.Value.(float64)
-			v = strconv.FormatFloat(x, 'f', -1, 64)
-			u.valueRaw = v
-		case jsondocument.Null:
-			v = "null"
-			u.valueRaw = v
-		default:
-			v = fmt.Sprint(node.Value)
-			u.valueRaw = v
-		}
-	}
-	u.valueDisplay.ParseMarkdown(fmt.Sprintf("```\n%s\n```", v))
+	u.value.set(uid)
 	u.fileMenu.Items[7].Disabled = false
 	u.fileMenu.Items[8].Disabled = false
 	u.fileMenu.Refresh()
@@ -311,12 +262,7 @@ func (u *UI) reset() {
 	u.welcomeMessage.Show()
 	u.toogleHasDocument(false)
 	u.selection.reset()
-	u.resetValueFrame()
-}
-
-func (u *UI) resetValueFrame() {
-	u.valueDisplay.ParseMarkdown("")
-	u.copyValueClipboard.Disable()
+	u.value.reset()
 }
 
 func (u *UI) setTitle(fileName string) {
@@ -415,7 +361,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		u.setTitle(uri.Name())
 		u.currentFile = uri
 		u.selection.reset()
-		u.resetValueFrame()
+		u.value.reset()
 		d2.Hide()
 	}()
 }

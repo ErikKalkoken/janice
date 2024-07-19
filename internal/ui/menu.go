@@ -113,7 +113,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	toogleDetailFrame := fyne.NewMenuItem("Show value detail", func() {
 		u.toogleViewDetail()
 	})
-	toogleDetailFrame.Checked = !u.detailFrame.Hidden
+	toogleDetailFrame.Checked = u.value.isShown()
 	u.viewMenu = fyne.NewMenu("View",
 		fyne.NewMenuItem("Scroll to top", func() {
 			u.treeWidget.ScrollToTop()
@@ -219,13 +219,13 @@ func (u *UI) toogleViewSelection() {
 }
 
 func (u *UI) toogleViewDetail() {
-	if u.detailFrame.Hidden {
-		u.detailFrame.Show()
+	if u.value.isShown() {
+		u.value.hide()
 	} else {
-		u.detailFrame.Hide()
+		u.value.show()
 	}
 	menuItem := u.viewMenu.Items[8]
-	menuItem.Checked = !u.detailFrame.Hidden
+	menuItem.Checked = u.value.isShown()
 	u.viewMenu.Refresh()
 }
 
