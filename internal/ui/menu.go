@@ -109,7 +109,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	toogleSelectionFrame := fyne.NewMenuItem("Show selected element", func() {
 		u.toogleViewSelection()
 	})
-	toogleSelectionFrame.Checked = !u.selectionFrame.Hidden
+	toogleSelectionFrame.Checked = u.selection.isShown()
 	toogleDetailFrame := fyne.NewMenuItem("Show value detail", func() {
 		u.toogleViewDetail()
 	})
@@ -122,7 +122,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.treeWidget.ScrollToBottom()
 		}),
 		fyne.NewMenuItem("Scroll to selection", func() {
-			u.scrollTo(u.currentSelectedUID)
+			u.scrollTo(u.selection.selectedUID)
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Expand All", func() {
@@ -149,7 +149,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 }
 
 func (u *UI) extractSelection() ([]byte, error) {
-	uid := u.currentSelectedUID
+	uid := u.selection.selectedUID
 	n := u.document.Value(uid)
 	if n.Type != jsondocument.Array && n.Type != jsondocument.Object {
 		uid = u.document.Parent(uid)
@@ -208,13 +208,13 @@ func (u *UI) updateRecentFilesMenu() {
 }
 
 func (u *UI) toogleViewSelection() {
-	if u.selectionFrame.Hidden {
-		u.selectionFrame.Show()
+	if u.selection.isShown() {
+		u.selection.hide()
 	} else {
-		u.selectionFrame.Hide()
+		u.selection.show()
 	}
 	menuItem := u.viewMenu.Items[7]
-	menuItem.Checked = !u.selectionFrame.Hidden
+	menuItem.Checked = u.selection.isShown()
 	u.viewMenu.Refresh()
 }
 

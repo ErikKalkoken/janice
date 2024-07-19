@@ -42,22 +42,17 @@ const (
 
 // UI represents the user interface of this app.
 type UI struct {
-	app                fyne.App
-	currentFile        fyne.URI
-	currentSelectedUID widget.TreeNodeID
-	document           *jsondocument.JSONDocument
-	fileMenu           *fyne.Menu
-	viewMenu           *fyne.Menu
-	treeWidget         *widget.Tree
-	welcomeMessage     *fyne.Container
-	window             fyne.Window
+	app            fyne.App
+	currentFile    fyne.URI
+	document       *jsondocument.JSONDocument
+	fileMenu       *fyne.Menu
+	viewMenu       *fyne.Menu
+	treeWidget     *widget.Tree
+	welcomeMessage *fyne.Container
+	window         fyne.Window
 
-	searchBar *searchBar
-
-	selectionFrame   *fyne.Container
-	selectedPath     *fyne.Container
-	jumpToSelection  *widget.Button
-	copyKeyClipboard *widget.Button
+	searchBar *searchBarFrame
+	selection *selectionFrame
 
 	detailFrame        *fyne.Container
 	copyValueClipboard *widget.Button
@@ -69,12 +64,10 @@ type UI struct {
 
 // NewUI returns a new UI object.
 func NewUI(app fyne.App) (*UI, error) {
-	myHBox := layout.NewCustomPaddedHBoxLayout(-5)
 	appName := app.Metadata().Name
 	u := &UI{
 		app:            app,
 		document:       jsondocument.New(),
-		selectedPath:   container.New(myHBox),
 		valueDisplay:   widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
 		window:         app.NewWindow(appName),
@@ -92,26 +85,8 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
 
-	u.searchBar = u.newSearchBar()
-
-	// selection frame
-	u.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
-		u.scrollTo(u.currentSelectedUID)
-	})
-	u.jumpToSelection.Disable()
-	u.copyKeyClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		n := u.document.Value(u.currentSelectedUID)
-		u.window.Clipboard().SetContent(n.Key)
-	})
-	u.copyKeyClipboard.Disable()
-	u.selectionFrame = container.NewBorder(
-		nil,
-		nil,
-		nil,
-		container.NewHBox(u.jumpToSelection, u.copyKeyClipboard),
-		container.NewHScroll(u.selectedPath),
-	)
-	u.selectionFrame.Hidden = app.Preferences().BoolWithFallback(preferenceLastSelectionFrameHidden, false)
+	u.searchBar = u.newSearchBarFrame()
+	u.selection = u.newSelectionFrame()
 
 	// value frame
 	u.copyValueClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
@@ -151,7 +126,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	}
 
 	c := container.NewBorder(
-		container.NewVBox(u.searchBar.content, u.selectionFrame, u.detailFrame, widget.NewSeparator()),
+		container.NewVBox(u.searchBar.content, u.selection.content, u.detailFrame, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), statusBar),
 		nil,
 		nil,
@@ -184,7 +159,7 @@ func NewUI(app fyne.App) (*UI, error) {
 		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
 		app.Preferences().SetBool(preferenceLastValueFrameHidden, u.detailFrame.Hidden)
-		app.Preferences().SetBool(preferenceLastSelectionFrameHidden, u.selectionFrame.Hidden)
+		app.Preferences().SetBool(preferenceLastSelectionFrameHidden, !u.selection.isShown())
 	})
 	return u, nil
 }
@@ -247,11 +222,9 @@ func (u *UI) makeTree() *widget.Tree {
 }
 
 func (u *UI) selectElement(uid string) {
-	u.currentSelectedUID = uid
-	u.renderSelectedPath(uid)
+	u.selection.set(uid)
 	node := u.document.Value(uid)
-	u.jumpToSelection.Enable()
-	u.copyKeyClipboard.Enable()
+	u.selection.enable()
 	typeText := fmt.Sprint(node.Type)
 	var v string
 	if u.document.IsBranch(uid) {
@@ -287,35 +260,6 @@ func (u *UI) selectElement(uid string) {
 	u.fileMenu.Items[7].Disabled = false
 	u.fileMenu.Items[8].Disabled = false
 	u.fileMenu.Refresh()
-}
-
-func (u *UI) renderSelectedPath(uid string) {
-	p := u.document.Path(uid)
-	var path []jsondocument.Node
-	for _, id := range p {
-		path = append(path, u.document.Value(id))
-	}
-	path = append(path, u.document.Value(uid))
-	u.selectedPath.RemoveAll()
-	for i, n := range path {
-		isLast := i == len(path)-1
-		if !isLast {
-			l := widgets.NewTappableLabel(n.Key, func() {
-				u.scrollTo(n.UID)
-				u.selectElement(n.UID)
-			})
-			u.selectedPath.Add(l)
-		} else {
-			l := widget.NewLabel(n.Key)
-			l.TextStyle.Bold = true
-			u.selectedPath.Add(l)
-		}
-		if !isLast {
-			l := widget.NewLabel("＞")
-			l.Importance = widget.LowImportance
-			u.selectedPath.Add(l)
-		}
-	}
 }
 
 // ShowAndRun shows the main window and runs the app. This method is blocking.
@@ -366,15 +310,8 @@ func (u *UI) reset() {
 	u.statusTreeSize.SetText("")
 	u.welcomeMessage.Show()
 	u.toogleHasDocument(false)
-	u.resetSelectionFrame()
+	u.selection.reset()
 	u.resetValueFrame()
-}
-
-func (u *UI) resetSelectionFrame() {
-	u.selectedPath.RemoveAll()
-	u.jumpToSelection.Disable()
-	u.copyKeyClipboard.Disable()
-	u.currentSelectedUID = ""
 }
 
 func (u *UI) resetValueFrame() {
@@ -477,7 +414,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		}
 		u.setTitle(uri.Name())
 		u.currentFile = uri
-		u.resetSelectionFrame()
+		u.selection.reset()
 		u.resetValueFrame()
 		d2.Hide()
 	}()
@@ -488,8 +425,8 @@ func (u *UI) toogleHasDocument(enabled bool) {
 		u.searchBar.enable()
 		u.fileMenu.Items[0].Disabled = false
 		u.fileMenu.Items[5].Disabled = false
-		u.fileMenu.Items[7].Disabled = u.currentSelectedUID == ""
-		u.fileMenu.Items[8].Disabled = u.currentSelectedUID == ""
+		u.fileMenu.Items[7].Disabled = u.selection.selectedUID == ""
+		u.fileMenu.Items[8].Disabled = u.selection.selectedUID == ""
 		for _, o := range u.viewMenu.Items {
 			o.Disabled = false
 		}

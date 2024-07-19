@@ -147,7 +147,7 @@ func (f *searchBarFrame) doSearch() {
 		case searchTypeNumber:
 			typ = jsondocument.SearchNumber
 		}
-		uid, err := f.ui.document.Search(ctx, f.ui.currentSelectedUID, search, typ)
+		uid, err := f.ui.document.Search(ctx, f.ui.selection.selectedUID, search, typ)
 		d.Hide()
 		if errors.Is(err, jsondocument.ErrCallerCanceled) {
 			return
