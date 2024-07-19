@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -41,22 +40,6 @@ const (
 	preferenceLastWindowWidth          = "last-window-width"
 )
 
-const (
-	searchTypeKey     = "key"
-	searchTypeString  = "string"
-	searchTypeNumber  = "number"
-	searchTypeKeyword = "keyword"
-)
-
-var type2importance = map[jsondocument.JSONType]widget.Importance{
-	jsondocument.Array:   widget.HighImportance,
-	jsondocument.Object:  widget.HighImportance,
-	jsondocument.String:  widget.WarningImportance,
-	jsondocument.Number:  widget.SuccessImportance,
-	jsondocument.Boolean: widget.DangerImportance,
-	jsondocument.Null:    widget.DangerImportance,
-}
-
 // UI represents the user interface of this app.
 type UI struct {
 	app                fyne.App
@@ -69,12 +52,7 @@ type UI struct {
 	welcomeMessage     *fyne.Container
 	window             fyne.Window
 
-	searchEntry  *widget.Entry
-	searchButton *widget.Button
-	searchType   *widget.Select
-	scrollBottom *widget.Button
-	scrollTop    *widget.Button
-	collapseAll  *widget.Button
+	searchBar *searchBar
 
 	selectionFrame   *fyne.Container
 	selectedPath     *fyne.Container
@@ -99,51 +77,9 @@ func NewUI(app fyne.App) (*UI, error) {
 		selectedPath:   container.New(myHBox),
 		valueDisplay:   widget.NewRichText(),
 		statusTreeSize: widget.NewLabel(""),
-		searchEntry:    widget.NewEntry(),
 		window:         app.NewWindow(appName),
 	}
 	u.treeWidget = u.makeTree()
-
-	// search frame
-	u.searchType = widget.NewSelect([]string{
-		searchTypeKey,
-		searchTypeKeyword,
-		searchTypeNumber,
-		searchTypeString,
-	}, nil)
-	u.searchType.SetSelected(searchTypeKey)
-	u.searchType.Disable()
-	u.searchEntry.SetPlaceHolder(
-		"Enter pattern to search for...")
-	u.searchEntry.OnSubmitted = func(s string) {
-		u.doSearch()
-	}
-	u.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
-		u.doSearch()
-	})
-	u.scrollBottom = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
-		u.treeWidget.ScrollToBottom()
-	})
-	u.scrollTop = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
-		u.treeWidget.ScrollToTop()
-	})
-	u.collapseAll = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
-		u.treeWidget.CloseAllBranches()
-	})
-	searchBar := container.NewBorder(
-		nil,
-		nil,
-		u.searchType,
-		container.NewHBox(
-			u.searchButton,
-			container.NewPadded(),
-			layout.NewSpacer(),
-			u.scrollTop,
-			u.scrollBottom,
-			u.collapseAll,
-		),
-		u.searchEntry,
-	)
 
 	// main frame
 	welcomeText := widget.NewLabel(
@@ -155,6 +91,8 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText.Importance = widget.LowImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
+
+	u.searchBar = u.newSearchBar()
 
 	// selection frame
 	u.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
@@ -213,7 +151,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	}
 
 	c := container.NewBorder(
-		container.NewVBox(searchBar, u.selectionFrame, u.detailFrame, widget.NewSeparator()),
+		container.NewVBox(u.searchBar.content, u.selectionFrame, u.detailFrame, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), statusBar),
 		nil,
 		nil,
@@ -378,58 +316,6 @@ func (u *UI) renderSelectedPath(uid string) {
 			u.selectedPath.Add(l)
 		}
 	}
-}
-
-func (u *UI) doSearch() {
-	search := u.searchEntry.Text
-	if len(search) == 0 {
-		return
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	spinner := widget.NewActivity()
-	spinner.Start()
-	searchType := u.searchType.Selected
-	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for %s with pattern: %s", searchType, search)), spinner)
-	b := widget.NewButton("Cancel", func() {
-		cancel()
-	})
-	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), u.window)
-	d.Show()
-	d.SetOnClosed(func() {
-		cancel()
-	})
-	go func() {
-		var typ jsondocument.SearchType
-		switch searchType {
-		case searchTypeKey:
-			typ = jsondocument.SearchKey
-		case searchTypeKeyword:
-			typ = jsondocument.SearchKeyword
-			search = strings.ToLower(search)
-			if search != "true" && search != "false" && search != "null" {
-				d.Hide()
-				u.showErrorDialog("Allowed keywords are: true, false, null", nil)
-				return
-			}
-		case searchTypeString:
-			typ = jsondocument.SearchString
-		case searchTypeNumber:
-			typ = jsondocument.SearchNumber
-		}
-		uid, err := u.document.Search(ctx, u.currentSelectedUID, search, typ)
-		d.Hide()
-		if errors.Is(err, jsondocument.ErrCallerCanceled) {
-			return
-		} else if errors.Is(err, jsondocument.ErrNotFound) {
-			d2 := dialog.NewInformation("No match", fmt.Sprintf("No %s found matching %s", searchType, search), u.window)
-			d2.Show()
-			return
-		} else if err != nil {
-			u.showErrorDialog("Search failed", err)
-			return
-		}
-		u.scrollTo(uid)
-	}()
 }
 
 // ShowAndRun shows the main window and runs the app. This method is blocking.
@@ -599,12 +485,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 
 func (u *UI) toogleHasDocument(enabled bool) {
 	if enabled {
-		u.searchButton.Enable()
-		u.searchType.Enable()
-		u.searchEntry.Enable()
-		u.scrollBottom.Enable()
-		u.scrollTop.Enable()
-		u.collapseAll.Enable()
+		u.searchBar.enable()
 		u.fileMenu.Items[0].Disabled = false
 		u.fileMenu.Items[5].Disabled = false
 		u.fileMenu.Items[7].Disabled = u.currentSelectedUID == ""
@@ -613,12 +494,7 @@ func (u *UI) toogleHasDocument(enabled bool) {
 			o.Disabled = false
 		}
 	} else {
-		u.searchButton.Disable()
-		u.searchType.Disable()
-		u.searchEntry.Disable()
-		u.scrollBottom.Disable()
-		u.scrollTop.Disable()
-		u.collapseAll.Disable()
+		u.searchBar.disable()
 		u.fileMenu.Items[0].Disabled = true
 		u.fileMenu.Items[5].Disabled = true
 		u.fileMenu.Items[7].Disabled = true
