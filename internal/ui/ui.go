@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"path/filepath"
 	"strconv"
 
@@ -14,14 +13,12 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
-	"github.com/ErikKalkoken/janice/internal/github"
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 	"github.com/ErikKalkoken/janice/internal/widgets"
 )
@@ -54,19 +51,17 @@ type UI struct {
 
 	searchBar *searchBarFrame
 	selection *selectionFrame
+	statusBar *statusBarFrame
 	value     *valueFrame
-
-	statusTreeSize *widget.Label
 }
 
 // NewUI returns a new UI object.
 func NewUI(app fyne.App) (*UI, error) {
 	appName := app.Metadata().Name
 	u := &UI{
-		app:            app,
-		document:       jsondocument.New(),
-		statusTreeSize: widget.NewLabel(""),
-		window:         app.NewWindow(appName),
+		app:      app,
+		document: jsondocument.New(),
+		window:   app.NewWindow(appName),
 	}
 	u.treeWidget = u.makeTree()
 
@@ -83,34 +78,12 @@ func NewUI(app fyne.App) (*UI, error) {
 
 	u.searchBar = u.newSearchBarFrame()
 	u.selection = u.newSelectionFrame()
+	u.statusBar = u.newStatusBarFrame()
 	u.value = u.newValueFrame()
-
-	// status bar frame
-	statusBar := container.NewHBox(u.statusTreeSize)
-	notifyUpdates := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
-	if notifyUpdates {
-		go func() {
-			current := u.app.Metadata().Version
-			latest, isNewer, err := github.AvailableUpdate(githubOwner, githubRepo, current)
-			if err != nil {
-				slog.Error("Failed to fetch latest version from github", "err", err)
-				return
-			}
-			if !isNewer {
-				return
-			}
-			statusBar.Add(layout.NewSpacer())
-			l := widgets.NewTappableLabel("Update available", func() {
-				u.showReleaseDialog(current, latest)
-			})
-			l.Importance = widget.HighImportance
-			statusBar.Add(l)
-		}()
-	}
 
 	c := container.NewBorder(
 		container.NewVBox(u.searchBar.content, u.selection.content, u.value.content, widget.NewSeparator()),
-		container.NewVBox(widget.NewSeparator(), statusBar),
+		container.NewVBox(widget.NewSeparator(), u.statusBar.content),
 		nil,
 		nil,
 		container.NewStack(u.welcomeMessage, u.treeWidget))
@@ -258,7 +231,7 @@ func (u *UI) scrollTo(uid widget.TreeNodeID) {
 func (u *UI) reset() {
 	u.document.Reset()
 	u.setTitle("")
-	u.statusTreeSize.SetText("")
+	u.statusBar.reset()
 	u.welcomeMessage.Show()
 	u.toogleHasDocument(false)
 	u.selection.reset()
@@ -343,8 +316,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 			return
 		}
 		u.document = doc
-		p := message.NewPrinter(language.English)
-		u.statusTreeSize.SetText(p.Sprintf("%d elements", u.document.Size()))
+		u.statusBar.set(u.document.Size())
 		u.welcomeMessage.Hide()
 		u.toogleHasDocument(true)
 		if doc.Size() > 1000 {
@@ -388,18 +360,4 @@ func (u *UI) toogleHasDocument(enabled bool) {
 	}
 	u.fileMenu.Refresh()
 	u.viewMenu.Refresh()
-}
-
-func (u *UI) showReleaseDialog(current, latest string) {
-	x := websiteURL + "/releases"
-	y, _ := url.Parse(x)
-	link := widget.NewHyperlink(x, y)
-	c := container.NewVBox(
-		widget.NewLabel(fmt.Sprintf("New release %s available. You have release %s.", latest, current)),
-		widget.NewLabel("The link below will bring you to the releases page,\n"+
-			"where you can download the latest version:"),
-		link,
-	)
-	d := dialog.NewCustom("Update available", "OK", c, u.window)
-	d.Show()
 }
