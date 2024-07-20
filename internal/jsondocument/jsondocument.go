@@ -65,14 +65,6 @@ func (t JSONType) String() string {
 	return s
 }
 
-// Node represents a node in the JSON data tree.
-type Node struct {
-	UID   string
-	Key   string
-	Value any
-	Type  JSONType
-}
-
 // SearchType represents the type of search to perform.
 type SearchType uint
 
@@ -94,6 +86,13 @@ type ProgressInfo struct {
 
 // This singleton represents an empty value in a Node.
 var Empty = struct{}{}
+
+// Node represents a node in the JSON data tree.
+type Node struct {
+	Key   string
+	Value any
+	Type  JSONType
+}
 
 // JSONDocument represents a JSON document which can be rendered by a Fyne tree widget.
 type JSONDocument struct {
@@ -157,6 +156,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 	if err != nil {
 		return err
 	}
+	byt = nil
 	select {
 	case <-ctx.Done():
 		return ErrCallerCanceled
@@ -352,7 +352,7 @@ func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, va
 	if n.Type != Undefined {
 		return 0, fmt.Errorf("ID for this node already exists: %v", id)
 	}
-	j.values[id] = Node{UID: id2uid(id), Key: key, Value: value, Type: typ}
+	j.values[id] = Node{Key: key, Value: value, Type: typ}
 	j.parents[id] = parentID
 	if parentID != rootNodeParentID {
 		j.ids[parentID] = append(j.ids[parentID], id)

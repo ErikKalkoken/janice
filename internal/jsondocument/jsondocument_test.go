@@ -41,12 +41,12 @@ func TestJsonDocument(t *testing.T) {
 	})
 	t.Run("should return value of parent node", func(t *testing.T) {
 		got := j.Value(alphaID)
-		want := jsondocument.Node{UID: alphaID, Key: "alpha", Value: jsondocument.Empty, Type: jsondocument.Object}
+		want := jsondocument.Node{Key: "alpha", Value: jsondocument.Empty, Type: jsondocument.Object}
 		assert.Equal(t, want, got)
 	})
 	t.Run("should return value of child node", func(t *testing.T) {
 		got := j.Value(deltaID)
-		want := jsondocument.Node{UID: deltaID, Key: "delta", Value: float64(1), Type: jsondocument.Number}
+		want := jsondocument.Node{Key: "delta", Value: float64(1), Type: jsondocument.Number}
 		assert.Equal(t, want, got)
 	})
 	t.Run("should return empty path for parent node", func(t *testing.T) {
@@ -90,15 +90,15 @@ func TestJsonDocumentLoad(t *testing.T) {
 				node := j.Value(id)
 				switch i {
 				case 0:
-					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "alpha", Value: "abc", Type: jsondocument.String})
+					assert.Equal(t, node, jsondocument.Node{Key: "alpha", Value: "abc", Type: jsondocument.String})
 				case 1:
-					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "bravo", Value: float64(5), Type: jsondocument.Number})
+					assert.Equal(t, node, jsondocument.Node{Key: "bravo", Value: float64(5), Type: jsondocument.Number})
 				case 2:
-					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "charlie", Value: true, Type: jsondocument.Boolean})
+					assert.Equal(t, node, jsondocument.Node{Key: "charlie", Value: true, Type: jsondocument.Boolean})
 				case 3:
-					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "delta", Value: nil, Type: jsondocument.Null})
+					assert.Equal(t, node, jsondocument.Node{Key: "delta", Value: nil, Type: jsondocument.Null})
 				case 4:
-					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "echo", Value: jsondocument.Empty, Type: jsondocument.Array})
+					assert.Equal(t, node, jsondocument.Node{Key: "echo", Value: jsondocument.Empty, Type: jsondocument.Array})
 					for n, childId := range j.ChildUIDs(id) {
 						node := j.Value(childId)
 						switch n {
@@ -109,12 +109,12 @@ func TestJsonDocumentLoad(t *testing.T) {
 						}
 					}
 				case 5:
-					assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "foxtrot", Value: jsondocument.Empty, Type: jsondocument.Object})
+					assert.Equal(t, node, jsondocument.Node{Key: "foxtrot", Value: jsondocument.Empty, Type: jsondocument.Object})
 					for n, childId := range j.ChildUIDs(id) {
 						node := j.Value(childId)
 						switch n {
 						case 0:
-							assert.Equal(t, node, jsondocument.Node{UID: node.UID, Key: "child", Value: float64(1), Type: jsondocument.Number})
+							assert.Equal(t, node, jsondocument.Node{Key: "child", Value: float64(1), Type: jsondocument.Number})
 						}
 					}
 				}
@@ -134,9 +134,9 @@ func TestJsonDocumentLoad(t *testing.T) {
 				node := j.Value(id)
 				switch i {
 				case 0:
-					assert.Equal(t, node, jsondocument.Node{UID: "1", Key: "[0]", Value: "one", Type: jsondocument.String})
+					assert.Equal(t, node, jsondocument.Node{Key: "[0]", Value: "one", Type: jsondocument.String})
 				case 1:
-					assert.Equal(t, node, jsondocument.Node{UID: "2", Key: "[1]", Value: "two", Type: jsondocument.String})
+					assert.Equal(t, node, jsondocument.Node{Key: "[1]", Value: "two", Type: jsondocument.String})
 				}
 			}
 		}

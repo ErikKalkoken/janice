@@ -77,14 +77,19 @@ func (f *selectionFrame) reset() {
 	f.selectedUID = ""
 }
 
+type NodePlus struct {
+	jsondocument.Node
+	UID string
+}
+
 func (f *selectionFrame) set(uid string) {
 	f.selectedUID = uid
 	p := f.ui.document.Path(uid)
-	var path []jsondocument.Node
-	for _, id := range p {
-		path = append(path, f.ui.document.Value(id))
+	var path []NodePlus
+	for _, uid2 := range p {
+		path = append(path, NodePlus{Node: f.ui.document.Value(uid2), UID: uid2})
 	}
-	path = append(path, f.ui.document.Value(uid))
+	path = append(path, NodePlus{Node: f.ui.document.Value(uid), UID: uid})
 	f.selectedPath.RemoveAll()
 	for i, n := range path {
 		isLast := i == len(path)-1
