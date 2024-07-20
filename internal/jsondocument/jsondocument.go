@@ -97,15 +97,16 @@ type Node struct {
 // JSONDocument represents a JSON document which can be rendered by a Fyne tree widget.
 type JSONDocument struct {
 	// How often progress info is updated
-	ProgressUpdateTick int
+	ProgressUpdateTick int32
 
 	progressInfo  binding.Untyped
 	elementsCount int
 
-	ids     map[int][]int
-	values  []Node // using a slice here instead of a map for better load time
-	parents []int  // ditto
-	n       int
+	// ids are stored as int32 to save memory. The API converts them to and from UID strings.
+	ids     map[int32][]int32
+	values  []Node  // using a slice here instead of a map for better load time
+	parents []int32 // ditto
+	n       int32
 }
 
 // Returns a new JSONDocument object.
@@ -156,7 +157,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 	if err != nil {
 		return err
 	}
-	byt = nil
+	byt = nil // GC can free this memory
 	select {
 	case <-ctx.Done():
 		return ErrCallerCanceled
@@ -180,9 +181,10 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 4}); err != nil {
 		return err
 	}
-	if err := j.render(ctx, data, size); err != nil {
+	if err := j.render(ctx, data, int32(size)); err != nil {
 		return err
 	}
+	data = nil // GC can free this memory
 	slog.Info("Finished loading JSON document into tree", "size", j.n)
 	return nil
 }
@@ -200,7 +202,7 @@ func (j *JSONDocument) Parent(uid widget.TreeNodeID) widget.TreeNodeID {
 
 // Path returns the path of a node in the tree.
 func (j *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
-	path := make([]int, 0)
+	path := make([]int32, 0)
 	id := uid2id(uid)
 	for {
 		id = j.parents[id]
@@ -215,7 +217,7 @@ func (j *JSONDocument) Path(uid widget.TreeNodeID) []widget.TreeNodeID {
 
 // Size returns the number of nodes.
 func (j *JSONDocument) Size() int {
-	return j.n
+	return int(j.n)
 }
 
 func (j *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
@@ -244,7 +246,7 @@ func (j *JSONDocument) parseFile(dat []byte) (any, error) {
 }
 
 // render is the main method for rendering the JSON data into a tree.
-func (j *JSONDocument) render(ctx context.Context, data any, size int) error {
+func (j *JSONDocument) render(ctx context.Context, data any, size int32) error {
 	j.initialize(size)
 	var err error
 	switch v := data.(type) {
@@ -265,7 +267,7 @@ func (j *JSONDocument) render(ctx context.Context, data any, size int) error {
 }
 
 // addObject adds a JSON object to the tree.
-func (j *JSONDocument) addObject(ctx context.Context, parentID int, data map[string]any) error {
+func (j *JSONDocument) addObject(ctx context.Context, parentID int32, data map[string]any) error {
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -281,10 +283,14 @@ func (j *JSONDocument) addObject(ctx context.Context, parentID int, data map[str
 }
 
 // addArray adds a JSON array to the tree.
-func (j *JSONDocument) addArray(ctx context.Context, parentID int, a []any) error {
+func (j *JSONDocument) addArray(ctx context.Context, parentID int32, a []any) error {
+	var sb strings.Builder
 	for i, v := range a {
-		k := fmt.Sprintf("[%d]", i)
-		if err := j.addValue(ctx, parentID, k, v); err != nil {
+		sb.Reset()
+		sb.WriteByte('[')
+		sb.WriteString(strconv.Itoa(i))
+		sb.WriteByte(']')
+		if err := j.addValue(ctx, parentID, sb.String(), v); err != nil {
 			return err
 		}
 	}
@@ -292,7 +298,7 @@ func (j *JSONDocument) addArray(ctx context.Context, parentID int, a []any) erro
 }
 
 // addValue adds a JSON value to the tree.
-func (j *JSONDocument) addValue(ctx context.Context, parentID int, k string, v any) error {
+func (j *JSONDocument) addValue(ctx context.Context, parentID int32, k string, v any) error {
 	switch v2 := v.(type) {
 	case map[string]any:
 		id, err := j.addNode(ctx, parentID, k, Empty, Object)
@@ -340,7 +346,7 @@ func (j *JSONDocument) addValue(ctx context.Context, parentID int, k string, v a
 // Nodes will be rendered in the same order they are added.
 // parentID == -1 denotes the root node
 // Returns the generated UID for this node and the incremented ID
-func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, value any, typ JSONType) (int, error) {
+func (j *JSONDocument) addNode(ctx context.Context, parentID int32, key string, value any, typ JSONType) (int32, error) {
 	if parentID != rootNodeParentID {
 		n := j.values[parentID]
 		if n.Type == Undefined {
@@ -375,10 +381,10 @@ func (j *JSONDocument) addNode(ctx context.Context, parentID int, key string, va
 // initialize initializes the tree and allocates needed memory.
 //
 // A valid tree includes a root node (ID=0) and at least one normal node.
-func (j *JSONDocument) initialize(size int) {
-	j.ids = make(map[int][]int)
+func (j *JSONDocument) initialize(size int32) {
+	j.ids = make(map[int32][]int32)
 	j.values = make([]Node, size)
-	j.parents = make([]int, size)
+	j.parents = make([]int32, size)
 	j.n = 0
 }
 
@@ -434,7 +440,7 @@ func (j *JSONDocument) Search(ctx context.Context, uid widget.TreeNodeID, search
 	}
 }
 
-func (j *JSONDocument) searchNode(ctx context.Context, id int, pattern *regexp.Regexp, typ SearchType) (int, error) {
+func (j *JSONDocument) searchNode(ctx context.Context, id int32, pattern *regexp.Regexp, typ SearchType) (int32, error) {
 	n := j.values[id]
 	if n.Type == Array || n.Type == Object {
 		foundID, err := j.searchContainer(ctx, id, pattern, typ)
@@ -485,7 +491,7 @@ func (j *JSONDocument) searchNode(ctx context.Context, id int, pattern *regexp.R
 	return notFound, nil
 }
 
-func (j *JSONDocument) searchContainer(ctx context.Context, id int, pattern *regexp.Regexp, typ SearchType) (int, error) {
+func (j *JSONDocument) searchContainer(ctx context.Context, id int32, pattern *regexp.Regexp, typ SearchType) (int32, error) {
 	select {
 	case <-ctx.Done():
 		return 0, ErrCallerCanceled
@@ -541,7 +547,7 @@ func (j *JSONDocument) Extract(uid widget.TreeNodeID) ([]byte, error) {
 	return json.Marshal(data)
 }
 
-func (j *JSONDocument) extractArray(id int) []any {
+func (j *JSONDocument) extractArray(id int32) []any {
 	data := make([]any, len(j.ids[id]))
 	for i, childID := range j.ids[id] {
 		n := j.values[childID]
@@ -559,7 +565,7 @@ func (j *JSONDocument) extractArray(id int) []any {
 	return data
 }
 
-func (j *JSONDocument) extractObject(id int) map[string]any {
+func (j *JSONDocument) extractObject(id int32) map[string]any {
 	data := make(map[string]any)
 	for _, childID := range j.ids[id] {
 		n := j.values[childID]
@@ -577,7 +583,7 @@ func (j *JSONDocument) extractObject(id int) map[string]any {
 	return data
 }
 
-func uid2id(uid widget.TreeNodeID) int {
+func uid2id(uid widget.TreeNodeID) int32 {
 	if uid == "" {
 		return 0
 	}
@@ -585,17 +591,17 @@ func uid2id(uid widget.TreeNodeID) int {
 	if err != nil {
 		panic(err)
 	}
-	return id
+	return int32(id)
 }
 
-func id2uid(id int) widget.TreeNodeID {
+func id2uid(id int32) widget.TreeNodeID {
 	if id == 0 {
 		return ""
 	}
-	return strconv.Itoa(id)
+	return strconv.Itoa(int(id))
 }
 
-func ids2uids(ids []int) []widget.TreeNodeID {
+func ids2uids(ids []int32) []widget.TreeNodeID {
 	uids := make([]widget.TreeNodeID, len(ids))
 	for i, id := range ids {
 		uids[i] = id2uid(id)

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -103,20 +102,20 @@ func TestWildcard2Regex(t *testing.T) {
 	}
 }
 
-func TestMemoryUsage(t *testing.T) {
-	size := 1_000_000
-	ctx := context.Background()
-	PrintMemUsage()
-	j := New()
-	j.initialize(size + 1)
-	root, _ := j.addNode(ctx, -1, "", Empty, Array)
-	for i := range size {
-		k := strconv.Itoa(i)
-		j.addNode(ctx, root, k, i, Number)
-	}
-	PrintMemUsage()
-	t.Fail()
-}
+// func TestMemoryUsage(t *testing.T) {
+// 	size := int32(1_000_000)
+// 	ctx := context.Background()
+// 	PrintMemUsage()
+// 	j := New()
+// 	j.initialize(size + 1)
+// 	root, _ := j.addNode(ctx, -1, "", Empty, Array)
+// 	for i := range size {
+// 		k := strconv.Itoa(int(i))
+// 		j.addNode(ctx, root, k, i, Number)
+// 	}
+// 	PrintMemUsage()
+// 	t.Fail()
+// }
 
 func PrintMemUsage() {
 	var m runtime.MemStats
