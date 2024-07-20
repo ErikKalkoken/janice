@@ -6,6 +6,7 @@ require (
 	fyne.io/fyne/v2 v2.5.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jarcoal/httpmock v1.3.1
+	github.com/json-iterator/go v1.1.12
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/text v0.16.0
 )
@@ -27,6 +28,8 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rymdport/portal v0.2.3 // indirect

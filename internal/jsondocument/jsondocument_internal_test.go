@@ -3,7 +3,6 @@ package jsondocument
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"runtime"
 	"strings"
@@ -13,6 +12,7 @@ import (
 )
 
 func TestLoadFile(t *testing.T) {
+	ctx := context.Background()
 	j := New()
 	t.Run("should return unmarshaled data from stream", func(t *testing.T) {
 		// given
@@ -25,7 +25,7 @@ func TestLoadFile(t *testing.T) {
 		// when
 		byt, err := j.loadFile(r)
 		if assert.NoError(t, err) {
-			got, err := j.parseFile(byt)
+			got, err := j.parseFile(ctx, byt)
 			// then
 			if assert.NoError(t, err) {
 				assert.Equal(t, data, got)
@@ -38,7 +38,7 @@ func TestLoadFile(t *testing.T) {
 		// when
 		byt, err := j.loadFile(r)
 		if assert.NoError(t, err) {
-			_, err := j.parseFile(byt)
+			_, err := j.parseFile(ctx, byt)
 			// then
 			assert.Error(t, err)
 		}

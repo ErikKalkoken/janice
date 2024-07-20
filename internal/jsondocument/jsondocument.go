@@ -3,7 +3,6 @@ package jsondocument
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,7 +15,10 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
 	// Update progress after x added nodes
@@ -153,7 +155,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 		return ErrCallerCanceled
 	default:
 	}
-	data, err := j.parseFile(byt)
+	data, err := j.parseFile(ctx, byt)
 	if err != nil {
 		return err
 	}
@@ -233,7 +235,7 @@ func (j *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
 	return dat, nil
 }
 
-func (j *JSONDocument) parseFile(dat []byte) (any, error) {
+func (j *JSONDocument) parseFile(ctx context.Context, dat []byte) (any, error) {
 	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
 		return nil, err
 	}
