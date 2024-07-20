@@ -1,47 +1,44 @@
 package jsondocument
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-// func TestLoadFile(t *testing.T) {
-// 	ctx := context.Background()
-// 	j := New()
-// 	t.Run("should return unmarshaled data from stream", func(t *testing.T) {
-// 		// given
-// 		data := map[string]any{"alpha": "two"}
-// 		dat, err := json.Marshal(data)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-// 		r := MakeURIReadCloser(bytes.NewReader(dat), "test")
-// 		// when
-// 		byt, err := j.loadFile(r)
-// 		if assert.NoError(t, err) {
-// 			got, err := j.parseFile(ctx, byt)
-// 			// then
-// 			if assert.NoError(t, err) {
-// 				assert.Equal(t, data, got)
-// 			}
-// 		}
-// 	})
-// 	t.Run("should return error when stream can not be unmarshaled", func(t *testing.T) {
-// 		// given
-// 		r := MakeURIReadCloser(strings.NewReader("invalid JSON"), "test")
-// 		// when
-// 		byt, err := j.loadFile(r)
-// 		if assert.NoError(t, err) {
-// 			_, err := j.parseFile(ctx, byt)
-// 			// then
-// 			assert.Error(t, err)
-// 		}
-// 	})
-// }
+func TestLoadFile(t *testing.T) {
+	ctx := context.Background()
+	j := New()
+	t.Run("should return load and unmarshaled data from stream", func(t *testing.T) {
+		// given
+		data := map[string]any{"alpha": "two"}
+		dat, err := json.Marshal(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := MakeURIReadCloser(bytes.NewReader(dat), "test")
+		// when
+		got, err := j.load(ctx, r)
+		// then
+		if assert.NoError(t, err) {
+			assert.Equal(t, data, got)
+		}
+
+	})
+	t.Run("should return error when stream can not be unmarshaled", func(t *testing.T) {
+		// given
+		r := MakeURIReadCloser(strings.NewReader("invalid JSON"), "test")
+		// when
+		_, err := j.load(ctx, r)
+		// then
+		assert.Error(t, err)
+	})
+}
 
 func TestAddNode(t *testing.T) {
 	ctx := context.TODO()

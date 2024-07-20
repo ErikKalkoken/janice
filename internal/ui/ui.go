@@ -268,10 +268,8 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		case 1:
 			text = fmt.Sprintf("Loading file from disk: %s", name)
 		case 2:
-			text = fmt.Sprintf("Parsing file: %s", name)
-		case 3:
 			text = fmt.Sprintf("Calculating document size: %s", name)
-		case 4:
+		case 3:
 			if pb2.Hidden {
 				pb1.Stop()
 				pb1.Hide()

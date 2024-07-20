@@ -156,8 +156,8 @@ func TestJsonDocumentLoad(t *testing.T) {
 			if assert.NoError(t, err) {
 				p := x.(jsondocument.ProgressInfo)
 				assert.Equal(t, 3, p.Size)
-				assert.Equal(t, 4, p.CurrentStep)
-				assert.Equal(t, 4, p.TotalSteps)
+				assert.Equal(t, 3, p.CurrentStep)
+				assert.Equal(t, 3, p.TotalSteps)
 			}
 		}
 	})

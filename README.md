@@ -75,9 +75,9 @@ For more information on how to configure your system for Fyne please see: [Getti
 
 ### What is the largest JSON file that I can load?
 
-The largest JSON file you can load on your computer depends mainly on how much RAM you have. As a very rough rule of thumb you need about 3x the amount of RAM compared to the size of your JSON file. The actual figures can vary depending on operating system and the structure of the JSON file.
+The largest JSON file you can load on your computer depends mainly on how much RAM you have and on the particular JSON file. The main driver for memory consumption is the number of elements in a JSON document.
 
-For comparison we did a load test on one of our developer notebooks. It has 8 GB RAM and runs Ubuntu 22.04 LTS. We were able to load a JSON files successfully with up to 2.5 GB in size and 42 million elements.
+For comparison we did a load test on one of our developer notebooks. It has 8 GB RAM and runs Ubuntu 22.04 LTS. We were able to load a JSON files successfully with up to 45 million elements. The size of our test file was about 2.5 GB.
 
 ## Attributions
 

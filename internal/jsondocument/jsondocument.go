@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"regexp"
 	"slices"
@@ -145,7 +146,7 @@ func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
 // It reports it's current progress to the caller via updates to progressInfo.
 func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
 	j.progressInfo = progressInfo
-	data, err := j.load(reader)
+	data, err := j.load(ctx, reader)
 	if err != nil {
 		return err
 	}
@@ -211,17 +212,39 @@ func (j *JSONDocument) Size() int {
 	return int(j.n)
 }
 
-func (j *JSONDocument) load(reader fyne.URIReadCloser) (any, error) {
+// readCloserCtx adds context to a ReadCloser and allows a stream to be canceled.
+type readCloserCtx struct {
+	ctx context.Context
+	r   io.ReadCloser
+}
+
+func (r *readCloserCtx) Read(p []byte) (n int, err error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.r.Read(p)
+}
+
+func (r *readCloserCtx) Close() error {
+	return r.r.Close()
+}
+
+// newReaderContext returns a new readCloser with a context.
+func newReaderContext(ctx context.Context, r io.ReadCloser) io.ReadCloser {
+	return &readCloserCtx{ctx: ctx, r: r}
+}
+
+func (j *JSONDocument) load(ctx context.Context, reader io.ReadCloser) (any, error) {
 	defer reader.Close()
 	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
 		return nil, err
 	}
 	var data any
-	dec := json.NewDecoder(reader)
+	reader2 := newReaderContext(ctx, reader)
+	dec := json.NewDecoder(reader2)
 	if err := dec.Decode(&data); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal data: %s", err)
+		return nil, err
 	}
-	slog.Info("Completed loading file", "uri", reader.URI())
 	return data, nil
 }
 

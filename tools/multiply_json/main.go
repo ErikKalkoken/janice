@@ -2,13 +2,16 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
 	factorDefault = 3
@@ -43,14 +46,17 @@ func main() {
 		k := fmt.Sprintf("clone_%03d", i)
 		target[k] = source
 	}
-	fmt.Println("Marshalling into JSON...")
-	data, err = json.MarshalIndent(target, "", "    ")
+	filename := "out.json"
+	fmt.Printf("Writing file: %s ...", filename)
+
+	f, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
-	filename := "out.json"
-	fmt.Printf("Writing file: %s ...", filename)
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "    ")
+	if err := enc.Encode(target); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("DONE")
