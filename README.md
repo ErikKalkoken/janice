@@ -11,6 +11,7 @@ A desktop app for viewing large JSON files.
 - [Description](#description)
 - [Screenshots](#screenshots)
 - [How to run](#how-to-run)
+- [FAQ](#faq)
 - [Attributions](#attributions)
 
 ## Description
@@ -69,6 +70,14 @@ go run github.com/ErikKalkoken/janice@latest
 ```
 
 For more information on how to configure your system for Fyne please see: [Getting Started](https://docs.fyne.io/started/).
+
+## FAQ
+
+### What is the largest JSON file that I can load?
+
+The largest JSON file you can load on your computer depends mainly on how much RAM you have. As a very rough rule of thumb you need about 3x the amount of RAM compared to the size of your JSON file. The actual figures can vary depending on operating system and the structure of the JSON file.
+
+For comparison we did a load test on one of our developer notebooks. It has 8 GB RAM and runs Ubuntu 22.04 LTS. We were able to load a JSON files successfully with up to 2.5 GB in size and 42 million elements.
 
 ## Attributions
 
