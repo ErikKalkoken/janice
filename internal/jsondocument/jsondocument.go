@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"regexp"
 	"slices"
@@ -24,7 +23,7 @@ const (
 	// Update progress after x added nodes
 	progressUpdateTick = 10_000
 	// Total number of load steps
-	totalLoadSteps = 4
+	totalLoadSteps = 3
 	// Parent ID of root node
 	rootNodeParentID = -1
 	// Search target not found
@@ -146,7 +145,7 @@ func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
 // It reports it's current progress to the caller via updates to progressInfo.
 func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
 	j.progressInfo = progressInfo
-	byt, err := j.loadFile(reader)
+	data, err := j.load(reader)
 	if err != nil {
 		return err
 	}
@@ -155,17 +154,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 		return ErrCallerCanceled
 	default:
 	}
-	data, err := j.parseFile(ctx, byt)
-	if err != nil {
-		return err
-	}
-	byt = nil // GC can free this memory
-	select {
-	case <-ctx.Done():
-		return ErrCallerCanceled
-	default:
-	}
-	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 3}); err != nil {
+	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
 		return err
 	}
 	sizer := JSONTreeSizer{}
@@ -180,7 +169,7 @@ func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, prog
 	}
 	j.elementsCount = size
 	slog.Info("Tree size calculated", "size", size)
-	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 4}); err != nil {
+	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 3}); err != nil {
 		return err
 	}
 	if err := j.render(ctx, data, int32(size)); err != nil {
@@ -222,28 +211,17 @@ func (j *JSONDocument) Size() int {
 	return int(j.n)
 }
 
-func (j *JSONDocument) loadFile(reader fyne.URIReadCloser) ([]byte, error) {
+func (j *JSONDocument) load(reader fyne.URIReadCloser) (any, error) {
 	defer reader.Close()
 	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 1}); err != nil {
 		return nil, err
 	}
-	dat, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %s", reader.URI(), err)
-	}
-	slog.Info("Read file", "uri", reader.URI())
-	return dat, nil
-}
-
-func (j *JSONDocument) parseFile(ctx context.Context, dat []byte) (any, error) {
-	if err := j.setProgressInfo(ProgressInfo{CurrentStep: 2}); err != nil {
-		return nil, err
-	}
 	var data any
-	if err := json.Unmarshal(dat, &data); err != nil {
+	dec := json.NewDecoder(reader)
+	if err := dec.Decode(&data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal data: %s", err)
 	}
-	slog.Info("Completed un-marshaling data")
+	slog.Info("Completed loading file", "uri", reader.URI())
 	return data, nil
 }
 
@@ -372,7 +350,7 @@ func (j *JSONDocument) addNode(ctx context.Context, parentID int32, key string, 
 		default:
 		}
 		p := float64(j.n) / float64(j.elementsCount)
-		if err := j.setProgressInfo(ProgressInfo{CurrentStep: 4, Progress: p}); err != nil {
+		if err := j.setProgressInfo(ProgressInfo{CurrentStep: 3, Progress: p}); err != nil {
 			slog.Warn("Failed to set progress", "err", err)
 		}
 	}
