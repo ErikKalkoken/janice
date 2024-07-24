@@ -16,7 +16,7 @@ A desktop app for viewing large JSON files.
 
 ## Description
 
-Janice is a desktop all for viewing large JSON files. It's key features are:
+Janice is a desktop app for viewing large JSON files. It's key features are:
 
 - Browse through a JSON document in classic tree structure
 - JSON files can be opened via file dialog, from clipboard, dropped on the window or given as command line argument
@@ -30,11 +30,11 @@ Janice is a desktop all for viewing large JSON files. It's key features are:
 
 ## Screenshots
 
-![screenshot](https://cdn.imgpile.com/f/Nqv5wTv_xl.png)
+![screenshot](https://cdn.imgpile.com/f/bdQBc3q_xl.png)
 
 ## How to run
 
-Janice is shipped as a single executable and designed to run without requiring any installation. You find the latest packages for download on the [releases page](https://github.com/ErikKalkoken/janice/releases).
+To run Janice just download and unzip the latest release to your computer. Janice ships as a single executable file that can be executed directly. You find the latest packages for download on the [releases page](https://github.com/ErikKalkoken/janice/releases).
 
 ### Linux
 
@@ -61,7 +61,7 @@ Janice is shipped as a single executable and designed to run without requiring a
 1. Unzip the file into a directory of your choice
 1. Run the .app file to start the app.
 
-### Build and run directly
+### Build and run from repository
 
 If your system is configured to build [Fyne](https://fyne.io/) apps, you can build and run this app directly from the repository with the following command:
 
