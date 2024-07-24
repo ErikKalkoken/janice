@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-# This script builds an AppImage from a bundeled Fyne app for x86_64 architectures
+# This script builds an AppImage from a bundeled Fyne app
+# for x86_64 architectures with AppStream metadata.
 
 appname="Janice"
 packagename="janice"
+appid="io.github.erikkalkoken.janice"
 categories="Utility"
 dest="temp.Appdir"
 source="temp.Source"
@@ -17,18 +19,20 @@ mkdir "$dest"
 # Extract application files into appdir folder
 tar xvfJ "$appname".tar.xz -C "$source"
 
-# Add category to desktop file
+# Add category to desktop file as required by AppImage
 sed -i -- "s/;/\nCategories=$categories;/g" "$source/usr/local/share/applications/$appname.desktop"
-# desktop-file-validate "$dest/$appname.desktop"
 
-# Copy additional fiels into appdir
-# mkdir -p $dest/usr/share/metainfo
-# cp "JSON Viewer.appdata.xml" "$dest/usr/share/metainfo"
+# Rename desktop file to match AppStream requirements
+mv "$source/usr/local/share/applications/$appname.desktop" "$source/usr/local/share/applications/$appid.desktop"
+
+# Add metadata to AppStream
+mkdir -p $dest/usr/share/metainfo
+cp "$appid.appdata.xml" "$dest/usr/share/metainfo"
 
 # Create appimage
 wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy
 chmod +x linuxdeploy
-./linuxdeploy --appdir "$dest" -v 2 -o appimage -e "$source/usr/local/bin/$packagename"  -d "$source/usr/local/share/applications/$appname.desktop" -i "$source/usr/local/share/pixmaps/$appname.png"
+./linuxdeploy --appdir "$dest" -v 2 -o appimage -e "$source/usr/local/bin/$packagename"  -d "$source/usr/local/share/applications/$appid.desktop" -i "$source/usr/local/share/pixmaps/$appname.png"
 
 # Cleanup
 rm -rf "$source"
