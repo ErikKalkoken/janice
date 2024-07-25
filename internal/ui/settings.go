@@ -10,6 +10,24 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const (
+	themeAuto  = "auto"
+	themeDark  = "dark"
+	themeLight = "light"
+)
+
+// setting keys and defaults
+const (
+	settingExtensionDefault       = true
+	settingExtensionFilter        = "extension-filter"
+	settingNotifyUpdates          = "notify-updates"
+	settingNotifyUpdatesDefault   = true
+	settingRecentFileCount        = "recent-file-count"
+	settingRecentFileCountDefault = 5
+	settingTheme                  = "theme"
+	settingThemeDefault           = themeAuto
+)
+
 func (u *UI) showSettingsDialog() {
 	recentEntry := widget.NewEntry()
 	x := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
@@ -24,10 +42,17 @@ func (u *UI) showSettingsDialog() {
 	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
 	notifyUpdates.SetChecked(z)
 
+	themeChoice := widget.NewRadioGroup(
+		[]string{themeAuto, themeDark, themeLight}, func(s string) {},
+	)
+	initialTheme := u.app.Preferences().StringWithFallback(settingTheme, settingThemeDefault)
+	themeChoice.SetSelected(initialTheme)
+
 	items := []*widget.FormItem{
 		{Text: "Max recent files", Widget: recentEntry, HintText: "Maximum number of recent files remembered"},
 		{Text: "JSON file filter", Widget: extFilter, HintText: "Wether to show files with .json extension only"},
 		{Text: "Notify about updates", Widget: notifyUpdates, HintText: "Wether to notify when an update is available (requires restart)"},
+		{Text: "Theme", Widget: themeChoice, HintText: "Choose the preferred theme (requires restart)"},
 	}
 	d := dialog.NewForm(
 		"Settings", "Apply", "Cancel", items, func(applied bool) {
@@ -42,6 +67,11 @@ func (u *UI) showSettingsDialog() {
 			u.app.Preferences().SetInt(settingRecentFileCount, x)
 			u.app.Preferences().SetBool(settingExtensionFilter, extFilter.Checked)
 			u.app.Preferences().SetBool(settingNotifyUpdates, notifyUpdates.Checked)
+			newTheme := themeChoice.Selected
+			if newTheme != initialTheme {
+				u.app.Preferences().SetString(settingTheme, newTheme)
+				u.setTheme(themeChoice.Selected)
+			}
 		}, u.window)
 	d.Show()
 }

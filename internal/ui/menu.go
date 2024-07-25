@@ -17,16 +17,6 @@ const (
 	websiteURL             = "https://github.com/ErikKalkoken/janice"
 )
 
-// setting keys and defaults
-const (
-	settingExtensionDefault       = true
-	settingExtensionFilter        = "extension-filter"
-	settingNotifyUpdates          = "notify-updates"
-	settingNotifyUpdatesDefault   = true
-	settingRecentFileCount        = "recent-file-count"
-	settingRecentFileCountDefault = 5
-)
-
 func (u *UI) makeMenu() *fyne.MainMenu {
 	recentItem := fyne.NewMenuItem("Open Recent", nil)
 	recentItem.ChildMenu = fyne.NewMenu("")
