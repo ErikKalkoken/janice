@@ -63,10 +63,10 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText := widget.NewLabel(
 		"Welcome to " + appName + ".\n" +
 			"Open a JSON file through the File Open menu\n" +
-			"or drag and drop the file on this window" +
-			"or import it from clipboard.\n",
+			"or drag and drop the file on this window\n" +
+			"or import from the clipboard.\n",
 	)
-	welcomeText.Importance = widget.LowImportance
+	welcomeText.Importance = widget.MediumImportance
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
 

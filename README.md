@@ -26,11 +26,17 @@ Janice is a desktop app for viewing large JSON files. It's key features are:
 - Copy values to clipboard
 - Single executable file, no installation required
 - Desktop app that runs on Windows, Linux and macOS (experimental)
-- Automatic dark and light mode
+- Automatic dark and light theme
 
 ## Screenshots
 
-![screenshot](https://cdn.imgpile.com/f/bdQBc3q_xl.png)
+### Light theme
+
+![light](https://cdn.imgpile.com/f/0IrYBjJ_xl.png)
+
+### Dark theme
+
+![dark](https://cdn.imgpile.com/f/bdQBc3q_xl.png)
 
 ## How to run
 
