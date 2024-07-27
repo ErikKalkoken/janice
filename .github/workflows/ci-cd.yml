@@ -8,6 +8,7 @@ env:
   FULLNAME: "Janice"
   FULLNAME2: "Janice"  # for AppImage, e.g. spaces replaced with underscore
   APPIMAGENAME: "Janice-x86_64"
+  VERSION: "0.0.0"
 
 on: push
 
@@ -60,19 +61,19 @@ jobs:
     - name: Build AppImage
       run: ./build_appimage.sh
 
-    - name: Make version string
+    - name: Set version
       run: |
         VERSION=${{ github.ref_name }}
         echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
     - name: Rename AppImage
       run: |
-        mv ${{ env.APPIMAGENAME }}.AppImage ${{ env.FULLNAME2 }}-${VERSION}-x86_64.AppImage
+        mv ${{ env.APPIMAGENAME }}.AppImage ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
 
     - uses: actions/upload-artifact@v4
       with:
         name: ${{ env.NAME }}-linux
-        path: ${{ env.FULLNAME2 }}-${VERSION}-x86_64.AppImage
+        path: ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
         if-no-files-found: error
         overwrite: true
 
@@ -107,19 +108,19 @@ jobs:
     - name: Package
       run: fyne package -os windows
 
-    - name: Make version string
+    - name: Set version
       run: |
         VERSION=${{ github.ref_name }}
         echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
     - name: ZIP package
-      run: zip ${{ env.NAME }}-${VERSION}-windows-x64.zip "${{ env.FULLNAME }}.exe"
+      run: zip ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip "${{ env.FULLNAME }}.exe"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.NAME }}-windows
-        path: ${{ env.NAME }}-${VERSION}-windows-x64.zip
+        path: ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip
         if-no-files-found: error
         overwrite: true
 
@@ -146,13 +147,13 @@ jobs:
     - name: Package app bundles
       run: fyne package -os darwin
 
-    - name: Make version string
+    - name: Set version
       run: |
         VERSION=${{ github.ref_name }}
         echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
     - name: ZIP app bundle
-      run: zip --symlinks -r ${{ env.NAME }}-${VERSION}-darwin-x64.zip "${{ env.FULLNAME }}.app/"
+      run: zip --symlinks -r ${{ env.NAME }}-${{ env.VERSION }}-darwin-x64.zip "${{ env.FULLNAME }}.app/"
 
     - name: Display structure of downloaded files
       run: ls -R
@@ -161,7 +162,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.NAME }}-macos
-        path: ${{ env.NAME }}-${VERSION}-darwin-x64.zip
+        path: ${{ env.NAME }}-${{ env.VERSION }}-darwin-x64.zip
         if-no-files-found: error
         overwrite: true
 
@@ -190,6 +191,6 @@ jobs:
       with:
         fail_on_unmatched_files: true
         files: |
-          ${{ env.NAME }}-${VERSION}-windows-x64.zip
-          ${{ env.FULLNAME2 }}-${VERSION}-x86_64.AppImage
-          ${{ env.NAME }}-${VERSION}-darwin-x64.zip
+          ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip
+          ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
+          ${{ env.NAME }}-${{ env.VERSION }}-darwin-x64.zip
