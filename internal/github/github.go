@@ -3,12 +3,15 @@ package github
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/hashicorp/go-version"
 )
+
+var ErrHttpError = errors.New("HTTP error")
 
 type githubRelease struct {
 	TagName string `json:"tag_name"`
@@ -42,6 +45,9 @@ func fetchLatest(owner, repo string) (string, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return "", err
+	}
+	if r.StatusCode >= 400 {
+		return "", fmt.Errorf("%s: %w", r.Status, ErrHttpError)
 	}
 	var info githubRelease
 	if err := json.Unmarshal(data, &info); err != nil {
