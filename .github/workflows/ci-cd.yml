@@ -6,8 +6,7 @@ env:
   GOVERSION: "1.22.4"
   NAME: "janice"
   FULLNAME: "Janice"
-  FULLNAME2: "Janice"  # for AppImage, e.g. spaces replaced with underscore
-  APPIMAGENAME: "Janice-x86_64"
+  FULLNAME2: "Janice"  # for AppImage file, e.g. with spaces replaced by underscores
   VERSION: "0.0.0"
 
 on: push
@@ -65,9 +64,6 @@ jobs:
 
     - name: Build AppImage
       run: ./build_appimage.sh
-
-    - name: Display files
-      run: ls -R
 
     - uses: actions/upload-artifact@v4
       with:
@@ -173,9 +169,6 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         merge-multiple: true
-
-    - name: Display structure of downloaded files
-      run: ls -R
 
     - name: Make version string
       run: |
