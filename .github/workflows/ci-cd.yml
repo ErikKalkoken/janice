@@ -58,17 +58,16 @@ jobs:
     - name: Package Fyne app
       run: fyne package -os linux
 
-    - name: Build AppImage
-      run: ./build_appimage.sh
-
     - name: Set version
       run: |
         VERSION=${{ github.ref_name }}
         echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
-    - name: Rename AppImage
-      run: |
-        mv ${{ env.APPIMAGENAME }}.AppImage ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
+    - name: Build AppImage
+      run: ./build_appimage.sh
+
+    - name: Display files
+      run: ls -R
 
     - uses: actions/upload-artifact@v4
       with:
@@ -154,9 +153,6 @@ jobs:
 
     - name: ZIP app bundle
       run: zip --symlinks -r ${{ env.NAME }}-${{ env.VERSION }}-darwin-x64.zip "${{ env.FULLNAME }}.app/"
-
-    - name: Display structure of downloaded files
-      run: ls -R
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
