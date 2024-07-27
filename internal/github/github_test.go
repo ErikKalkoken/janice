@@ -54,4 +54,11 @@ func TestAvailableUpdate(t *testing.T) {
 		_, _, err := github.AvailableUpdate("ErikKalkoken", "janice", "v0.2.0")
 		assert.Error(t, err)
 	})
+	t.Run("should report error when no release found", func(t *testing.T) {
+		httpmock.Reset()
+		httpmock.RegisterResponder("GET", "https://api.github.com/repos/ErikKalkoken/janice/releases/latest",
+			httpmock.NewJsonResponderOrPanic(404, map[string]any{"message": "Not found"}))
+		_, _, err := github.AvailableUpdate("ErikKalkoken", "janice", "v0.2.0")
+		assert.ErrorIs(t, err, github.ErrHttpError)
+	})
 }
