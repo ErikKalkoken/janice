@@ -6,7 +6,6 @@
 appname="Janice"
 packagename="janice"
 appid="io.github.erikkalkoken.janice"
-categories="Utility"
 dest="temp.Appdir"
 source="temp.Source"
 
@@ -18,9 +17,6 @@ mkdir "$dest"
 
 # Extract application files into appdir folder
 tar xvfJ "$appname".tar.xz -C "$source"
-
-# Add category to desktop file as required by AppImage
-sed -i -- "s/;/\nCategories=$categories;/g" "$source/usr/local/share/applications/$appname.desktop"
 
 # Rename desktop file to match AppStream requirements
 mv "$source/usr/local/share/applications/$appname.desktop" "$source/usr/local/share/applications/$appid.desktop"

@@ -5,4 +5,10 @@ Website = "https://github.com/ErikKalkoken/janice"
   Name = "Janice"
   ID = "io.github.erikkalkoken.janice"
   Version = "0.2.1"
-  Build = 1
+  Build = 2
+
+[LinuxAndBSD]
+  GenericName = "JSON viewer"
+  Categories = ["Utility"]
+  Comment = "View large JSON files"
+  Keywords = ["json", "viewer"]
