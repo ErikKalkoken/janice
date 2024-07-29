@@ -57,9 +57,6 @@ jobs:
     - name: Package Fyne app
       run: fyne package -os linux
 
-    - name: Build tools
-      run: go build ./tools/readmetadata
-
     - name: Set version
       run: |
         VERSION=${{ github.ref_name }}

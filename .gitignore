@@ -8,5 +8,4 @@ test*.json
 temp.*/
 profile*.gif
 out*.json
-readmetadata
-tomlvalue
+tomlq
