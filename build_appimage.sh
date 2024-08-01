@@ -8,15 +8,15 @@ set -e
 dest="temp.Appdir"
 source="temp.Source"
 
-# get tomlq
-wget https://github.com/ErikKalkoken/tomlq/releases/download/v0.1.0/tomlq-0.1.0-linux-amd64.tar.gz -O tomlq.tar.gz
-tar xf tomlq.tar.gz
-rm tomlq.tar.gz
+# get fynemeta
+wget https://github.com/ErikKalkoken/fynemeta/releases/download/v0.1.0/fynemeta-0.1.0-linux-amd64.tar.gz -O fynemeta.tar.gz
+tar xf fynemeta.tar.gz
+rm fynemeta.tar.gz
 
 # Use variables from fyne metadata
-appname=$(./tomlq -p Details.Name FyneApp.toml)
-appid=$(./tomlq -p Details.ID FyneApp.toml)
-buildname=$(./tomlq -p Release.BuildName FyneApp.toml)
+appname=$(./fynemeta lookup -k Details.Name FyneApp.toml)
+appid=$(./fynemeta lookup -k Details.ID FyneApp.toml)
+buildname=$(./fynemeta lookup -k Release.BuildName FyneApp.toml)
 
 # Initialize appdir folder
 rm -rf "$source"
@@ -32,7 +32,8 @@ mv "$source/usr/local/share/applications/$appname.desktop" "$source/usr/local/sh
 
 # Add metadata to AppStream
 mkdir -p $dest/usr/share/metainfo
-cp "$appid.appdata.xml" "$dest/usr/share/metainfo"
+./fynemeta appstream
+mv "$appid.appdata.xml" "$dest/usr/share/metainfo"
 
 # Create appimage
 wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy
@@ -43,4 +44,4 @@ chmod +x linuxdeploy
 rm -rf "$source"
 rm -rf "$dest"
 rm linuxdeploy
-rm tomlq
+rm fynemeta

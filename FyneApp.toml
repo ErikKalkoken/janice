@@ -9,6 +9,11 @@ Website = "https://github.com/ErikKalkoken/janice"
 
 [Release]
   BuildName = "janice"
+  Summary = "A desktop app for viewing large JSON files"
+  Description = "<p>A desktop app for viewing large JSON files.</p>"
+  License = "MIT"
+  Screenshots = "https://cdn.imgpile.com/f/0IrYBjJ_xl.png"
+  ContentRating = "oars-1.1"
 
 [LinuxAndBSD]
   GenericName = "JSON viewer"
