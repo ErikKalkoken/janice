@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 
-# This script builds an AppImage from a bundeled Fyne app
-# for x86_64 architectures with AppStream metadata.
+# This script builds an AppImage with AppStream metadata from a Fyne app
 
 set -e
-
-# Custom variables
-buildname="janice"
 
 # Constants
 dest="temp.Appdir"
@@ -20,6 +16,7 @@ rm tomlq.tar.gz
 # Use variables from fyne metadata
 appname=$(./tomlq -p Details.Name FyneApp.toml)
 appid=$(./tomlq -p Details.ID FyneApp.toml)
+buildname=$(./tomlq -p Release.BuildName FyneApp.toml)
 
 # Initialize appdir folder
 rm -rf "$source"
