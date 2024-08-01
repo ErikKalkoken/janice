@@ -40,7 +40,7 @@ Janice is a desktop app for viewing large JSON files. It's key features are:
 
 ## How to run
 
-To run Janice just download and unzip the latest release to your computer. Janice ships as a single executable file that can be executed directly. You find the latest packages for download on the [releases page](https://github.com/ErikKalkoken/janice/releases).
+To run Janice just download and unzip the latest release to your computer. Janice ships as a single executable file that can be run directly. You find the latest packages for download on the [releases page](https://github.com/ErikKalkoken/janice/releases).
 
 ### Linux
 
