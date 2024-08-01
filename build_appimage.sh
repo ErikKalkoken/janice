@@ -30,10 +30,9 @@ tar xvfJ "$appname".tar.xz -C "$source"
 # Rename desktop file to match AppStream requirements
 mv "$source/usr/local/share/applications/$appname.desktop" "$source/usr/local/share/applications/$appid.desktop"
 
-# Add metadata to AppStream
+# Add AppStream appdata file
 mkdir -p $dest/usr/share/metainfo
-./fynemeta appstream
-mv "$appid.appdata.xml" "$dest/usr/share/metainfo"
+./fynemeta generate -t AppStream -d "$dest/usr/share/metainfo"
 
 # Create appimage
 wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy

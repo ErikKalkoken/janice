@@ -4,13 +4,13 @@ Website = "https://github.com/ErikKalkoken/janice"
   Icon = "icon.png"
   Name = "Janice"
   ID = "io.github.erikkalkoken.janice"
-  Version = "0.2.3"
-  Build = 2
+  Version = "0.2.4"
+  Build = 1
 
 [Release]
   BuildName = "janice"
   Summary = "A desktop app for viewing large JSON files"
-  Description = "<p>A desktop app for viewing large JSON files.</p>"
+  Description = "<p>A desktop app for viewing large JSON files. Please see website for details.</p>"
   License = "MIT"
   Screenshots = "https://cdn.imgpile.com/f/0IrYBjJ_xl.png"
   ContentRating = "oars-1.1"
