@@ -6,6 +6,8 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	ttwidget "github.com/dweymouth/fyne-tooltip/widget"
+
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 	"github.com/ErikKalkoken/janice/internal/widgets"
 )
@@ -17,8 +19,8 @@ type selectionFrame struct {
 
 	selectedUID      widget.TreeNodeID
 	selectedPath     *fyne.Container
-	jumpToSelection  *widget.Button
-	copyKeyClipboard *widget.Button
+	jumpToSelection  *ttwidget.Button
+	copyKeyClipboard *ttwidget.Button
 }
 
 func (u *UI) newSelectionFrame() *selectionFrame {
@@ -28,14 +30,16 @@ func (u *UI) newSelectionFrame() *selectionFrame {
 		ui:           u,
 		selectedPath: container.New(myHBox),
 	}
-	f.jumpToSelection = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
+	f.jumpToSelection = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
 		u.scrollTo(f.selectedUID)
 	})
+	f.jumpToSelection.SetToolTip("Jump to selection")
 	f.jumpToSelection.Disable()
-	f.copyKeyClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+	f.copyKeyClipboard = ttwidget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		n := u.document.Value(f.selectedUID)
 		u.window.Clipboard().SetContent(n.Key)
 	})
+	f.copyKeyClipboard.SetToolTip("Copy key to clipboard")
 	f.copyKeyClipboard.Disable()
 	c := container.NewBorder(
 		nil,
