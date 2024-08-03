@@ -17,7 +17,7 @@ type githubRelease struct {
 	TagName string `json:"tag_name"`
 }
 
-// AvailableUpdate return the version of the latest release and reports wether the update is newer.
+// AvailableUpdate returns the version of the latest release and reports wether the update is newer.
 func AvailableUpdate(owner, repo, current string) (string, bool, error) {
 	v1, err := version.NewVersion(current)
 	if err != nil {

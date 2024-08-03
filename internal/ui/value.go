@@ -8,6 +8,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	ttwidget "github.com/dweymouth/fyne-tooltip/widget"
+
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
@@ -16,7 +18,7 @@ type valueFrame struct {
 	content *fyne.Container
 	ui      *UI
 
-	copyValueClipboard *widget.Button
+	copyValueClipboard *ttwidget.Button
 	valueDisplay       *widget.RichText
 	valueRaw           string
 }
@@ -27,9 +29,10 @@ func (u *UI) newValueFrame() *valueFrame {
 		valueDisplay: widget.NewRichText(),
 	}
 	// value frame
-	f.copyValueClipboard = widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+	f.copyValueClipboard = ttwidget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		u.window.Clipboard().SetContent(f.valueRaw)
 	})
+	f.copyValueClipboard.SetToolTip("Copy value to clipboard")
 	f.copyValueClipboard.Disable()
 	c := container.NewBorder(
 		nil,

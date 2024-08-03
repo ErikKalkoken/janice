@@ -12,6 +12,8 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	ttwidget "github.com/dweymouth/fyne-tooltip/widget"
+
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
@@ -37,11 +39,11 @@ type searchBarFrame struct {
 	ui      *UI
 
 	searchEntry  *widget.Entry
-	searchButton *widget.Button
-	searchType   *widget.Select
-	scrollBottom *widget.Button
-	scrollTop    *widget.Button
-	collapseAll  *widget.Button
+	searchButton *ttwidget.Button
+	searchType   *ttwidget.Select
+	scrollBottom *ttwidget.Button
+	scrollTop    *ttwidget.Button
+	collapseAll  *ttwidget.Button
 }
 
 func (u *UI) newSearchBarFrame() *searchBarFrame {
@@ -50,31 +52,36 @@ func (u *UI) newSearchBarFrame() *searchBarFrame {
 		searchEntry: widget.NewEntry(),
 	}
 	// search frame
-	f.searchType = widget.NewSelect([]string{
+	f.searchType = ttwidget.NewSelect([]string{
 		searchTypeKey,
 		searchTypeKeyword,
 		searchTypeNumber,
 		searchTypeString,
 	}, nil)
 	f.searchType.SetSelected(searchTypeKey)
+	f.searchType.SetToolTip("Select what to search")
 	f.searchType.Disable()
 	f.searchEntry.SetPlaceHolder(
 		"Enter pattern to search for...")
 	f.searchEntry.OnSubmitted = func(s string) {
 		f.doSearch()
 	}
-	f.searchButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
+	f.searchButton = ttwidget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		f.doSearch()
 	})
-	f.scrollBottom = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
+	f.searchButton.SetToolTip("Search")
+	f.scrollBottom = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
 		f.ui.treeWidget.ScrollToBottom()
 	})
-	f.scrollTop = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
+	f.scrollBottom.SetToolTip("Scroll to bottom")
+	f.scrollTop = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
 		f.ui.treeWidget.ScrollToTop()
 	})
-	f.collapseAll = widget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
+	f.scrollTop.SetToolTip("Scroll to top")
+	f.collapseAll = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
 		f.ui.treeWidget.CloseAllBranches()
 	})
+	f.collapseAll.SetToolTip("Collapse all")
 	c := container.NewBorder(
 		nil,
 		nil,

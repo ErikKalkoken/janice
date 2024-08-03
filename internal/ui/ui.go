@@ -16,6 +16,7 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	fynetooltip "github.com/dweymouth/fyne-tooltip"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
@@ -82,7 +83,7 @@ func NewUI(app fyne.App) (*UI, error) {
 		nil,
 		container.NewStack(u.welcomeMessage, u.treeWidget))
 
-	u.window.SetContent(c)
+	u.window.SetContent(fynetooltip.AddWindowToolTipLayer(c, u.window.Canvas()))
 	u.window.SetMainMenu(u.makeMenu())
 	u.toogleHasDocument(false)
 	u.updateRecentFilesMenu()
