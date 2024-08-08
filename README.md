@@ -67,6 +67,11 @@ To run Janice just download and unzip the latest release to your computer. Janic
 1. Unzip the file into a directory of your choice
 1. Run the .app file to start the app.
 
+> [!TIP]
+> MacOS may report this app incorrectly as "damaged", because it is not signed with an Apple certificate. You can remove this error by opening a terminal and running the following command. For more information please see [Fyne Troubleshooting](https://docs.fyne.io/faq/troubleshoot#distribution):
+>
+> ```sudo xattr -r -d com.apple.quarantine Janice.app```
+
 ### Build and run from repository
 
 If your system is configured to build [Fyne](https://fyne.io/) apps, you can build and run this app directly from the repository with the following command:
@@ -84,6 +89,10 @@ For more information on how to configure your system for Fyne please see: [Getti
 The largest JSON file you can load on your computer depends mainly on how much RAM you have and on the particular JSON file. The main driver for memory consumption is the number of elements in a JSON document.
 
 For comparison we did a load test on one of our developer notebooks. It has 8 GB RAM and runs Ubuntu 22.04 LTS. We were able to load a JSON files successfully with up to 45 million elements. The size of our test file was about 2.5 GB.
+
+## Are JSON files formatted?
+
+Yes. The JSON document is rendered as tree and keys are shown in alphabetical order.
 
 ## Attributions
 
