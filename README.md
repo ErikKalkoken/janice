@@ -90,7 +90,7 @@ The largest JSON file you can load on your computer depends mainly on how much R
 
 For comparison we did a load test on one of our developer notebooks. It has 8 GB RAM and runs Ubuntu 22.04 LTS. We were able to load a JSON files successfully with up to 45 million elements. The size of our test file was about 2.5 GB.
 
-## Are JSON files formatted?
+### Are JSON files formatted?
 
 Yes. The JSON document is rendered as tree and keys are shown in alphabetical order.
 
