@@ -25,7 +25,7 @@ Janice is a desktop app for viewing large JSON files. It's key features are:
 - Export parts of a JSON file into a new file or to clipboard
 - Copy values to clipboard
 - Single executable file, no installation required
-- Desktop app that runs on Windows, Linux and macOS (experimental)
+- Desktop app that runs on Windows, Linux and macOS
 - Automatic dark and light theme
 
 ## Screenshots
@@ -60,10 +60,7 @@ To run Janice just download and unzip the latest release to your computer. Janic
 
 ### Mac OS
 
-> [!NOTE]
-> The MAC version is currently experimental only, since we have not been able to verify that the release process actually works. We would very much appreciate any feedback on wether the package works or what needs to be improved.
-
-1. Download the darwin zip file from the latest release on Github.
+1. Download the darwin zip file from the latest release on Github for your respective platform (arm or intel).
 1. Unzip the file into a directory of your choice
 1. Run the .app file to start the app.
 
