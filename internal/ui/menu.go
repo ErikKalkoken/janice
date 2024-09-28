@@ -74,6 +74,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 				if f == nil {
 					return
 				}
+				defer f.Close()
 				_, err = f.Write(byt)
 				if err != nil {
 					u.showErrorDialog("Failed to write file", err)

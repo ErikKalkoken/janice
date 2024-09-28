@@ -144,6 +144,7 @@ func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
 
 // Load loads JSON data from a reader and builds a new JSON document from it.
 // It reports it's current progress to the caller via updates to progressInfo.
+// Closes the reader.
 func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
 	j.progressInfo = progressInfo
 	data, err := j.load(ctx, reader)
