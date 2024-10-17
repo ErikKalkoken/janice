@@ -11,6 +11,10 @@ import (
 	"github.com/ErikKalkoken/janice/internal/ui"
 )
 
+const (
+	appID = "io.github.erikkalkoken.janice"
+)
+
 type logLevelFlag struct {
 	value slog.Level
 }
@@ -42,7 +46,7 @@ func main() {
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	slog.SetLogLoggerLevel(levelFlag.value)
-	a := app.NewWithID("io.github.erikkalkoken.janice")
+	a := app.NewWithID(appID)
 	if *versionFlag {
 		fmt.Printf("Current version is: %s", a.Metadata().Version)
 		return
