@@ -29,21 +29,38 @@ const (
 )
 
 func (u *UI) showSettingsDialog() {
+	// recent files
 	recentEntry := widget.NewEntry()
+	recentEntry.OnChanged = func(s string) {
+		x, err := strconv.Atoi(recentEntry.Text)
+		if err != nil {
+			slog.Error("Failed to convert", "err", err)
+			return
+		}
+		u.app.Preferences().SetInt(settingRecentFileCount, x)
+	}
 	x := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
 	recentEntry.SetText(strconv.Itoa(x))
 	recentEntry.Validator = newPositiveNumberValidator()
 
-	extFilter := widget.NewCheck("enabled", func(bool) {})
+	// apply file filter
+	extFilter := widget.NewCheck("enabled", func(v bool) {
+		u.app.Preferences().SetBool(settingExtensionFilter, v)
+	})
 	y := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
 	extFilter.SetChecked(y)
 
-	notifyUpdates := widget.NewCheck("enabled", func(bool) {})
+	notifyUpdates := widget.NewCheck("enabled", func(v bool) {
+		u.app.Preferences().SetBool(settingNotifyUpdates, v)
+	})
 	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
 	notifyUpdates.SetChecked(z)
 
 	themeChoice := widget.NewRadioGroup(
-		[]string{themeAuto, themeDark, themeLight}, func(s string) {},
+		[]string{themeAuto, themeDark, themeLight}, func(v string) {
+			u.app.Preferences().SetString(settingTheme, v)
+			u.setTheme(v)
+		},
 	)
 	initialTheme := u.app.Preferences().StringWithFallback(settingTheme, settingThemeDefault)
 	themeChoice.SetSelected(initialTheme)
@@ -52,27 +69,9 @@ func (u *UI) showSettingsDialog() {
 		{Text: "Max recent files", Widget: recentEntry, HintText: "Maximum number of recent files remembered"},
 		{Text: "JSON file filter", Widget: extFilter, HintText: "Wether to show files with .json extension only"},
 		{Text: "Notify about updates", Widget: notifyUpdates, HintText: "Wether to notify when an update is available (requires restart)"},
-		{Text: "Theme", Widget: themeChoice, HintText: "Choose the preferred theme (requires restart)"},
+		{Text: "Theme", Widget: themeChoice, HintText: "Choose the preferred theme"},
 	}
-	d := dialog.NewForm(
-		"Settings", "Apply", "Cancel", items, func(applied bool) {
-			if !applied {
-				return
-			}
-			x, err := strconv.Atoi(recentEntry.Text)
-			if err != nil {
-				slog.Error("Failed to convert", "err", err)
-				return
-			}
-			u.app.Preferences().SetInt(settingRecentFileCount, x)
-			u.app.Preferences().SetBool(settingExtensionFilter, extFilter.Checked)
-			u.app.Preferences().SetBool(settingNotifyUpdates, notifyUpdates.Checked)
-			newTheme := themeChoice.Selected
-			if newTheme != initialTheme {
-				u.app.Preferences().SetString(settingTheme, newTheme)
-				u.setTheme(themeChoice.Selected)
-			}
-		}, u.window)
+	d := dialog.NewCustom("Settings", "Close", widget.NewForm(items...), u.window)
 	d.Show()
 }
 
