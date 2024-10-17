@@ -21,7 +21,6 @@ import (
 	"golang.org/x/text/message"
 
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
-	"github.com/ErikKalkoken/janice/internal/widgets"
 )
 
 // preference keys
@@ -125,11 +124,11 @@ func (u *UI) makeTree() *widget.Tree {
 			return u.document.IsBranch(id)
 		},
 		func(branch bool) fyne.CanvasObject {
-			return widgets.NewTreeNode()
+			return NewTreeNode()
 		},
 		func(uid widget.TreeNodeID, branch bool, co fyne.CanvasObject) {
 			node := u.document.Value(uid)
-			obj := co.(*widgets.TreeNode)
+			obj := co.(*TreeNode)
 			var text string
 			switch v := node.Value; node.Type {
 			case jsondocument.Array:

@@ -1,4 +1,4 @@
-package widgets
+package ui
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type TreeNode struct {
 	value *widget.Label
 }
 
-// NewTreeNode returns a new TreeNode instance.
+// NewTreeNode returns a new instance of the [TreeNode] widget.
 func NewTreeNode() *TreeNode {
 	n := &TreeNode{
 		key:   widget.NewLabel(""),
