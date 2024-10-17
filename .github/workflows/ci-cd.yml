@@ -55,7 +55,7 @@ jobs:
       run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
     - name: Package Fyne app
-      run: fyne package -os linux
+      run: fyne package -os linux --release
 
     - name: Set version
       run: |
@@ -63,7 +63,7 @@ jobs:
         echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
     - name: Build AppImage
-      run: ./build_appimage.sh
+      run: ./tools/build_appimage.sh
 
     - uses: actions/upload-artifact@v4
       with:
@@ -101,7 +101,7 @@ jobs:
       run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
     - name: Package
-      run: fyne package -os windows
+      run: fyne package -os windows --release
 
     - name: Set version
       run: |
@@ -140,7 +140,7 @@ jobs:
       run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
     - name: Package app bundles
-      run: fyne package -os darwin
+      run: fyne package -os darwin --release
 
     - name: Set version
       run: |
@@ -179,7 +179,7 @@ jobs:
       run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
     - name: Package app bundles
-      run: fyne package -os darwin
+      run: fyne package -os darwin --release
 
     - name: Set version
       run: |

@@ -5,14 +5,14 @@ Website = "https://github.com/ErikKalkoken/janice"
   Name = "Janice"
   ID = "io.github.erikkalkoken.janice"
   Version = "0.4.2"
-  Build = 1
+  Build = 2
 
 [Release]
   BuildName = "janice"
+  ContentRating = "oars-1.1"
   Description = "<p>A desktop app for viewing large JSON files. Please see website for details.</p>"
   License = "MIT"
   Screenshots = "https://cdn.imgpile.com/f/0IrYBjJ_xl.png"
-  ContentRating = "oars-1.1"
 
 [LinuxAndBSD]
   GenericName = "JSON viewer"
