@@ -6,10 +6,10 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	kxwidget "github.com/ErikKalkoken/fyne-kx/widget"
 	ttwidget "github.com/dweymouth/fyne-tooltip/widget"
 
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
-	"github.com/ErikKalkoken/janice/internal/widgets"
 )
 
 // selection represents the selection frame in the UI.
@@ -98,7 +98,7 @@ func (f *selectionFrame) set(uid string) {
 	for i, n := range path {
 		isLast := i == len(path)-1
 		if !isLast {
-			l := widgets.NewTappableLabel(n.Key, func() {
+			l := kxwidget.NewTappableLabel(n.Key, func() {
 				f.ui.scrollTo(n.UID)
 				f.ui.selectElement(n.UID)
 			})

@@ -1,13 +1,9 @@
 package ui
 
 import (
-	"errors"
-	"log/slog"
-	"strconv"
-
-	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	kxwidget "github.com/ErikKalkoken/fyne-kx/widget"
 )
 
 const (
@@ -30,18 +26,13 @@ const (
 
 func (u *UI) showSettingsDialog() {
 	// recent files
-	recentEntry := widget.NewEntry()
-	recentEntry.OnChanged = func(s string) {
-		x, err := strconv.Atoi(recentEntry.Text)
-		if err != nil {
-			slog.Error("Failed to convert", "err", err)
-			return
-		}
-		u.app.Preferences().SetInt(settingRecentFileCount, x)
+	recentEntry := kxwidget.NewSlider(3, 20, 1)
+	recentEntry.SetValue(
+		u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault),
+	)
+	recentEntry.OnChangeEnded = func(v int) {
+		u.app.Preferences().SetInt(settingRecentFileCount, v)
 	}
-	x := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
-	recentEntry.SetText(strconv.Itoa(x))
-	recentEntry.Validator = newPositiveNumberValidator()
 
 	// apply file filter
 	extFilter := widget.NewCheck("enabled", func(v bool) {
@@ -73,19 +64,4 @@ func (u *UI) showSettingsDialog() {
 	}
 	d := dialog.NewCustom("Settings", "Close", widget.NewForm(items...), u.window)
 	d.Show()
-}
-
-// newPositiveNumberValidator ensures entry is a positive number (incl. zero).
-func newPositiveNumberValidator() fyne.StringValidator {
-	myErr := errors.New("must be positive number")
-	return func(text string) error {
-		val, err := strconv.Atoi(text)
-		if err != nil {
-			return myErr
-		}
-		if val < 0 {
-			return myErr
-		}
-		return nil
-	}
 }
