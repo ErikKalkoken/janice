@@ -26,12 +26,11 @@ const (
 
 func (u *UI) showSettingsDialog() {
 	// recent files
-	recentEntry := kxwidget.NewSlider(3, 20, 1)
-	recentEntry.SetValue(
-		u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault),
-	)
-	recentEntry.OnChangeEnded = func(v int) {
-		u.app.Preferences().SetInt(settingRecentFileCount, v)
+	recentEntry := kxwidget.NewSlider(3, 20)
+	x := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
+	recentEntry.SetValue(float64(x))
+	recentEntry.OnChangeEnded = func(v float64) {
+		u.app.Preferences().SetInt(settingRecentFileCount, int(v))
 	}
 
 	// apply file filter
