@@ -16,7 +16,7 @@ import (
 // valueFrame represents the value frame in the UI.
 type valueFrame struct {
 	content *fyne.Container
-	ui      *UI
+	u       *UI
 
 	copyValueClipboard *ttwidget.Button
 	valueDisplay       *widget.RichText
@@ -25,7 +25,7 @@ type valueFrame struct {
 
 func (u *UI) newValueFrame() *valueFrame {
 	f := &valueFrame{
-		ui:           u,
+		u:            u,
 		valueDisplay: widget.NewRichText(),
 	}
 	// value frame
@@ -63,10 +63,10 @@ func (f *valueFrame) reset() {
 }
 
 func (f *valueFrame) set(uid widget.TreeNodeID) {
-	node := f.ui.document.Value(uid)
+	node := f.u.document.Value(uid)
 	typeText := fmt.Sprint(node.Type)
 	var v string
-	if f.ui.document.IsBranch(uid) {
+	if f.u.document.IsBranch(uid) {
 		f.copyValueClipboard.Disable()
 		switch node.Type {
 		case jsondocument.Array:
@@ -74,7 +74,7 @@ func (f *valueFrame) set(uid widget.TreeNodeID) {
 		case jsondocument.Object:
 			v = "{...}"
 		}
-		ids := f.ui.document.ChildUIDs(uid)
+		ids := f.u.document.ChildUIDs(uid)
 		typeText += fmt.Sprintf(", %d elements", len(ids))
 	} else {
 		f.copyValueClipboard.Enable()

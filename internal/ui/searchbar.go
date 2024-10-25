@@ -36,7 +36,7 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 // searchBarFrame represents the search bar frame in the UI.
 type searchBarFrame struct {
 	content *fyne.Container
-	ui      *UI
+	u       *UI
 
 	searchEntry  *widget.Entry
 	searchButton *ttwidget.Button
@@ -48,7 +48,7 @@ type searchBarFrame struct {
 
 func (u *UI) newSearchBarFrame() *searchBarFrame {
 	f := &searchBarFrame{
-		ui:          u,
+		u:           u,
 		searchEntry: widget.NewEntry(),
 	}
 	// search frame
@@ -71,15 +71,15 @@ func (u *UI) newSearchBarFrame() *searchBarFrame {
 	})
 	f.searchButton.SetToolTip("Search")
 	f.scrollBottom = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
-		f.ui.treeWidget.ScrollToBottom()
+		f.u.treeWidget.ScrollToBottom()
 	})
 	f.scrollBottom.SetToolTip("Scroll to bottom")
 	f.scrollTop = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
-		f.ui.treeWidget.ScrollToTop()
+		f.u.treeWidget.ScrollToTop()
 	})
 	f.scrollTop.SetToolTip("Scroll to top")
 	f.collapseAll = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
-		f.ui.treeWidget.CloseAllBranches()
+		f.u.treeWidget.CloseAllBranches()
 	})
 	f.collapseAll.SetToolTip("Collapse all")
 	c := container.NewBorder(
@@ -131,7 +131,7 @@ func (f *searchBarFrame) doSearch() {
 	b := widget.NewButton("Cancel", func() {
 		cancel()
 	})
-	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), f.ui.window)
+	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), f.u.window)
 	d.Show()
 	d.SetOnClosed(func() {
 		cancel()
@@ -146,7 +146,7 @@ func (f *searchBarFrame) doSearch() {
 			search = strings.ToLower(search)
 			if search != "true" && search != "false" && search != "null" {
 				d.Hide()
-				f.ui.showErrorDialog("Allowed keywords are: true, false, null", nil)
+				f.u.showErrorDialog("Allowed keywords are: true, false, null", nil)
 				return
 			}
 		case searchTypeString:
@@ -154,7 +154,7 @@ func (f *searchBarFrame) doSearch() {
 		case searchTypeNumber:
 			typ = jsondocument.SearchNumber
 		}
-		uid, err := f.ui.document.Search(ctx, f.ui.selection.selectedUID, search, typ)
+		uid, err := f.u.document.Search(ctx, f.u.selection.selectedUID, search, typ)
 		d.Hide()
 		if errors.Is(err, jsondocument.ErrCallerCanceled) {
 			return
@@ -162,14 +162,14 @@ func (f *searchBarFrame) doSearch() {
 			d2 := dialog.NewInformation(
 				"No match",
 				fmt.Sprintf("No %s found matching %s", searchType, search),
-				f.ui.window,
+				f.u.window,
 			)
 			d2.Show()
 			return
 		} else if err != nil {
-			f.ui.showErrorDialog("Search failed", err)
+			f.u.showErrorDialog("Search failed", err)
 			return
 		}
-		f.ui.scrollTo(uid)
+		f.u.scrollTo(uid)
 	}()
 }
