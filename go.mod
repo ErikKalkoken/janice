@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	fyne.io/fyne/v2 v2.5.2
-	github.com/ErikKalkoken/fyne-kx v0.0.0-20241017191228-704cdd115b48
+	github.com/ErikKalkoken/fyne-kx v0.0.0-20241025174815-e140dbe057e4
 	github.com/dweymouth/fyne-tooltip v0.2.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jarcoal/httpmock v1.3.1
@@ -38,7 +38,6 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/yuin/goldmark v1.7.8 // indirect
-	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/image v0.21.0 // indirect
 	golang.org/x/mobile v0.0.0-20241016134751-7ff83004ec2c // indirect
 	golang.org/x/net v0.30.0 // indirect

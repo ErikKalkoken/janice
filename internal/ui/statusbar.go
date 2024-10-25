@@ -23,14 +23,14 @@ const (
 // statusBarFrame represents the status bar frame in the UI.
 type statusBarFrame struct {
 	content *fyne.Container
-	ui      *UI
+	u       *UI
 
 	elementsCount *ttwidget.Label
 }
 
 func (u *UI) newStatusBarFrame() *statusBarFrame {
 	f := &statusBarFrame{
-		ui:            u,
+		u:             u,
 		elementsCount: ttwidget.NewLabel(""),
 	}
 	f.elementsCount.SetToolTip("Total count of elements in the JSON document")

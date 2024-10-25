@@ -40,6 +40,7 @@ type UI struct {
 	document       *jsondocument.JSONDocument
 	fileMenu       *fyne.Menu
 	viewMenu       *fyne.Menu
+	goMenu         *fyne.Menu
 	treeWidget     *widget.Tree
 	welcomeMessage *fyne.Container
 
@@ -105,7 +106,6 @@ func NewUI(app fyne.App) (*UI, error) {
 		Height: float32(app.Preferences().FloatWithFallback(preferenceLastWindowHeight, 600)),
 	}
 	u.window.Resize(s)
-	u.setTheme(app.Preferences().StringWithFallback(settingTheme, settingThemeDefault))
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
@@ -222,17 +222,6 @@ func (u *UI) scrollTo(uid widget.TreeNodeID) {
 	u.treeWidget.Select(uid)
 }
 
-// reset resets the app to it's initial state
-func (u *UI) reset() {
-	u.document.Reset()
-	u.setTitle("")
-	u.statusBar.reset()
-	u.welcomeMessage.Show()
-	u.toogleHasDocument(false)
-	u.selection.reset()
-	u.value.reset()
-}
-
 func (u *UI) setTitle(fileName string) {
 	var s string
 	name := u.app.Metadata().Name
@@ -242,15 +231,6 @@ func (u *UI) setTitle(fileName string) {
 		s = name
 	}
 	u.window.SetTitle(s)
-}
-
-func (u *UI) setTheme(themeName string) {
-	switch themeName {
-	case themeDark:
-		u.app.Settings().SetTheme(theme.DarkTheme())
-	case themeLight:
-		u.app.Settings().SetTheme(theme.LightTheme())
-	}
 }
 
 // loadDocument loads a JSON file
@@ -347,23 +327,29 @@ func (u *UI) toogleHasDocument(enabled bool) {
 		u.fileMenu.Items[5].Disabled = false
 		u.fileMenu.Items[7].Disabled = u.selection.selectedUID == ""
 		u.fileMenu.Items[8].Disabled = u.selection.selectedUID == ""
+
 		u.viewMenu.Items[0].Disabled = false
 		u.viewMenu.Items[1].Disabled = false
-		u.viewMenu.Items[2].Disabled = false
-		u.viewMenu.Items[4].Disabled = false
-		u.viewMenu.Items[5].Disabled = false
+
+		u.goMenu.Items[0].Disabled = false
+		u.goMenu.Items[1].Disabled = false
+		u.goMenu.Items[2].Disabled = false
+
 	} else {
 		u.searchBar.disable()
 		u.fileMenu.Items[0].Disabled = true
 		u.fileMenu.Items[5].Disabled = true
 		u.fileMenu.Items[7].Disabled = true
 		u.fileMenu.Items[8].Disabled = true
+
 		u.viewMenu.Items[0].Disabled = true
 		u.viewMenu.Items[1].Disabled = true
-		u.viewMenu.Items[2].Disabled = true
-		u.viewMenu.Items[4].Disabled = true
-		u.viewMenu.Items[5].Disabled = true
+
+		u.goMenu.Items[0].Disabled = true
+		u.goMenu.Items[1].Disabled = true
+		u.goMenu.Items[2].Disabled = true
 	}
 	u.fileMenu.Refresh()
 	u.viewMenu.Refresh()
+	u.goMenu.Refresh()
 }

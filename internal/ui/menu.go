@@ -8,6 +8,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/storage"
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
@@ -18,48 +19,37 @@ const (
 )
 
 func (u *UI) makeMenu() *fyne.MainMenu {
-	recentItem := fyne.NewMenuItem("Open Recent", nil)
-	recentItem.ChildMenu = fyne.NewMenu("")
+	// File menu
+	openRecentItem := fyne.NewMenuItem("Open Recent", nil)
+	openRecentItem.ChildMenu = fyne.NewMenu("")
+
+	fileSettingsItem := fyne.NewMenuItem("Settings...", u.showSettingsDialog)
+	fileSettingsItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileSettingsItem))
+
+	fileReloadItem := fyne.NewMenuItem("Reload", u.fileReload)
+	fileReloadItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyR, Modifier: fyne.KeyModifierAlt}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileReloadItem))
+
+	fileOpenItem := fyne.NewMenuItem("Open File...", u.fileOpen)
+	fileOpenItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileOpenItem))
+
+	fileNewItem := fyne.NewMenuItem("New", u.fileNew)
+	fileNewItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileNewItem))
+
 	u.fileMenu = fyne.NewMenu("File",
-		fyne.NewMenuItem("New", func() {
-			u.reset()
-		}),
+		fileNewItem,
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Open File...", func() {
-			d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
-				if err != nil {
-					u.showErrorDialog("Failed to read folder", err)
-					return
-				}
-				if reader == nil {
-					return
-				}
-				u.loadDocument(reader)
-			}, u.window)
-			d.Show()
-			filterEnabled := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
-			if filterEnabled {
-				f := storage.NewExtensionFileFilter([]string{".json"})
-				d.SetFilter(f)
-			}
-		}),
-		recentItem,
+		fileOpenItem,
+		openRecentItem,
 		fyne.NewMenuItem("Open From Clipboard", func() {
 			r := strings.NewReader(u.window.Clipboard().Content())
 			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
 			u.loadDocument(reader)
 		}),
-		fyne.NewMenuItem("Reload", func() {
-			if u.currentFile == nil {
-				return
-			}
-			reader, err := storage.Reader(u.currentFile)
-			if err != nil {
-				u.showErrorDialog("Failed to reload file", err)
-				return
-			}
-			u.loadDocument(reader)
-		}),
+		fileReloadItem,
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Export Selection To File...", func() {
 			byt, err := u.extractSelection()
@@ -91,10 +81,10 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.window.Clipboard().SetContent(string(byt))
 		}),
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Settings...", func() {
-			u.showSettingsDialog()
-		}),
+		fileSettingsItem,
 	)
+
+	// View menu
 	toogleSelectionFrame := fyne.NewMenuItem("Show selected element", func() {
 		u.toogleViewSelection()
 	})
@@ -104,16 +94,6 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	})
 	toogleDetailFrame.Checked = u.value.isShown()
 	u.viewMenu = fyne.NewMenu("View",
-		fyne.NewMenuItem("Scroll to top", func() {
-			u.treeWidget.ScrollToTop()
-		}),
-		fyne.NewMenuItem("Scroll to bottom", func() {
-			u.treeWidget.ScrollToBottom()
-		}),
-		fyne.NewMenuItem("Scroll to selection", func() {
-			u.scrollTo(u.selection.selectedUID)
-		}),
-		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Expand All", func() {
 			u.treeWidget.OpenAllBranches()
 		}),
@@ -124,6 +104,25 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		toogleSelectionFrame,
 		toogleDetailFrame,
 	)
+
+	// Go menu
+	goTopItem := fyne.NewMenuItem("Go to top", u.treeWidget.ScrollToTop)
+	goTopItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyHome, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(goTopItem))
+
+	goBottomItem := fyne.NewMenuItem("Go to bottom", u.treeWidget.ScrollToBottom)
+	goBottomItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyEnd, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(goBottomItem))
+
+	u.goMenu = fyne.NewMenu("Go",
+		goTopItem,
+		goBottomItem,
+		fyne.NewMenuItem("Go to selection", func() {
+			u.scrollTo(u.selection.selectedUID)
+		}),
+	)
+
+	// Help menu
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("Report a bug", func() {
 			url, _ := url.Parse(websiteURL + "/issues")
@@ -134,8 +133,51 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			u.showAboutDialog()
 		}),
 	)
-	main := fyne.NewMainMenu(u.fileMenu, u.viewMenu, helpMenu)
+
+	main := fyne.NewMainMenu(u.fileMenu, u.viewMenu, u.goMenu, helpMenu)
 	return main
+}
+
+func (u *UI) fileOpen() {
+	d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil {
+			u.showErrorDialog("Failed to read folder", err)
+			return
+		}
+		if reader == nil {
+			return
+		}
+		u.loadDocument(reader)
+	}, u.window)
+	d.Show()
+	filterEnabled := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
+	if filterEnabled {
+		f := storage.NewExtensionFileFilter([]string{".json"})
+		d.SetFilter(f)
+	}
+}
+
+// fileNew resets the app to it's initial state
+func (u *UI) fileNew() {
+	u.document.Reset()
+	u.setTitle("")
+	u.statusBar.reset()
+	u.welcomeMessage.Show()
+	u.toogleHasDocument(false)
+	u.selection.reset()
+	u.value.reset()
+}
+
+func (u *UI) fileReload() {
+	if u.currentFile == nil {
+		return
+	}
+	reader, err := storage.Reader(u.currentFile)
+	if err != nil {
+		u.showErrorDialog("Failed to reload file", err)
+		return
+	}
+	u.loadDocument(reader)
 }
 
 func (u *UI) extractSelection() ([]byte, error) {
@@ -223,4 +265,16 @@ func (u *UI) toogleViewDetail() {
 	menuItem := u.viewMenu.Items[8]
 	menuItem.Checked = u.value.isShown()
 	u.viewMenu.Refresh()
+}
+
+// addShortcutFromMenuItem is a helper for defining shortcuts.
+// It allows to add an already defined shortcut from a menu item to the canvas.
+//
+// For example:
+//
+//	window.Canvas().AddShortcut(menuItem)
+func addShortcutFromMenuItem(item *fyne.MenuItem) (fyne.Shortcut, func(fyne.Shortcut)) {
+	return item.Shortcut, func(s fyne.Shortcut) {
+		item.Action()
+	}
 }

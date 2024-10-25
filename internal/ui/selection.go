@@ -15,7 +15,7 @@ import (
 // selection represents the selection frame in the UI.
 type selectionFrame struct {
 	content *fyne.Container
-	ui      *UI
+	u       *UI
 
 	selectedUID      widget.TreeNodeID
 	selectedPath     *fyne.Container
@@ -27,7 +27,7 @@ func (u *UI) newSelectionFrame() *selectionFrame {
 	myHBox := layout.NewCustomPaddedHBoxLayout(-5)
 
 	f := &selectionFrame{
-		ui:           u,
+		u:            u,
 		selectedPath: container.New(myHBox),
 	}
 	f.jumpToSelection = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
@@ -88,19 +88,19 @@ type NodePlus struct {
 
 func (f *selectionFrame) set(uid string) {
 	f.selectedUID = uid
-	p := f.ui.document.Path(uid)
+	p := f.u.document.Path(uid)
 	var path []NodePlus
 	for _, uid2 := range p {
-		path = append(path, NodePlus{Node: f.ui.document.Value(uid2), UID: uid2})
+		path = append(path, NodePlus{Node: f.u.document.Value(uid2), UID: uid2})
 	}
-	path = append(path, NodePlus{Node: f.ui.document.Value(uid), UID: uid})
+	path = append(path, NodePlus{Node: f.u.document.Value(uid), UID: uid})
 	f.selectedPath.RemoveAll()
 	for i, n := range path {
 		isLast := i == len(path)-1
 		if !isLast {
 			l := kxwidget.NewTappableLabel(n.Key, func() {
-				f.ui.scrollTo(n.UID)
-				f.ui.selectElement(n.UID)
+				f.u.scrollTo(n.UID)
+				f.u.selectElement(n.UID)
 			})
 			f.selectedPath.Add(l)
 		} else {
