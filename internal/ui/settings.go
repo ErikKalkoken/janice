@@ -26,17 +26,17 @@ func (u *UI) showSettingsDialog() {
 	}
 
 	// apply file filter
-	extFilter := widget.NewCheck("enabled", func(v bool) {
+	extFilter := kxwidget.NewToggle(func(v bool) {
 		u.app.Preferences().SetBool(settingExtensionFilter, v)
 	})
 	y := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
-	extFilter.SetChecked(y)
+	extFilter.SetState(y)
 
-	notifyUpdates := widget.NewCheck("enabled", func(v bool) {
+	notifyUpdates := kxwidget.NewToggle(func(v bool) {
 		u.app.Preferences().SetBool(settingNotifyUpdates, v)
 	})
 	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
-	notifyUpdates.SetChecked(z)
+	notifyUpdates.SetState(z)
 
 	items := []*widget.FormItem{
 		{Text: "Max recent files", Widget: recentEntry, HintText: "Maximum number of recent files remembered"},
