@@ -105,7 +105,6 @@ func NewUI(app fyne.App) (*UI, error) {
 		Height: float32(app.Preferences().FloatWithFallback(preferenceLastWindowHeight, 600)),
 	}
 	u.window.Resize(s)
-	u.setTheme(app.Preferences().StringWithFallback(settingTheme, settingThemeDefault))
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
@@ -242,15 +241,6 @@ func (u *UI) setTitle(fileName string) {
 		s = name
 	}
 	u.window.SetTitle(s)
-}
-
-func (u *UI) setTheme(themeName string) {
-	switch themeName {
-	case themeDark:
-		u.app.Settings().SetTheme(theme.DarkTheme())
-	case themeLight:
-		u.app.Settings().SetTheme(theme.LightTheme())
-	}
 }
 
 // loadDocument loads a JSON file
