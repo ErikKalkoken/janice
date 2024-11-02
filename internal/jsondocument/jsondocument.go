@@ -148,6 +148,9 @@ func (j *JSONDocument) Value(uid widget.TreeNodeID) Node {
 func (j *JSONDocument) Load(ctx context.Context, reader fyne.URIReadCloser, progressInfo binding.Untyped) error {
 	j.progressInfo = progressInfo
 	data, err := j.load(ctx, reader)
+	if errors.Is(err, context.Canceled) {
+		err = ErrCallerCanceled
+	}
 	if err != nil {
 		return err
 	}

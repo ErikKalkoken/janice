@@ -20,6 +20,8 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
+	kxdialog "github.com/ErikKalkoken/fyne-kx/dialog"
+
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
@@ -207,6 +209,7 @@ func (u *UI) showErrorDialog(message string, err error) {
 		slog.Error(message, "err", err)
 	}
 	d := dialog.NewInformation("Error", message, u.window)
+	kxdialog.AddDialogKeyHandler(d, u.window)
 	d.Show()
 }
 
@@ -286,6 +289,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 	d2.SetOnClosed(func() {
 		cancel()
 	})
+	kxdialog.AddDialogKeyHandler(d2, u.window)
 	d2.Show()
 	go func() {
 		doc := jsondocument.New()
