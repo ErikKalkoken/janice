@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	kxdialog "github.com/ErikKalkoken/fyne-kx/dialog"
 	ttwidget "github.com/dweymouth/fyne-tooltip/widget"
 
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
@@ -132,6 +133,7 @@ func (f *searchBarFrame) doSearch() {
 		cancel()
 	})
 	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), f.u.window)
+	kxdialog.AddDialogKeyHandler(d, f.u.window)
 	d.Show()
 	d.SetOnClosed(func() {
 		cancel()
@@ -164,6 +166,7 @@ func (f *searchBarFrame) doSearch() {
 				fmt.Sprintf("No %s found matching %s", searchType, search),
 				f.u.window,
 			)
+			kxdialog.AddDialogKeyHandler(d, f.u.window)
 			d2.Show()
 			return
 		} else if err != nil {

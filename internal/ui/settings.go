@@ -3,6 +3,7 @@ package ui
 import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	kxdialog "github.com/ErikKalkoken/fyne-kx/dialog"
 	kxwidget "github.com/ErikKalkoken/fyne-kx/widget"
 )
 
@@ -26,13 +27,13 @@ func (u *UI) showSettingsDialog() {
 	}
 
 	// apply file filter
-	extFilter := kxwidget.NewToggle(func(v bool) {
+	extFilter := kxwidget.NewSwitch(func(v bool) {
 		u.app.Preferences().SetBool(settingExtensionFilter, v)
 	})
 	y := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
 	extFilter.SetState(y)
 
-	notifyUpdates := kxwidget.NewToggle(func(v bool) {
+	notifyUpdates := kxwidget.NewSwitch(func(v bool) {
 		u.app.Preferences().SetBool(settingNotifyUpdates, v)
 	})
 	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
@@ -44,5 +45,6 @@ func (u *UI) showSettingsDialog() {
 		{Text: "Notify about updates", Widget: notifyUpdates, HintText: "Wether to notify when an update is available (requires restart)"},
 	}
 	d := dialog.NewCustom("Settings", "Close", widget.NewForm(items...), u.window)
+	kxdialog.AddDialogKeyHandler(d, u.window)
 	d.Show()
 }
