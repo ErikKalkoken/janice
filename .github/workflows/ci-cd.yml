@@ -32,7 +32,7 @@ jobs:
       run: go mod download
 
     - name: Test
-      run: go test -coverprofile=coverage.txt
+      run: go test -coverprofile=coverage.txt ./...
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5

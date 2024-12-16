@@ -10,3 +10,4 @@ profile*.gif
 out*.json
 tomlq
 linuxdeploy
+coverage.txt
