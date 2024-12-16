@@ -1,0 +1,11 @@
+ignore:
+  - "internal/app/ui"
+  - "tools"
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
