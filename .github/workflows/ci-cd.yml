@@ -28,11 +28,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install gcc libgl1-mesa-dev xorg-dev
 
-    - name: Build
-      run: go build -v ./...
+    - name: Install dependencies
+      run: go mod download
 
     - name: Test
-      run: go test -v ./...
+      run: go test -coverprofile=coverage.txt
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   package_linux:
     if: startsWith(github.ref, 'refs/tags/')
