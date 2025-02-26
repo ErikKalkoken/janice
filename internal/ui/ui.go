@@ -21,8 +21,15 @@ import (
 	"golang.org/x/text/message"
 
 	kxdialog "github.com/ErikKalkoken/fyne-kx/dialog"
+	kxtheme "github.com/ErikKalkoken/fyne-kx/theme"
 
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
+)
+
+const (
+	colorThemeAuto  = "Automatic"
+	colorThemeLight = "Light"
+	colorThemeDark  = "Dark"
 )
 
 // preference keys
@@ -185,8 +192,9 @@ func (u *UI) selectElement(uid string) {
 
 // ShowAndRun shows the main window and runs the app. This method is blocking.
 func (u *UI) ShowAndRun(path string) {
-	if path != "" {
-		u.app.Lifecycle().SetOnStarted(func() {
+	u.app.Lifecycle().SetOnStarted(func() {
+		u.setColorTheme(u.app.Preferences().StringWithFallback(settingColorTheme, colorThemeAuto))
+		if path != "" {
 			path2, err := filepath.Abs(path)
 			if err != nil {
 				u.showErrorDialog(fmt.Sprintf("Not a valid path: %s", path), err)
@@ -199,8 +207,8 @@ func (u *UI) ShowAndRun(path string) {
 				return
 			}
 			u.loadDocument(reader)
-		})
-	}
+		}
+	})
 	u.window.ShowAndRun()
 }
 
@@ -356,4 +364,15 @@ func (u *UI) toogleHasDocument(enabled bool) {
 	u.fileMenu.Refresh()
 	u.viewMenu.Refresh()
 	u.goMenu.Refresh()
+}
+
+func (u *UI) setColorTheme(s string) {
+	switch s {
+	case colorThemeLight:
+		u.app.Settings().SetTheme(kxtheme.DefaultWithFixedVariant(theme.VariantLight))
+	case colorThemeDark:
+		u.app.Settings().SetTheme(kxtheme.DefaultWithFixedVariant(theme.VariantDark))
+	default:
+		u.app.Settings().SetTheme(theme.DefaultTheme())
+	}
 }

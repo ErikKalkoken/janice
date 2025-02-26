@@ -15,6 +15,7 @@ const (
 	settingNotifyUpdatesDefault   = true
 	settingRecentFileCount        = "recent-file-count"
 	settingRecentFileCountDefault = 5
+	settingColorTheme             = "color-theme"
 )
 
 func (u *UI) showSettingsDialog() {
@@ -39,10 +40,29 @@ func (u *UI) showSettingsDialog() {
 	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
 	notifyUpdates.SetState(z)
 
+	// theme
+	theme := widget.NewRadioGroup([]string{colorThemeAuto, colorThemeLight, colorThemeDark}, func(s string) {
+		u.setColorTheme(s)
+		u.app.Preferences().SetString(settingColorTheme, s)
+	})
+	theme.Selected = u.app.Preferences().StringWithFallback(settingColorTheme, colorThemeAuto)
 	items := []*widget.FormItem{
-		{Text: "Max recent files", Widget: recentEntry, HintText: "Maximum number of recent files remembered"},
-		{Text: "JSON file filter", Widget: extFilter, HintText: "Wether to show files with .json extension only"},
-		{Text: "Notify about updates", Widget: notifyUpdates, HintText: "Wether to notify when an update is available (requires restart)"},
+		{
+			Text:   "Max recent files",
+			Widget: recentEntry, HintText: "Maximum number of recent files remembered",
+		},
+		{
+			Text: "JSON file filter", Widget: extFilter,
+			HintText: "Wether to show files with .json extension only",
+		},
+		{
+			Text:   "Notify about updates",
+			Widget: notifyUpdates, HintText: "Wether to notify when an update is available (requires restart)",
+		},
+		{
+			Text: "Appearance", Widget: theme,
+			HintText: "Choose the color scheme. Automatic uses the current OS theme.",
+		},
 	}
 	d := dialog.NewCustom("Settings", "Close", widget.NewForm(items...), u.window)
 	kxdialog.AddDialogKeyHandler(d, u.window)
