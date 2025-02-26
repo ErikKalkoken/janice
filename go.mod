@@ -8,7 +8,7 @@ exclude github.com/dweymouth/fyne-tooltip v0.3.0
 
 require (
 	fyne.io/fyne/v2 v2.5.4
-	github.com/ErikKalkoken/fyne-kx v0.2.1
+	github.com/ErikKalkoken/fyne-kx v0.3.1
 	github.com/dweymouth/fyne-tooltip v0.2.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jarcoal/httpmock v1.3.1
@@ -31,7 +31,6 @@ require (
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/go-text/typesetting v0.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20241217141322-fcc2cadd6f08 // indirect
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
