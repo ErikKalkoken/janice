@@ -41,21 +41,21 @@ const (
 
 // preference keys
 const (
-	preferenceLastSelectionFrameShown = "last-selection-frame-shown"
-	preferenceLastValueFrameShown     = "last-value-frame-shown"
-	preferenceLastWindowHeight        = "last-window-height"
-	preferenceLastWindowWidth         = "last-window-width"
+	preferenceLastDetailShown    = "last-value-frame-shown"
+	preferenceLastSelectionShown = "last-selection-frame-shown"
+	preferenceLastWindowHeight   = "last-window-height"
+	preferenceLastWindowWidth    = "last-window-width"
 )
 
 // setting keys and defaults
 const (
+	settingColorTheme             = "color-theme"
 	settingExtensionDefault       = true
 	settingExtensionFilter        = "extension-filter"
 	settingNotifyUpdates          = "notify-updates"
 	settingNotifyUpdatesDefault   = true
 	settingRecentFileCount        = "recent-file-count"
 	settingRecentFileCountDefault = 5
-	settingColorTheme             = "color-theme"
 )
 
 // UI represents the user interface of this app.
@@ -80,7 +80,7 @@ type UI struct {
 	selection      *selection
 	statusBar      *statusBar
 	treeWidget     *widget.Tree
-	value          *valueFrame
+	detail         *detail
 	welcomeMessage *fyne.Container
 	window         fyne.Window
 }
@@ -109,17 +109,21 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.searchBar = newSearchBar(u)
 	u.selection = newSelection(u)
 	u.statusBar = newStatusBar(u)
-	u.value = newValueFrame(u)
+	u.detail = newDetail(u)
 
-	isShown := u.app.Preferences().BoolWithFallback(preferenceLastSelectionFrameShown, false)
-	if isShown {
+	if u.app.Preferences().BoolWithFallback(preferenceLastSelectionShown, false) {
 		u.selection.Show()
 	} else {
 		u.selection.Hide()
 	}
+	if u.app.Preferences().BoolWithFallback(preferenceLastDetailShown, false) {
+		u.detail.Show()
+	} else {
+		u.detail.Hide()
+	}
 
 	c := container.NewBorder(
-		container.NewVBox(u.searchBar, u.selection, u.value.content, widget.NewSeparator()),
+		container.NewVBox(u.searchBar, u.selection, u.detail, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), u.statusBar),
 		nil,
 		nil,
@@ -151,8 +155,8 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
-		app.Preferences().SetBool(preferenceLastValueFrameShown, u.value.isShown())
-		app.Preferences().SetBool(preferenceLastSelectionFrameShown, u.selection.isShown())
+		app.Preferences().SetBool(preferenceLastDetailShown, u.detail.isShown())
+		app.Preferences().SetBool(preferenceLastSelectionShown, u.selection.isShown())
 	})
 	return u, nil
 }
@@ -166,11 +170,11 @@ func (u *UI) makeTree() *widget.Tree {
 			return u.document.IsBranch(id)
 		},
 		func(branch bool) fyne.CanvasObject {
-			return NewTreeNode()
+			return newTreeNode()
 		},
 		func(uid widget.TreeNodeID, branch bool, co fyne.CanvasObject) {
 			node := u.document.Value(uid)
-			obj := co.(*TreeNode)
+			obj := co.(*treeNode)
 			var text string
 			switch v := node.Value; node.Type {
 			case jsondocument.Array:
@@ -205,7 +209,7 @@ func (u *UI) makeTree() *widget.Tree {
 			default:
 				text = fmt.Sprintf("%v", v)
 			}
-			obj.Set(node.Key, text, type2importance[node.Type])
+			obj.set(node.Key, text, type2importance[node.Type])
 		})
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
@@ -217,7 +221,7 @@ func (u *UI) makeTree() *widget.Tree {
 func (u *UI) selectElement(uid string) {
 	u.selection.set(uid)
 	u.selection.enable()
-	u.value.set(uid)
+	u.detail.set(uid)
 	u.fileExportFile.Disabled = false
 	u.fileExportClipboard.Disabled = false
 	u.window.MainMenu().Refresh()
@@ -360,7 +364,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		u.setTitle(uri.Name())
 		u.currentFile = uri
 		u.selection.reset()
-		u.value.reset()
+		u.detail.reset()
 		d2.Hide()
 	}()
 }
@@ -559,7 +563,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	u.viewShowDetail = fyne.NewMenuItem("Show value detail", func() {
 		u.toogleViewDetail()
 	})
-	u.viewShowDetail.Checked = u.value.isShown()
+	u.viewShowDetail.Checked = u.detail.isShown()
 	viewMenu := fyne.NewMenu("View",
 		u.viewExpandAll,
 		u.viewCollapseAll,
@@ -630,7 +634,7 @@ func (u *UI) fileNew() {
 	u.welcomeMessage.Show()
 	u.toogleHasDocument(false)
 	u.selection.reset()
-	u.value.reset()
+	u.detail.reset()
 }
 
 func (u *UI) fileReload() {
@@ -720,12 +724,12 @@ func (u *UI) toogleViewSelection() {
 }
 
 func (u *UI) toogleViewDetail() {
-	if u.value.isShown() {
-		u.value.hide()
+	if u.detail.isShown() {
+		u.detail.Hide()
 	} else {
-		u.value.show()
+		u.detail.Show()
 	}
-	u.viewShowDetail.Checked = u.value.isShown()
+	u.viewShowDetail.Checked = u.detail.isShown()
 	u.window.MainMenu().Refresh()
 }
 
