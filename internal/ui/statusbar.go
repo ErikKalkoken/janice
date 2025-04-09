@@ -21,7 +21,7 @@ const (
 	githubRepo  = "janice"
 )
 
-// statusBar represents the status bar frame in the UI.
+// statusBar shows a status bar.
 type statusBar struct {
 	widget.BaseWidget
 

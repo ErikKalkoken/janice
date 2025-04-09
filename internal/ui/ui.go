@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -60,29 +59,28 @@ const (
 
 // UI represents the user interface of this app.
 type UI struct {
+	app                 fyne.App
+	currentFile         fyne.URI
+	detail              *detail
+	document            *jsondocument.JSONDocument
 	fileExportClipboard *fyne.MenuItem
 	fileExportFile      *fyne.MenuItem
-	fileNewMenu         *fyne.MenuItem
+	fileNew             *fyne.MenuItem
 	fileOpenRecent      *fyne.MenuItem
-	fileReloadMenu      *fyne.MenuItem
+	fileReload          *fyne.MenuItem
 	goBottom            *fyne.MenuItem
 	goSelection         *fyne.MenuItem
 	goTop               *fyne.MenuItem
+	searchBar           *searchBar
+	selection           *selection
+	statusBar           *statusBar
+	tree                *jsonTree
 	viewCollapseAll     *fyne.MenuItem
 	viewExpandAll       *fyne.MenuItem
 	viewShowDetail      *fyne.MenuItem
 	viewShowSelection   *fyne.MenuItem
-
-	app            fyne.App
-	currentFile    fyne.URI
-	document       *jsondocument.JSONDocument
-	searchBar      *searchBar
-	selection      *selection
-	statusBar      *statusBar
-	treeWidget     *widget.Tree
-	detail         *detail
-	welcomeMessage *fyne.Container
-	window         fyne.Window
+	welcomeMessage      *fyne.Container
+	window              fyne.Window
 }
 
 // NewUI returns a new UI object.
@@ -93,7 +91,6 @@ func NewUI(app fyne.App) (*UI, error) {
 		document: jsondocument.New(),
 		window:   app.NewWindow(appName),
 	}
-	u.treeWidget = u.makeTree()
 
 	// main frame
 	welcomeText := widget.NewLabel(
@@ -106,10 +103,11 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
 
+	u.detail = newDetail(u)
 	u.searchBar = newSearchBar(u)
 	u.selection = newSelection(u)
 	u.statusBar = newStatusBar(u)
-	u.detail = newDetail(u)
+	u.tree = newJSONTree(u)
 
 	if u.app.Preferences().BoolWithFallback(preferenceLastSelectionShown, false) {
 		u.selection.Show()
@@ -127,7 +125,7 @@ func NewUI(app fyne.App) (*UI, error) {
 		container.NewVBox(widget.NewSeparator(), u.statusBar),
 		nil,
 		nil,
-		container.NewStack(u.welcomeMessage, u.treeWidget))
+		container.NewStack(u.welcomeMessage, u.tree))
 
 	u.window.SetContent(fynetooltip.AddWindowToolTipLayer(c, u.window.Canvas()))
 	u.window.SetMainMenu(u.makeMenu())
@@ -155,67 +153,10 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
-		app.Preferences().SetBool(preferenceLastDetailShown, u.detail.isShown())
-		app.Preferences().SetBool(preferenceLastSelectionShown, u.selection.isShown())
+		app.Preferences().SetBool(preferenceLastDetailShown, !u.detail.Hidden)
+		app.Preferences().SetBool(preferenceLastSelectionShown, !u.selection.Hidden)
 	})
 	return u, nil
-}
-
-func (u *UI) makeTree() *widget.Tree {
-	tree := widget.NewTree(
-		func(id widget.TreeNodeID) []widget.TreeNodeID {
-			return u.document.ChildUIDs(id)
-		},
-		func(id widget.TreeNodeID) bool {
-			return u.document.IsBranch(id)
-		},
-		func(branch bool) fyne.CanvasObject {
-			return newTreeNode()
-		},
-		func(uid widget.TreeNodeID, branch bool, co fyne.CanvasObject) {
-			node := u.document.Value(uid)
-			obj := co.(*treeNode)
-			var text string
-			switch v := node.Value; node.Type {
-			case jsondocument.Array:
-				if branch {
-					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
-						text = ""
-					} else {
-						text = "[...]"
-					}
-				} else {
-					text = "[]"
-				}
-			case jsondocument.Object:
-				if branch {
-					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
-						text = ""
-					} else {
-						text = "{...}"
-					}
-				} else {
-					text = "{}"
-				}
-			case jsondocument.String:
-				text = fmt.Sprintf("\"%s\"", v)
-			case jsondocument.Number:
-				x := v.(float64)
-				text = strconv.FormatFloat(x, 'f', -1, 64)
-			case jsondocument.Boolean:
-				text = fmt.Sprintf("%v", v)
-			case jsondocument.Null:
-				text = "null"
-			default:
-				text = fmt.Sprintf("%v", v)
-			}
-			obj.set(node.Key, text, type2importance[node.Type])
-		})
-
-	tree.OnSelected = func(uid widget.TreeNodeID) {
-		u.selectElement(uid)
-	}
-	return tree
 }
 
 func (u *UI) selectElement(uid string) {
@@ -256,18 +197,6 @@ func (u *UI) showErrorDialog(message string, err error) {
 	d := dialog.NewInformation("Error", message, u.window)
 	kxdialog.AddDialogKeyHandler(d, u.window)
 	d.Show()
-}
-
-func (u *UI) scrollTo(uid widget.TreeNodeID) {
-	if uid == "" {
-		return
-	}
-	p := u.document.Path(uid)
-	for _, uid2 := range p {
-		u.treeWidget.OpenBranch(uid2)
-	}
-	u.treeWidget.ScrollTo(uid)
-	u.treeWidget.Select(uid)
 }
 
 func (u *UI) setTitle(fileName string) {
@@ -356,7 +285,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 			u.viewExpandAll.Disabled = false
 		}
 		u.window.MainMenu().Refresh()
-		u.treeWidget.Refresh()
+		u.tree.Refresh()
 		uri := reader.URI()
 		if uri.Scheme() == "file" {
 			u.addRecentFile(uri)
@@ -374,8 +303,8 @@ func (u *UI) toogleHasDocument(enabled bool) {
 		u.searchBar.enable()
 		u.fileExportClipboard.Disabled = false
 		u.fileExportFile.Disabled = u.selection.selectedUID == ""
-		u.fileNewMenu.Disabled = u.selection.selectedUID == ""
-		u.fileReloadMenu.Disabled = false
+		u.fileNew.Disabled = u.selection.selectedUID == ""
+		u.fileReload.Disabled = false
 		u.goBottom.Disabled = false
 		u.goSelection.Disabled = false
 		u.goTop.Disabled = false
@@ -386,8 +315,8 @@ func (u *UI) toogleHasDocument(enabled bool) {
 		u.searchBar.disable()
 		u.fileExportClipboard.Disabled = true
 		u.fileExportFile.Disabled = true
-		u.fileNewMenu.Disabled = true
-		u.fileReloadMenu.Disabled = true
+		u.fileNew.Disabled = true
+		u.fileReload.Disabled = true
 		u.goBottom.Disabled = true
 		u.goSelection.Disabled = true
 		u.goTop.Disabled = true
@@ -419,7 +348,7 @@ func (u *UI) showAboutDialog() {
 		widget.NewRichTextFromMarkdown(
 			fmt.Sprintf("## %s\n\n"+
 				"**Version:** %s\n\n"+
-				"(c) 2024 Erik Kalkoken", data.Name, current),
+				"(c) 2024-2025 Erik Kalkoken", data.Name, current),
 		),
 		widget.NewLabel("A desktop app for viewing large JSON files."),
 		widget.NewHyperlink("Website", x),
@@ -443,13 +372,13 @@ func (u *UI) showSettingsDialog() {
 		u.app.Preferences().SetBool(settingExtensionFilter, v)
 	})
 	y := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
-	extFilter.SetState(y)
+	extFilter.SetOn(y)
 
 	notifyUpdates := kxwidget.NewSwitch(func(v bool) {
 		u.app.Preferences().SetBool(settingNotifyUpdates, v)
 	})
 	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
-	notifyUpdates.SetState(z)
+	notifyUpdates.SetOn(z)
 
 	// theme
 	theme := widget.NewRadioGroup([]string{colorThemeAuto, colorThemeLight, colorThemeDark}, func(s string) {
@@ -489,17 +418,17 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	fileSettingsItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierControl}
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileSettingsItem))
 
-	u.fileReloadMenu = fyne.NewMenuItem("Reload", u.fileReload)
-	u.fileReloadMenu.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyR, Modifier: fyne.KeyModifierAlt}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileReloadMenu))
+	u.fileReload = fyne.NewMenuItem("Reload", u.reloadFile)
+	u.fileReload.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyR, Modifier: fyne.KeyModifierAlt}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileReload))
 
-	fileOpenItem := fyne.NewMenuItem("Open File...", u.fileOpen)
+	fileOpenItem := fyne.NewMenuItem("Open File...", u.openFile)
 	fileOpenItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: fyne.KeyModifierControl}
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileOpenItem))
 
-	u.fileNewMenu = fyne.NewMenuItem("New", u.fileNew)
-	u.fileNewMenu.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileNewMenu))
+	u.fileNew = fyne.NewMenuItem("New", u.newFile)
+	u.fileNew.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileNew))
 
 	u.fileExportFile = fyne.NewMenuItem("Export Selection To File...", func() {
 		byt, err := u.extractSelection()
@@ -532,7 +461,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		u.window.Clipboard().SetContent(string(byt))
 	})
 	fileMenu := fyne.NewMenu("File",
-		u.fileNewMenu,
+		u.fileNew,
 		fyne.NewMenuItemSeparator(),
 		fileOpenItem,
 		u.fileOpenRecent,
@@ -541,7 +470,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
 			u.loadDocument(reader)
 		}),
-		u.fileReloadMenu,
+		u.fileReload,
 		fyne.NewMenuItemSeparator(),
 		u.fileExportFile,
 		u.fileExportClipboard,
@@ -551,19 +480,19 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 
 	// View menu
 	u.viewExpandAll = fyne.NewMenuItem("Expand All", func() {
-		u.treeWidget.OpenAllBranches()
+		u.tree.OpenAllBranches()
 	})
 	u.viewCollapseAll = fyne.NewMenuItem("Collapse All", func() {
-		u.treeWidget.CloseAllBranches()
+		u.tree.CloseAllBranches()
 	})
 	u.viewShowSelection = fyne.NewMenuItem("Show selected element", func() {
 		u.toogleViewSelection()
 	})
-	u.viewShowSelection.Checked = u.selection.isShown()
+	u.viewShowSelection.Checked = !u.selection.Hidden
 	u.viewShowDetail = fyne.NewMenuItem("Show value detail", func() {
 		u.toogleViewDetail()
 	})
-	u.viewShowDetail.Checked = u.detail.isShown()
+	u.viewShowDetail.Checked = !u.detail.Hidden
 	viewMenu := fyne.NewMenu("View",
 		u.viewExpandAll,
 		u.viewCollapseAll,
@@ -573,16 +502,16 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	)
 
 	// Go menu
-	u.goTop = fyne.NewMenuItem("Go to top", u.treeWidget.ScrollToTop)
+	u.goTop = fyne.NewMenuItem("Go to top", u.tree.ScrollToTop)
 	u.goTop.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyHome, Modifier: fyne.KeyModifierControl}
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goTop))
 
-	u.goBottom = fyne.NewMenuItem("Go to bottom", u.treeWidget.ScrollToBottom)
+	u.goBottom = fyne.NewMenuItem("Go to bottom", u.tree.ScrollToBottom)
 	u.goBottom.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyEnd, Modifier: fyne.KeyModifierControl}
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goBottom))
 
 	u.goSelection = fyne.NewMenuItem("Go to selection", func() {
-		u.scrollTo(u.selection.selectedUID)
+		u.tree.scrollTo(u.selection.selectedUID)
 	})
 	goMenu := fyne.NewMenu("Go",
 		u.goTop,
@@ -606,7 +535,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	return main
 }
 
-func (u *UI) fileOpen() {
+func (u *UI) openFile() {
 	d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 		if err != nil {
 			u.showErrorDialog("Failed to read folder", err)
@@ -626,8 +555,8 @@ func (u *UI) fileOpen() {
 	}
 }
 
-// fileNew resets the app to it's initial state
-func (u *UI) fileNew() {
+// newFile resets the app to it's initial state
+func (u *UI) newFile() {
 	u.document.Reset()
 	u.setTitle("")
 	u.statusBar.reset()
@@ -637,7 +566,7 @@ func (u *UI) fileNew() {
 	u.detail.reset()
 }
 
-func (u *UI) fileReload() {
+func (u *UI) reloadFile() {
 	if u.currentFile == nil {
 		return
 	}
@@ -714,22 +643,22 @@ func (u *UI) updateRecentFilesMenu() {
 }
 
 func (u *UI) toogleViewSelection() {
-	if u.selection.isShown() {
-		u.selection.Hide()
-	} else {
+	if u.selection.Hidden {
 		u.selection.Show()
+	} else {
+		u.selection.Hide()
 	}
-	u.viewShowSelection.Checked = u.selection.isShown()
+	u.viewShowSelection.Checked = !u.selection.Hidden
 	u.window.MainMenu().Refresh()
 }
 
 func (u *UI) toogleViewDetail() {
-	if u.detail.isShown() {
-		u.detail.Hide()
-	} else {
+	if u.detail.Hidden {
 		u.detail.Show()
+	} else {
+		u.detail.Hide()
 	}
-	u.viewShowDetail.Checked = u.detail.isShown()
+	u.viewShowDetail.Checked = !u.detail.Hidden
 	u.window.MainMenu().Refresh()
 }
 

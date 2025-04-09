@@ -13,7 +13,7 @@ import (
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
-// detail shows the value of a selected item in the UI.
+// detail shows the value of the selected item in the JSON document.
 type detail struct {
 	widget.BaseWidget
 
@@ -46,10 +46,6 @@ func (w *detail) CreateRenderer() fyne.WidgetRenderer {
 		container.NewScroll(w.valueDisplay),
 	)
 	return widget.NewSimpleRenderer(c)
-}
-
-func (w *detail) isShown() bool {
-	return !w.Hidden
 }
 
 func (w *detail) reset() {

@@ -12,7 +12,7 @@ import (
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
-// selection represents the selection frame in the UI.
+// selection shows the currently selected item in the JSON document.
 type selection struct {
 	widget.BaseWidget
 
@@ -30,7 +30,7 @@ func newSelection(u *UI) *selection {
 	}
 	w.ExtendBaseWidget(w)
 	w.jumpToSelection = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceReadmoreSvg), func() {
-		u.scrollTo(w.selectedUID)
+		u.tree.scrollTo(w.selectedUID)
 	})
 	w.jumpToSelection.SetToolTip("Jump to selection")
 	w.jumpToSelection.Disable()
@@ -41,10 +41,6 @@ func newSelection(u *UI) *selection {
 	w.copyKeyClipboard.SetToolTip("Copy key to clipboard")
 	w.copyKeyClipboard.Disable()
 	return w
-}
-
-func (w *selection) isShown() bool {
-	return !w.Hidden
 }
 
 func (w *selection) enable() {
@@ -81,7 +77,7 @@ func (w *selection) set(uid string) {
 		isLast := i == len(path)-1
 		if !isLast {
 			l := kxwidget.NewTappableLabel(n.Key, func() {
-				w.u.scrollTo(n.UID)
+				w.u.tree.scrollTo(n.UID)
 				w.u.selectElement(n.UID)
 			})
 			w.selectedPath.Add(l)

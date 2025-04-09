@@ -34,7 +34,7 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 	jsondocument.Null:    widget.DangerImportance,
 }
 
-// searchBar represents the search bar frame in the UI.
+// searchBar represents a search bar for searching in the JSON document.
 type searchBar struct {
 	widget.BaseWidget
 
@@ -75,15 +75,15 @@ func newSearchBar(u *UI) *searchBar {
 	})
 	w.searchButton.SetToolTip("Search")
 	w.scrollBottom = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
-		w.u.treeWidget.ScrollToBottom()
+		w.u.tree.ScrollToBottom()
 	})
 	w.scrollBottom.SetToolTip("Scroll to bottom")
 	w.scrollTop = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
-		w.u.treeWidget.ScrollToTop()
+		w.u.tree.ScrollToTop()
 	})
 	w.scrollTop.SetToolTip("Scroll to top")
 	w.collapseAll = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
-		w.u.treeWidget.CloseAllBranches()
+		w.u.tree.CloseAllBranches()
 	})
 	w.collapseAll.SetToolTip("Collapse all")
 	return w
@@ -107,6 +107,7 @@ func (w *searchBar) disable() {
 	w.collapseAll.Disable()
 }
 
+// doSearch performs a search in the JSON document.
 func (w *searchBar) doSearch() {
 	search := w.searchEntry.Text
 	if len(search) == 0 {
@@ -161,7 +162,7 @@ func (w *searchBar) doSearch() {
 			w.u.showErrorDialog("Search failed", err)
 			return
 		}
-		w.u.scrollTo(uid)
+		w.u.tree.scrollTo(uid)
 	}()
 }
 
