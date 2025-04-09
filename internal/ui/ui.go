@@ -60,21 +60,19 @@ const (
 
 // UI represents the user interface of this app.
 type UI struct {
-	app    fyne.App
-	window fyne.Window
-
+	app            fyne.App
 	currentFile    fyne.URI
 	document       *jsondocument.JSONDocument
 	fileMenu       *fyne.Menu
 	goMenu         *fyne.Menu
+	searchBar      *searchBar
+	selection      *selection
+	statusBar      *statusBar
 	treeWidget     *widget.Tree
+	value          *valueFrame
 	viewMenu       *fyne.Menu
 	welcomeMessage *fyne.Container
-
-	searchBar *searchBar
-	selection *selectionFrame
-	statusBar *statusBar
-	value     *valueFrame
+	window         fyne.Window
 }
 
 // NewUI returns a new UI object.
@@ -103,8 +101,15 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.statusBar = newStatusBar(u)
 	u.value = newValueFrame(u)
 
+	isShown := u.app.Preferences().BoolWithFallback(preferenceLastSelectionFrameShown, false)
+	if isShown {
+		u.selection.Show()
+	} else {
+		u.selection.Hide()
+	}
+
 	c := container.NewBorder(
-		container.NewVBox(u.searchBar, u.selection.content, u.value.content, widget.NewSeparator()),
+		container.NewVBox(u.searchBar, u.selection, u.value.content, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), u.statusBar),
 		nil,
 		nil,
@@ -698,11 +703,11 @@ func (u *UI) updateRecentFilesMenu() {
 
 func (u *UI) toogleViewSelection() {
 	if u.selection.isShown() {
-		u.selection.hide()
+		u.selection.Hide()
 	} else {
-		u.selection.show()
+		u.selection.Show()
 	}
-	menuItem := u.viewMenu.Items[7]
+	menuItem := u.viewMenu.Items[3]
 	menuItem.Checked = u.selection.isShown()
 	u.viewMenu.Refresh()
 }
@@ -713,7 +718,7 @@ func (u *UI) toogleViewDetail() {
 	} else {
 		u.value.show()
 	}
-	menuItem := u.viewMenu.Items[8]
+	menuItem := u.viewMenu.Items[4]
 	menuItem.Checked = u.value.isShown()
 	u.viewMenu.Refresh()
 }
