@@ -59,13 +59,13 @@ func newStatusBar(u *UI) *statusBar {
 	return w
 }
 
-func (f *statusBar) reset() {
-	f.elementsCount.SetText("")
+func (w *statusBar) reset() {
+	w.elementsCount.SetText("")
 }
 
-func (f *statusBar) set(size int) {
+func (w *statusBar) set(size int) {
 	p := message.NewPrinter(language.English)
-	f.elementsCount.SetText(p.Sprintf("%d elements", size))
+	w.elementsCount.SetText(p.Sprintf("%d elements", size))
 }
 
 func (w *statusBar) CreateRenderer() fyne.WidgetRenderer {

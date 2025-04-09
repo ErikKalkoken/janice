@@ -104,7 +104,7 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.value = newValueFrame(u)
 
 	c := container.NewBorder(
-		container.NewVBox(u.searchBar.content, u.selection.content, u.value.content, widget.NewSeparator()),
+		container.NewVBox(u.searchBar, u.selection.content, u.value.content, widget.NewSeparator()),
 		container.NewVBox(widget.NewSeparator(), u.statusBar),
 		nil,
 		nil,
