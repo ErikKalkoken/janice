@@ -34,8 +34,8 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 	jsondocument.Null:    widget.DangerImportance,
 }
 
-// searchBarFrame represents the search bar frame in the UI.
-type searchBarFrame struct {
+// searchBar represents the search bar frame in the UI.
+type searchBar struct {
 	content *fyne.Container
 	u       *UI
 
@@ -47,8 +47,8 @@ type searchBarFrame struct {
 	collapseAll  *ttwidget.Button
 }
 
-func (u *UI) newSearchBarFrame() *searchBarFrame {
-	f := &searchBarFrame{
+func newSearchBar(u *UI) *searchBar {
+	f := &searchBar{
 		u:           u,
 		searchEntry: widget.NewEntry(),
 	}
@@ -101,7 +101,7 @@ func (u *UI) newSearchBarFrame() *searchBarFrame {
 	return f
 }
 
-func (f *searchBarFrame) enable() {
+func (f *searchBar) enable() {
 	f.searchButton.Enable()
 	f.searchType.Enable()
 	f.searchEntry.Enable()
@@ -110,7 +110,7 @@ func (f *searchBarFrame) enable() {
 	f.collapseAll.Enable()
 }
 
-func (f *searchBarFrame) disable() {
+func (f *searchBar) disable() {
 	f.searchButton.Disable()
 	f.searchType.Disable()
 	f.searchEntry.Disable()
@@ -119,7 +119,7 @@ func (f *searchBarFrame) disable() {
 	f.collapseAll.Disable()
 }
 
-func (f *searchBarFrame) doSearch() {
+func (f *searchBar) doSearch() {
 	search := f.searchEntry.Text
 	if len(search) == 0 {
 		return

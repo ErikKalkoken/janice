@@ -23,7 +23,7 @@ type selectionFrame struct {
 	copyKeyClipboard *ttwidget.Button
 }
 
-func (u *UI) newSelectionFrame() *selectionFrame {
+func newSelection(u *UI) *selectionFrame {
 	myHBox := layout.NewCustomPaddedHBoxLayout(-5)
 
 	f := &selectionFrame{

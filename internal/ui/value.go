@@ -23,7 +23,7 @@ type valueFrame struct {
 	valueRaw           string
 }
 
-func (u *UI) newValueFrame() *valueFrame {
+func newValueFrame(u *UI) *valueFrame {
 	f := &valueFrame{
 		u:            u,
 		valueDisplay: widget.NewRichText(),

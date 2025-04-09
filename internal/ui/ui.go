@@ -66,14 +66,14 @@ type UI struct {
 	currentFile    fyne.URI
 	document       *jsondocument.JSONDocument
 	fileMenu       *fyne.Menu
-	viewMenu       *fyne.Menu
 	goMenu         *fyne.Menu
 	treeWidget     *widget.Tree
+	viewMenu       *fyne.Menu
 	welcomeMessage *fyne.Container
 
-	searchBar *searchBarFrame
+	searchBar *searchBar
 	selection *selectionFrame
-	statusBar *statusBarFrame
+	statusBar *statusBar
 	value     *valueFrame
 }
 
@@ -98,14 +98,14 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
 
-	u.searchBar = u.newSearchBarFrame()
-	u.selection = u.newSelectionFrame()
-	u.statusBar = u.newStatusBarFrame()
-	u.value = u.newValueFrame()
+	u.searchBar = newSearchBar(u)
+	u.selection = newSelection(u)
+	u.statusBar = newStatusBar(u)
+	u.value = newValueFrame(u)
 
 	c := container.NewBorder(
 		container.NewVBox(u.searchBar.content, u.selection.content, u.value.content, widget.NewSeparator()),
-		container.NewVBox(widget.NewSeparator(), u.statusBar.content),
+		container.NewVBox(widget.NewSeparator(), u.statusBar),
 		nil,
 		nil,
 		container.NewStack(u.welcomeMessage, u.treeWidget))
