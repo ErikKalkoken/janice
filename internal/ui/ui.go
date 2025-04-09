@@ -60,17 +60,27 @@ const (
 
 // UI represents the user interface of this app.
 type UI struct {
+	fileExportClipboard *fyne.MenuItem
+	fileExportFile      *fyne.MenuItem
+	fileNewMenu         *fyne.MenuItem
+	fileOpenRecent      *fyne.MenuItem
+	fileReloadMenu      *fyne.MenuItem
+	goBottom            *fyne.MenuItem
+	goSelection         *fyne.MenuItem
+	goTop               *fyne.MenuItem
+	viewCollapseAll     *fyne.MenuItem
+	viewExpandAll       *fyne.MenuItem
+	viewShowDetail      *fyne.MenuItem
+	viewShowSelection   *fyne.MenuItem
+
 	app            fyne.App
 	currentFile    fyne.URI
 	document       *jsondocument.JSONDocument
-	fileMenu       *fyne.Menu
-	goMenu         *fyne.Menu
 	searchBar      *searchBar
 	selection      *selection
 	statusBar      *statusBar
 	treeWidget     *widget.Tree
 	value          *valueFrame
-	viewMenu       *fyne.Menu
 	welcomeMessage *fyne.Container
 	window         fyne.Window
 }
@@ -208,9 +218,9 @@ func (u *UI) selectElement(uid string) {
 	u.selection.set(uid)
 	u.selection.enable()
 	u.value.set(uid)
-	u.fileMenu.Items[7].Disabled = false
-	u.fileMenu.Items[8].Disabled = false
-	u.fileMenu.Refresh()
+	u.fileExportFile.Disabled = false
+	u.fileExportClipboard.Disabled = false
+	u.window.MainMenu().Refresh()
 }
 
 // ShowAndRun shows the main window and runs the app. This method is blocking.
@@ -337,11 +347,11 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		u.welcomeMessage.Hide()
 		u.toogleHasDocument(true)
 		if doc.Size() > 1000 {
-			u.viewMenu.Items[4].Disabled = true
+			u.viewExpandAll.Disabled = true
 		} else {
-			u.viewMenu.Items[4].Disabled = false
+			u.viewExpandAll.Disabled = false
 		}
-		u.viewMenu.Refresh()
+		u.window.MainMenu().Refresh()
 		u.treeWidget.Refresh()
 		uri := reader.URI()
 		if uri.Scheme() == "file" {
@@ -358,35 +368,29 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 func (u *UI) toogleHasDocument(enabled bool) {
 	if enabled {
 		u.searchBar.enable()
-		u.fileMenu.Items[0].Disabled = false
-		u.fileMenu.Items[5].Disabled = false
-		u.fileMenu.Items[7].Disabled = u.selection.selectedUID == ""
-		u.fileMenu.Items[8].Disabled = u.selection.selectedUID == ""
-
-		u.viewMenu.Items[0].Disabled = false
-		u.viewMenu.Items[1].Disabled = false
-
-		u.goMenu.Items[0].Disabled = false
-		u.goMenu.Items[1].Disabled = false
-		u.goMenu.Items[2].Disabled = false
+		u.fileExportClipboard.Disabled = false
+		u.fileExportFile.Disabled = u.selection.selectedUID == ""
+		u.fileNewMenu.Disabled = u.selection.selectedUID == ""
+		u.fileReloadMenu.Disabled = false
+		u.goBottom.Disabled = false
+		u.goSelection.Disabled = false
+		u.goTop.Disabled = false
+		u.viewCollapseAll.Disabled = false
+		u.viewExpandAll.Disabled = false
 
 	} else {
 		u.searchBar.disable()
-		u.fileMenu.Items[0].Disabled = true
-		u.fileMenu.Items[5].Disabled = true
-		u.fileMenu.Items[7].Disabled = true
-		u.fileMenu.Items[8].Disabled = true
-
-		u.viewMenu.Items[0].Disabled = true
-		u.viewMenu.Items[1].Disabled = true
-
-		u.goMenu.Items[0].Disabled = true
-		u.goMenu.Items[1].Disabled = true
-		u.goMenu.Items[2].Disabled = true
+		u.fileExportClipboard.Disabled = true
+		u.fileExportFile.Disabled = true
+		u.fileNewMenu.Disabled = true
+		u.fileReloadMenu.Disabled = true
+		u.goBottom.Disabled = true
+		u.goSelection.Disabled = true
+		u.goTop.Disabled = true
+		u.viewCollapseAll.Disabled = true
+		u.viewExpandAll.Disabled = true
 	}
-	u.fileMenu.Refresh()
-	u.viewMenu.Refresh()
-	u.goMenu.Refresh()
+	u.window.MainMenu().Refresh()
 }
 
 func (u *UI) setColorTheme(s string) {
@@ -474,107 +478,112 @@ func (u *UI) showSettingsDialog() {
 
 func (u *UI) makeMenu() *fyne.MainMenu {
 	// File menu
-	openRecentItem := fyne.NewMenuItem("Open Recent", nil)
-	openRecentItem.ChildMenu = fyne.NewMenu("")
+	u.fileOpenRecent = fyne.NewMenuItem("Open Recent", nil)
+	u.fileOpenRecent.ChildMenu = fyne.NewMenu("")
 
 	fileSettingsItem := fyne.NewMenuItem("Settings...", u.showSettingsDialog)
 	fileSettingsItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierControl}
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileSettingsItem))
 
-	fileReloadItem := fyne.NewMenuItem("Reload", u.fileReload)
-	fileReloadItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyR, Modifier: fyne.KeyModifierAlt}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileReloadItem))
+	u.fileReloadMenu = fyne.NewMenuItem("Reload", u.fileReload)
+	u.fileReloadMenu.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyR, Modifier: fyne.KeyModifierAlt}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileReloadMenu))
 
 	fileOpenItem := fyne.NewMenuItem("Open File...", u.fileOpen)
 	fileOpenItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: fyne.KeyModifierControl}
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileOpenItem))
 
-	fileNewItem := fyne.NewMenuItem("New", u.fileNew)
-	fileNewItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileNewItem))
+	u.fileNewMenu = fyne.NewMenuItem("New", u.fileNew)
+	u.fileNewMenu.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileNewMenu))
 
-	u.fileMenu = fyne.NewMenu("File",
-		fileNewItem,
+	u.fileExportFile = fyne.NewMenuItem("Export Selection To File...", func() {
+		byt, err := u.extractSelection()
+		if err != nil {
+			u.showErrorDialog("Failed to extract selection", err)
+		}
+		d := dialog.NewFileSave(func(f fyne.URIWriteCloser, err error) {
+			if err != nil {
+				u.showErrorDialog("Failed to open save dialog", err)
+				return
+			}
+			if f == nil {
+				return
+			}
+			defer f.Close()
+			_, err = f.Write(byt)
+			if err != nil {
+				u.showErrorDialog("Failed to write file", err)
+				return
+			}
+		}, u.window)
+		kxdialog.AddDialogKeyHandler(d, u.window)
+		d.Show()
+	})
+	u.fileExportClipboard = fyne.NewMenuItem("Export Selection To Clipboard", func() {
+		byt, err := u.extractSelection()
+		if err != nil {
+			u.showErrorDialog("Failed to extract selection", err)
+		}
+		u.window.Clipboard().SetContent(string(byt))
+	})
+	fileMenu := fyne.NewMenu("File",
+		u.fileNewMenu,
 		fyne.NewMenuItemSeparator(),
 		fileOpenItem,
-		openRecentItem,
+		u.fileOpenRecent,
 		fyne.NewMenuItem("Open From Clipboard", func() {
 			r := strings.NewReader(u.window.Clipboard().Content())
 			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
 			u.loadDocument(reader)
 		}),
-		fileReloadItem,
+		u.fileReloadMenu,
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Export Selection To File...", func() {
-			byt, err := u.extractSelection()
-			if err != nil {
-				u.showErrorDialog("Failed to extract selection", err)
-			}
-			d := dialog.NewFileSave(func(f fyne.URIWriteCloser, err error) {
-				if err != nil {
-					u.showErrorDialog("Failed to open save dialog", err)
-					return
-				}
-				if f == nil {
-					return
-				}
-				defer f.Close()
-				_, err = f.Write(byt)
-				if err != nil {
-					u.showErrorDialog("Failed to write file", err)
-					return
-				}
-			}, u.window)
-			kxdialog.AddDialogKeyHandler(d, u.window)
-			d.Show()
-		}),
-		fyne.NewMenuItem("Export Selection To Clipboard", func() {
-			byt, err := u.extractSelection()
-			if err != nil {
-				u.showErrorDialog("Failed to extract selection", err)
-			}
-			u.window.Clipboard().SetContent(string(byt))
-		}),
+		u.fileExportFile,
+		u.fileExportClipboard,
 		fyne.NewMenuItemSeparator(),
 		fileSettingsItem,
 	)
 
 	// View menu
-	toogleSelectionFrame := fyne.NewMenuItem("Show selected element", func() {
+	u.viewExpandAll = fyne.NewMenuItem("Expand All", func() {
+		u.treeWidget.OpenAllBranches()
+	})
+	u.viewCollapseAll = fyne.NewMenuItem("Collapse All", func() {
+		u.treeWidget.CloseAllBranches()
+	})
+	u.viewShowSelection = fyne.NewMenuItem("Show selected element", func() {
 		u.toogleViewSelection()
 	})
-	toogleSelectionFrame.Checked = u.selection.isShown()
-	toogleDetailFrame := fyne.NewMenuItem("Show value detail", func() {
+	u.viewShowSelection.Checked = u.selection.isShown()
+	u.viewShowDetail = fyne.NewMenuItem("Show value detail", func() {
 		u.toogleViewDetail()
 	})
-	toogleDetailFrame.Checked = u.value.isShown()
-	u.viewMenu = fyne.NewMenu("View",
-		fyne.NewMenuItem("Expand All", func() {
-			u.treeWidget.OpenAllBranches()
-		}),
-		fyne.NewMenuItem("Collapse All", func() {
-			u.treeWidget.CloseAllBranches()
-		}),
+	u.viewShowDetail.Checked = u.value.isShown()
+	viewMenu := fyne.NewMenu("View",
+		u.viewExpandAll,
+		u.viewCollapseAll,
 		fyne.NewMenuItemSeparator(),
-		toogleSelectionFrame,
-		toogleDetailFrame,
+		u.viewShowSelection,
+		u.viewShowDetail,
 	)
 
 	// Go menu
-	goTopItem := fyne.NewMenuItem("Go to top", u.treeWidget.ScrollToTop)
-	goTopItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyHome, Modifier: fyne.KeyModifierControl}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(goTopItem))
+	u.goTop = fyne.NewMenuItem("Go to top", u.treeWidget.ScrollToTop)
+	u.goTop.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyHome, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goTop))
 
-	goBottomItem := fyne.NewMenuItem("Go to bottom", u.treeWidget.ScrollToBottom)
-	goBottomItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyEnd, Modifier: fyne.KeyModifierControl}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(goBottomItem))
+	u.goBottom = fyne.NewMenuItem("Go to bottom", u.treeWidget.ScrollToBottom)
+	u.goBottom.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyEnd, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goBottom))
 
-	u.goMenu = fyne.NewMenu("Go",
-		goTopItem,
-		goBottomItem,
-		fyne.NewMenuItem("Go to selection", func() {
-			u.scrollTo(u.selection.selectedUID)
-		}),
+	u.goSelection = fyne.NewMenuItem("Go to selection", func() {
+		u.scrollTo(u.selection.selectedUID)
+	})
+	goMenu := fyne.NewMenu("Go",
+		u.goTop,
+		u.goBottom,
+		u.goSelection,
 	)
 
 	// Help menu
@@ -589,7 +598,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		}),
 	)
 
-	main := fyne.NewMainMenu(u.fileMenu, u.viewMenu, u.goMenu, helpMenu)
+	main := fyne.NewMainMenu(fileMenu, viewMenu, goMenu, helpMenu)
 	return main
 }
 
@@ -674,12 +683,11 @@ func addToListWithRotation(s []string, v string, max int) []string {
 }
 
 func (u *UI) updateRecentFilesMenu() {
-	recentFiles := u.fileMenu.Items[3]
 	files := u.app.Preferences().StringList(preferencesRecentFiles)
 	if len(files) == 0 {
-		recentFiles.Disabled = true
+		u.fileOpenRecent.Disabled = true
 	} else {
-		recentFiles.Disabled = false
+		u.fileOpenRecent.Disabled = false
 		items := make([]*fyne.MenuItem, len(files))
 		for i, f := range files {
 			uri, err := storage.ParseURI(f)
@@ -696,9 +704,9 @@ func (u *UI) updateRecentFilesMenu() {
 				u.loadDocument(reader)
 			})
 		}
-		recentFiles.ChildMenu.Items = items
+		u.fileOpenRecent.ChildMenu.Items = items
 	}
-	u.fileMenu.Refresh()
+	u.window.MainMenu().Refresh()
 }
 
 func (u *UI) toogleViewSelection() {
@@ -707,9 +715,8 @@ func (u *UI) toogleViewSelection() {
 	} else {
 		u.selection.Show()
 	}
-	menuItem := u.viewMenu.Items[3]
-	menuItem.Checked = u.selection.isShown()
-	u.viewMenu.Refresh()
+	u.viewShowSelection.Checked = u.selection.isShown()
+	u.window.MainMenu().Refresh()
 }
 
 func (u *UI) toogleViewDetail() {
@@ -718,9 +725,8 @@ func (u *UI) toogleViewDetail() {
 	} else {
 		u.value.show()
 	}
-	menuItem := u.viewMenu.Items[4]
-	menuItem.Checked = u.value.isShown()
-	u.viewMenu.Refresh()
+	u.viewShowDetail.Checked = u.value.isShown()
+	u.window.MainMenu().Refresh()
 }
 
 // addShortcutFromMenuItem is a helper for defining shortcuts.
