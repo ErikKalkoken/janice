@@ -9,32 +9,33 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// TreeNode represents a node in JSON document tree.
-type TreeNode struct {
+// treeNode represents a node in a JSON document tree.
+type treeNode struct {
 	widget.BaseWidget
+
 	key   *widget.Label
 	value *widget.Label
 }
 
-// NewTreeNode returns a new instance of the [TreeNode] widget.
-func NewTreeNode() *TreeNode {
-	n := &TreeNode{
+// newTreeNode returns a new instance of the [treeNode] widget.
+func newTreeNode() *treeNode {
+	w := &treeNode{
 		key:   widget.NewLabel(""),
 		value: widget.NewLabel(""),
 	}
-	n.ExtendBaseWidget(n)
-	return n
+	w.ExtendBaseWidget(w)
+	return w
 }
 
-func (n *TreeNode) Set(key string, value string, importance widget.Importance) {
-	n.key.SetText(fmt.Sprintf("%s :", key))
-	n.value.Importance = importance
-	n.value.Text = strings.ReplaceAll(value, "\n", " ")
-	n.value.Refresh()
-	n.value.Truncation = fyne.TextTruncateEllipsis
+func (w *treeNode) set(key string, value string, importance widget.Importance) {
+	w.key.SetText(fmt.Sprintf("%s :", key))
+	w.value.Importance = importance
+	w.value.Text = strings.ReplaceAll(value, "\n", " ")
+	w.value.Refresh()
+	w.value.Truncation = fyne.TextTruncateEllipsis
 }
 
-func (n *TreeNode) CreateRenderer() fyne.WidgetRenderer {
-	c := container.NewBorder(nil, nil, n.key, nil, n.value)
+func (w *treeNode) CreateRenderer() fyne.WidgetRenderer {
+	c := container.NewBorder(nil, nil, w.key, nil, w.value)
 	return widget.NewSimpleRenderer(c)
 }

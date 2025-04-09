@@ -34,106 +34,95 @@ var type2importance = map[jsondocument.JSONType]widget.Importance{
 	jsondocument.Null:    widget.DangerImportance,
 }
 
-// searchBarFrame represents the search bar frame in the UI.
-type searchBarFrame struct {
-	content *fyne.Container
-	u       *UI
+// searchBar represents a search bar for searching in the JSON document.
+type searchBar struct {
+	widget.BaseWidget
 
-	searchEntry  *widget.Entry
-	searchButton *ttwidget.Button
-	searchType   *ttwidget.Select
+	collapseAll  *ttwidget.Button
 	scrollBottom *ttwidget.Button
 	scrollTop    *ttwidget.Button
-	collapseAll  *ttwidget.Button
+	searchButton *ttwidget.Button
+	searchEntry  *widget.Entry
+	searchType   *ttwidget.Select
+	u            *UI
 }
 
-func (u *UI) newSearchBarFrame() *searchBarFrame {
-	f := &searchBarFrame{
-		u:           u,
+func newSearchBar(u *UI) *searchBar {
+	w := &searchBar{
 		searchEntry: widget.NewEntry(),
+		u:           u,
 	}
-	// search frame
-	f.searchType = ttwidget.NewSelect([]string{
-		searchTypeKey,
-		searchTypeKeyword,
-		searchTypeNumber,
-		searchTypeString,
-	}, nil)
-	f.searchType.SetSelected(searchTypeKey)
-	f.searchType.SetToolTip("Select what to search")
-	f.searchType.Disable()
-	f.searchEntry.SetPlaceHolder(
-		"Enter pattern to search for...")
-	f.searchEntry.OnSubmitted = func(s string) {
-		f.doSearch()
-	}
-	f.searchButton = ttwidget.NewButtonWithIcon("", theme.SearchIcon(), func() {
-		f.doSearch()
-	})
-	f.searchButton.SetToolTip("Search")
-	f.scrollBottom = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
-		f.u.treeWidget.ScrollToBottom()
-	})
-	f.scrollBottom.SetToolTip("Scroll to bottom")
-	f.scrollTop = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
-		f.u.treeWidget.ScrollToTop()
-	})
-	f.scrollTop.SetToolTip("Scroll to top")
-	f.collapseAll = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
-		f.u.treeWidget.CloseAllBranches()
-	})
-	f.collapseAll.SetToolTip("Collapse all")
-	c := container.NewBorder(
+	w.ExtendBaseWidget(w)
+	w.searchType = ttwidget.NewSelect(
+		[]string{
+			searchTypeKey,
+			searchTypeKeyword,
+			searchTypeNumber,
+			searchTypeString,
+		},
 		nil,
-		nil,
-		f.searchType,
-		container.NewHBox(
-			f.searchButton,
-			container.NewPadded(),
-			layout.NewSpacer(),
-			f.scrollTop,
-			f.scrollBottom,
-			f.collapseAll,
-		),
-		f.searchEntry,
 	)
-	f.content = c
-	return f
+	w.searchType.SetSelected(searchTypeKey)
+	w.searchType.SetToolTip("Select what to search")
+	w.searchType.Disable()
+	w.searchEntry.SetPlaceHolder(
+		"Enter pattern to search for...")
+	w.searchEntry.OnSubmitted = func(s string) {
+		w.doSearch()
+	}
+	w.searchButton = ttwidget.NewButtonWithIcon("", theme.SearchIcon(), func() {
+		w.doSearch()
+	})
+	w.searchButton.SetToolTip("Search")
+	w.scrollBottom = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalalignbottomSvg), func() {
+		w.u.tree.ScrollToBottom()
+	})
+	w.scrollBottom.SetToolTip("Scroll to bottom")
+	w.scrollTop = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceVerticalaligntopSvg), func() {
+		w.u.tree.ScrollToTop()
+	})
+	w.scrollTop.SetToolTip("Scroll to top")
+	w.collapseAll = ttwidget.NewButtonWithIcon("", theme.NewThemedResource(resourceUnfoldlessSvg), func() {
+		w.u.tree.CloseAllBranches()
+	})
+	w.collapseAll.SetToolTip("Collapse all")
+	return w
 }
 
-func (f *searchBarFrame) enable() {
-	f.searchButton.Enable()
-	f.searchType.Enable()
-	f.searchEntry.Enable()
-	f.scrollBottom.Enable()
-	f.scrollTop.Enable()
-	f.collapseAll.Enable()
+func (w *searchBar) enable() {
+	w.searchButton.Enable()
+	w.searchType.Enable()
+	w.searchEntry.Enable()
+	w.scrollBottom.Enable()
+	w.scrollTop.Enable()
+	w.collapseAll.Enable()
 }
 
-func (f *searchBarFrame) disable() {
-	f.searchButton.Disable()
-	f.searchType.Disable()
-	f.searchEntry.Disable()
-	f.scrollBottom.Disable()
-	f.scrollTop.Disable()
-	f.collapseAll.Disable()
+func (w *searchBar) disable() {
+	w.searchButton.Disable()
+	w.searchType.Disable()
+	w.searchEntry.Disable()
+	w.scrollBottom.Disable()
+	w.scrollTop.Disable()
+	w.collapseAll.Disable()
 }
 
-func (f *searchBarFrame) doSearch() {
-	search := f.searchEntry.Text
+// doSearch performs a search in the JSON document.
+func (w *searchBar) doSearch() {
+	search := w.searchEntry.Text
 	if len(search) == 0 {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	spinner := widget.NewActivity()
 	spinner.Start()
-	searchType := f.searchType.Selected
+	searchType := w.searchType.Selected
 	c := container.NewHBox(widget.NewLabel(fmt.Sprintf("Searching for %s with pattern: %s", searchType, search)), spinner)
 	b := widget.NewButton("Cancel", func() {
 		cancel()
 	})
-	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), f.u.window)
-	kxdialog.AddDialogKeyHandler(d, f.u.window)
+	d := dialog.NewCustomWithoutButtons("Search", container.NewVBox(c, b), w.u.window)
+	kxdialog.AddDialogKeyHandler(d, w.u.window)
 	d.Show()
 	d.SetOnClosed(func() {
 		cancel()
@@ -148,7 +137,7 @@ func (f *searchBarFrame) doSearch() {
 			search = strings.ToLower(search)
 			if search != "true" && search != "false" && search != "null" {
 				d.Hide()
-				f.u.showErrorDialog("Allowed keywords are: true, false, null", nil)
+				w.u.showErrorDialog("Allowed keywords are: true, false, null", nil)
 				return
 			}
 		case searchTypeString:
@@ -156,7 +145,7 @@ func (f *searchBarFrame) doSearch() {
 		case searchTypeNumber:
 			typ = jsondocument.SearchNumber
 		}
-		uid, err := f.u.document.Search(ctx, f.u.selection.selectedUID, search, typ)
+		uid, err := w.u.document.Search(ctx, w.u.selection.selectedUID, search, typ)
 		d.Hide()
 		if errors.Is(err, jsondocument.ErrCallerCanceled) {
 			return
@@ -164,15 +153,33 @@ func (f *searchBarFrame) doSearch() {
 			d2 := dialog.NewInformation(
 				"No match",
 				fmt.Sprintf("No %s found matching %s", searchType, search),
-				f.u.window,
+				w.u.window,
 			)
-			kxdialog.AddDialogKeyHandler(d, f.u.window)
+			kxdialog.AddDialogKeyHandler(d, w.u.window)
 			d2.Show()
 			return
 		} else if err != nil {
-			f.u.showErrorDialog("Search failed", err)
+			w.u.showErrorDialog("Search failed", err)
 			return
 		}
-		f.u.scrollTo(uid)
+		w.u.tree.scrollTo(uid)
 	}()
+}
+
+func (w *searchBar) CreateRenderer() fyne.WidgetRenderer {
+	c := container.NewBorder(
+		nil,
+		nil,
+		w.searchType,
+		container.NewHBox(
+			w.searchButton,
+			container.NewPadded(),
+			layout.NewSpacer(),
+			w.scrollTop,
+			w.scrollBottom,
+			w.collapseAll,
+		),
+		w.searchEntry,
+	)
+	return widget.NewSimpleRenderer(c)
 }

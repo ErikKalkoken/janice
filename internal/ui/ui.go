@@ -6,13 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"path/filepath"
-	"strconv"
+	"slices"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -22,41 +25,62 @@ import (
 
 	kxdialog "github.com/ErikKalkoken/fyne-kx/dialog"
 	kxtheme "github.com/ErikKalkoken/fyne-kx/theme"
+	kxwidget "github.com/ErikKalkoken/fyne-kx/widget"
 
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
 
 const (
-	colorThemeAuto  = "Automatic"
-	colorThemeLight = "Light"
-	colorThemeDark  = "Dark"
+	colorThemeAuto         = "Automatic"
+	colorThemeLight        = "Light"
+	colorThemeDark         = "Dark"
+	preferencesRecentFiles = "recent-files"
+	websiteURL             = "https://github.com/ErikKalkoken/janice"
 )
 
 // preference keys
 const (
-	preferenceLastSelectionFrameShown = "last-selection-frame-shown"
-	preferenceLastValueFrameShown     = "last-value-frame-shown"
-	preferenceLastWindowHeight        = "last-window-height"
-	preferenceLastWindowWidth         = "last-window-width"
+	preferenceLastDetailShown    = "last-value-frame-shown"
+	preferenceLastSelectionShown = "last-selection-frame-shown"
+	preferenceLastWindowHeight   = "last-window-height"
+	preferenceLastWindowWidth    = "last-window-width"
+)
+
+// setting keys and defaults
+const (
+	settingColorTheme             = "color-theme"
+	settingExtensionDefault       = true
+	settingExtensionFilter        = "extension-filter"
+	settingNotifyUpdates          = "notify-updates"
+	settingNotifyUpdatesDefault   = true
+	settingRecentFileCount        = "recent-file-count"
+	settingRecentFileCountDefault = 5
 )
 
 // UI represents the user interface of this app.
 type UI struct {
-	app    fyne.App
-	window fyne.Window
-
-	currentFile    fyne.URI
-	document       *jsondocument.JSONDocument
-	fileMenu       *fyne.Menu
-	viewMenu       *fyne.Menu
-	goMenu         *fyne.Menu
-	treeWidget     *widget.Tree
-	welcomeMessage *fyne.Container
-
-	searchBar *searchBarFrame
-	selection *selectionFrame
-	statusBar *statusBarFrame
-	value     *valueFrame
+	app                 fyne.App
+	currentFile         fyne.URI
+	detail              *detail
+	document            *jsondocument.JSONDocument
+	fileExportClipboard *fyne.MenuItem
+	fileExportFile      *fyne.MenuItem
+	fileNew             *fyne.MenuItem
+	fileOpenRecent      *fyne.MenuItem
+	fileReload          *fyne.MenuItem
+	goBottom            *fyne.MenuItem
+	goSelection         *fyne.MenuItem
+	goTop               *fyne.MenuItem
+	searchBar           *searchBar
+	selection           *selection
+	statusBar           *statusBar
+	tree                *jsonTree
+	viewCollapseAll     *fyne.MenuItem
+	viewExpandAll       *fyne.MenuItem
+	viewShowDetail      *fyne.MenuItem
+	viewShowSelection   *fyne.MenuItem
+	welcomeMessage      *fyne.Container
+	window              fyne.Window
 }
 
 // NewUI returns a new UI object.
@@ -67,7 +91,6 @@ func NewUI(app fyne.App) (*UI, error) {
 		document: jsondocument.New(),
 		window:   app.NewWindow(appName),
 	}
-	u.treeWidget = u.makeTree()
 
 	// main frame
 	welcomeText := widget.NewLabel(
@@ -80,17 +103,29 @@ func NewUI(app fyne.App) (*UI, error) {
 	welcomeText.Alignment = fyne.TextAlignCenter
 	u.welcomeMessage = container.NewCenter(welcomeText)
 
-	u.searchBar = u.newSearchBarFrame()
-	u.selection = u.newSelectionFrame()
-	u.statusBar = u.newStatusBarFrame()
-	u.value = u.newValueFrame()
+	u.detail = newDetail(u)
+	u.searchBar = newSearchBar(u)
+	u.selection = newSelection(u)
+	u.statusBar = newStatusBar(u)
+	u.tree = newJSONTree(u)
+
+	if u.app.Preferences().BoolWithFallback(preferenceLastSelectionShown, false) {
+		u.selection.Show()
+	} else {
+		u.selection.Hide()
+	}
+	if u.app.Preferences().BoolWithFallback(preferenceLastDetailShown, false) {
+		u.detail.Show()
+	} else {
+		u.detail.Hide()
+	}
 
 	c := container.NewBorder(
-		container.NewVBox(u.searchBar.content, u.selection.content, u.value.content, widget.NewSeparator()),
-		container.NewVBox(widget.NewSeparator(), u.statusBar.content),
+		container.NewVBox(u.searchBar, u.selection, u.detail, widget.NewSeparator()),
+		container.NewVBox(widget.NewSeparator(), u.statusBar),
 		nil,
 		nil,
-		container.NewStack(u.welcomeMessage, u.treeWidget))
+		container.NewStack(u.welcomeMessage, u.tree))
 
 	u.window.SetContent(fynetooltip.AddWindowToolTipLayer(c, u.window.Canvas()))
 	u.window.SetMainMenu(u.makeMenu())
@@ -118,76 +153,19 @@ func NewUI(app fyne.App) (*UI, error) {
 	u.window.SetOnClosed(func() {
 		app.Preferences().SetFloat(preferenceLastWindowWidth, float64(u.window.Canvas().Size().Width))
 		app.Preferences().SetFloat(preferenceLastWindowHeight, float64(u.window.Canvas().Size().Height))
-		app.Preferences().SetBool(preferenceLastValueFrameShown, u.value.isShown())
-		app.Preferences().SetBool(preferenceLastSelectionFrameShown, u.selection.isShown())
+		app.Preferences().SetBool(preferenceLastDetailShown, !u.detail.Hidden)
+		app.Preferences().SetBool(preferenceLastSelectionShown, !u.selection.Hidden)
 	})
 	return u, nil
-}
-
-func (u *UI) makeTree() *widget.Tree {
-	tree := widget.NewTree(
-		func(id widget.TreeNodeID) []widget.TreeNodeID {
-			return u.document.ChildUIDs(id)
-		},
-		func(id widget.TreeNodeID) bool {
-			return u.document.IsBranch(id)
-		},
-		func(branch bool) fyne.CanvasObject {
-			return NewTreeNode()
-		},
-		func(uid widget.TreeNodeID, branch bool, co fyne.CanvasObject) {
-			node := u.document.Value(uid)
-			obj := co.(*TreeNode)
-			var text string
-			switch v := node.Value; node.Type {
-			case jsondocument.Array:
-				if branch {
-					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
-						text = ""
-					} else {
-						text = "[...]"
-					}
-				} else {
-					text = "[]"
-				}
-			case jsondocument.Object:
-				if branch {
-					if t := u.treeWidget; t != nil && t.IsBranchOpen(uid) {
-						text = ""
-					} else {
-						text = "{...}"
-					}
-				} else {
-					text = "{}"
-				}
-			case jsondocument.String:
-				text = fmt.Sprintf("\"%s\"", v)
-			case jsondocument.Number:
-				x := v.(float64)
-				text = strconv.FormatFloat(x, 'f', -1, 64)
-			case jsondocument.Boolean:
-				text = fmt.Sprintf("%v", v)
-			case jsondocument.Null:
-				text = "null"
-			default:
-				text = fmt.Sprintf("%v", v)
-			}
-			obj.Set(node.Key, text, type2importance[node.Type])
-		})
-
-	tree.OnSelected = func(uid widget.TreeNodeID) {
-		u.selectElement(uid)
-	}
-	return tree
 }
 
 func (u *UI) selectElement(uid string) {
 	u.selection.set(uid)
 	u.selection.enable()
-	u.value.set(uid)
-	u.fileMenu.Items[7].Disabled = false
-	u.fileMenu.Items[8].Disabled = false
-	u.fileMenu.Refresh()
+	u.detail.set(uid)
+	u.fileExportFile.Disabled = false
+	u.fileExportClipboard.Disabled = false
+	u.window.MainMenu().Refresh()
 }
 
 // ShowAndRun shows the main window and runs the app. This method is blocking.
@@ -219,18 +197,6 @@ func (u *UI) showErrorDialog(message string, err error) {
 	d := dialog.NewInformation("Error", message, u.window)
 	kxdialog.AddDialogKeyHandler(d, u.window)
 	d.Show()
-}
-
-func (u *UI) scrollTo(uid widget.TreeNodeID) {
-	if uid == "" {
-		return
-	}
-	p := u.document.Path(uid)
-	for _, uid2 := range p {
-		u.treeWidget.OpenBranch(uid2)
-	}
-	u.treeWidget.ScrollTo(uid)
-	u.treeWidget.Select(uid)
 }
 
 func (u *UI) setTitle(fileName string) {
@@ -314,12 +280,12 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		u.welcomeMessage.Hide()
 		u.toogleHasDocument(true)
 		if doc.Size() > 1000 {
-			u.viewMenu.Items[4].Disabled = true
+			u.viewExpandAll.Disabled = true
 		} else {
-			u.viewMenu.Items[4].Disabled = false
+			u.viewExpandAll.Disabled = false
 		}
-		u.viewMenu.Refresh()
-		u.treeWidget.Refresh()
+		u.window.MainMenu().Refresh()
+		u.tree.Refresh()
 		uri := reader.URI()
 		if uri.Scheme() == "file" {
 			u.addRecentFile(uri)
@@ -327,7 +293,7 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 		u.setTitle(uri.Name())
 		u.currentFile = uri
 		u.selection.reset()
-		u.value.reset()
+		u.detail.reset()
 		d2.Hide()
 	}()
 }
@@ -335,35 +301,29 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 func (u *UI) toogleHasDocument(enabled bool) {
 	if enabled {
 		u.searchBar.enable()
-		u.fileMenu.Items[0].Disabled = false
-		u.fileMenu.Items[5].Disabled = false
-		u.fileMenu.Items[7].Disabled = u.selection.selectedUID == ""
-		u.fileMenu.Items[8].Disabled = u.selection.selectedUID == ""
-
-		u.viewMenu.Items[0].Disabled = false
-		u.viewMenu.Items[1].Disabled = false
-
-		u.goMenu.Items[0].Disabled = false
-		u.goMenu.Items[1].Disabled = false
-		u.goMenu.Items[2].Disabled = false
+		u.fileExportClipboard.Disabled = false
+		u.fileExportFile.Disabled = u.selection.selectedUID == ""
+		u.fileNew.Disabled = u.selection.selectedUID == ""
+		u.fileReload.Disabled = false
+		u.goBottom.Disabled = false
+		u.goSelection.Disabled = false
+		u.goTop.Disabled = false
+		u.viewCollapseAll.Disabled = false
+		u.viewExpandAll.Disabled = false
 
 	} else {
 		u.searchBar.disable()
-		u.fileMenu.Items[0].Disabled = true
-		u.fileMenu.Items[5].Disabled = true
-		u.fileMenu.Items[7].Disabled = true
-		u.fileMenu.Items[8].Disabled = true
-
-		u.viewMenu.Items[0].Disabled = true
-		u.viewMenu.Items[1].Disabled = true
-
-		u.goMenu.Items[0].Disabled = true
-		u.goMenu.Items[1].Disabled = true
-		u.goMenu.Items[2].Disabled = true
+		u.fileExportClipboard.Disabled = true
+		u.fileExportFile.Disabled = true
+		u.fileNew.Disabled = true
+		u.fileReload.Disabled = true
+		u.goBottom.Disabled = true
+		u.goSelection.Disabled = true
+		u.goTop.Disabled = true
+		u.viewCollapseAll.Disabled = true
+		u.viewExpandAll.Disabled = true
 	}
-	u.fileMenu.Refresh()
-	u.viewMenu.Refresh()
-	u.goMenu.Refresh()
+	u.window.MainMenu().Refresh()
 }
 
 func (u *UI) setColorTheme(s string) {
@@ -374,5 +334,342 @@ func (u *UI) setColorTheme(s string) {
 		u.app.Settings().SetTheme(kxtheme.DefaultWithFixedVariant(theme.VariantDark))
 	default:
 		u.app.Settings().SetTheme(theme.DefaultTheme())
+	}
+}
+
+func (u *UI) showAboutDialog() {
+	data := u.app.Metadata()
+	current := data.Version
+	x, err := url.Parse(data.Custom["Website"])
+	if err != nil || x.Path == "" {
+		x, _ = url.Parse(websiteURL)
+	}
+	c := container.NewVBox(
+		widget.NewRichTextFromMarkdown(
+			fmt.Sprintf("## %s\n\n"+
+				"**Version:** %s\n\n"+
+				"(c) 2024-2025 Erik Kalkoken", data.Name, current),
+		),
+		widget.NewLabel("A desktop app for viewing large JSON files."),
+		widget.NewHyperlink("Website", x),
+	)
+	d := dialog.NewCustom("About", "OK", c, u.window)
+	kxdialog.AddDialogKeyHandler(d, u.window)
+	d.Show()
+}
+
+func (u *UI) showSettingsDialog() {
+	// recent files
+	recentEntry := kxwidget.NewSlider(3, 20)
+	x := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
+	recentEntry.SetValue(float64(x))
+	recentEntry.OnChangeEnded = func(v float64) {
+		u.app.Preferences().SetInt(settingRecentFileCount, int(v))
+	}
+
+	// apply file filter
+	extFilter := kxwidget.NewSwitch(func(v bool) {
+		u.app.Preferences().SetBool(settingExtensionFilter, v)
+	})
+	y := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
+	extFilter.SetOn(y)
+
+	notifyUpdates := kxwidget.NewSwitch(func(v bool) {
+		u.app.Preferences().SetBool(settingNotifyUpdates, v)
+	})
+	z := u.app.Preferences().BoolWithFallback(settingNotifyUpdates, settingNotifyUpdatesDefault)
+	notifyUpdates.SetOn(z)
+
+	// theme
+	theme := widget.NewRadioGroup([]string{colorThemeAuto, colorThemeLight, colorThemeDark}, func(s string) {
+		u.setColorTheme(s)
+		u.app.Preferences().SetString(settingColorTheme, s)
+	})
+	theme.Selected = u.app.Preferences().StringWithFallback(settingColorTheme, colorThemeAuto)
+	items := []*widget.FormItem{
+		{
+			Text:   "Max recent files",
+			Widget: recentEntry, HintText: "Maximum number of recent files remembered",
+		},
+		{
+			Text: "JSON file filter", Widget: extFilter,
+			HintText: "Wether to show files with .json extension only",
+		},
+		{
+			Text:   "Notify about updates",
+			Widget: notifyUpdates, HintText: "Wether to notify when an update is available (requires restart)",
+		},
+		{
+			Text: "Appearance", Widget: theme,
+			HintText: "Choose the color scheme. Automatic uses the current OS theme.",
+		},
+	}
+	d := dialog.NewCustom("Settings", "Close", widget.NewForm(items...), u.window)
+	kxdialog.AddDialogKeyHandler(d, u.window)
+	d.Show()
+}
+
+func (u *UI) makeMenu() *fyne.MainMenu {
+	// File menu
+	u.fileOpenRecent = fyne.NewMenuItem("Open Recent", nil)
+	u.fileOpenRecent.ChildMenu = fyne.NewMenu("")
+
+	fileSettingsItem := fyne.NewMenuItem("Settings...", u.showSettingsDialog)
+	fileSettingsItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileSettingsItem))
+
+	u.fileReload = fyne.NewMenuItem("Reload", u.reloadFile)
+	u.fileReload.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyR, Modifier: fyne.KeyModifierAlt}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileReload))
+
+	fileOpenItem := fyne.NewMenuItem("Open File...", u.openFile)
+	fileOpenItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileOpenItem))
+
+	u.fileNew = fyne.NewMenuItem("New", u.newFile)
+	u.fileNew.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileNew))
+
+	u.fileExportFile = fyne.NewMenuItem("Export Selection To File...", func() {
+		byt, err := u.extractSelection()
+		if err != nil {
+			u.showErrorDialog("Failed to extract selection", err)
+		}
+		d := dialog.NewFileSave(func(f fyne.URIWriteCloser, err error) {
+			if err != nil {
+				u.showErrorDialog("Failed to open save dialog", err)
+				return
+			}
+			if f == nil {
+				return
+			}
+			defer f.Close()
+			_, err = f.Write(byt)
+			if err != nil {
+				u.showErrorDialog("Failed to write file", err)
+				return
+			}
+		}, u.window)
+		kxdialog.AddDialogKeyHandler(d, u.window)
+		d.Show()
+	})
+	u.fileExportClipboard = fyne.NewMenuItem("Export Selection To Clipboard", func() {
+		byt, err := u.extractSelection()
+		if err != nil {
+			u.showErrorDialog("Failed to extract selection", err)
+		}
+		u.window.Clipboard().SetContent(string(byt))
+	})
+	fileMenu := fyne.NewMenu("File",
+		u.fileNew,
+		fyne.NewMenuItemSeparator(),
+		fileOpenItem,
+		u.fileOpenRecent,
+		fyne.NewMenuItem("Open From Clipboard", func() {
+			r := strings.NewReader(u.window.Clipboard().Content())
+			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
+			u.loadDocument(reader)
+		}),
+		u.fileReload,
+		fyne.NewMenuItemSeparator(),
+		u.fileExportFile,
+		u.fileExportClipboard,
+		fyne.NewMenuItemSeparator(),
+		fileSettingsItem,
+	)
+
+	// View menu
+	u.viewExpandAll = fyne.NewMenuItem("Expand All", func() {
+		u.tree.OpenAllBranches()
+	})
+	u.viewCollapseAll = fyne.NewMenuItem("Collapse All", func() {
+		u.tree.CloseAllBranches()
+	})
+	u.viewShowSelection = fyne.NewMenuItem("Show selected element", func() {
+		u.toogleViewSelection()
+	})
+	u.viewShowSelection.Checked = !u.selection.Hidden
+	u.viewShowDetail = fyne.NewMenuItem("Show value detail", func() {
+		u.toogleViewDetail()
+	})
+	u.viewShowDetail.Checked = !u.detail.Hidden
+	viewMenu := fyne.NewMenu("View",
+		u.viewExpandAll,
+		u.viewCollapseAll,
+		fyne.NewMenuItemSeparator(),
+		u.viewShowSelection,
+		u.viewShowDetail,
+	)
+
+	// Go menu
+	u.goTop = fyne.NewMenuItem("Go to top", u.tree.ScrollToTop)
+	u.goTop.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyHome, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goTop))
+
+	u.goBottom = fyne.NewMenuItem("Go to bottom", u.tree.ScrollToBottom)
+	u.goBottom.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyEnd, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goBottom))
+
+	u.goSelection = fyne.NewMenuItem("Go to selection", func() {
+		u.tree.scrollTo(u.selection.selectedUID)
+	})
+	goMenu := fyne.NewMenu("Go",
+		u.goTop,
+		u.goBottom,
+		u.goSelection,
+	)
+
+	// Help menu
+	helpMenu := fyne.NewMenu("Help",
+		fyne.NewMenuItem("Report a bug", func() {
+			url, _ := url.Parse(websiteURL + "/issues")
+			_ = u.app.OpenURL(url)
+		}),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("About...", func() {
+			u.showAboutDialog()
+		}),
+	)
+
+	main := fyne.NewMainMenu(fileMenu, viewMenu, goMenu, helpMenu)
+	return main
+}
+
+func (u *UI) openFile() {
+	d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil {
+			u.showErrorDialog("Failed to read folder", err)
+			return
+		}
+		if reader == nil {
+			return
+		}
+		u.loadDocument(reader)
+	}, u.window)
+	kxdialog.AddDialogKeyHandler(d, u.window)
+	d.Show()
+	filterEnabled := u.app.Preferences().BoolWithFallback(settingExtensionFilter, settingExtensionDefault)
+	if filterEnabled {
+		f := storage.NewExtensionFileFilter([]string{".json"})
+		d.SetFilter(f)
+	}
+}
+
+// newFile resets the app to it's initial state
+func (u *UI) newFile() {
+	u.document.Reset()
+	u.setTitle("")
+	u.statusBar.reset()
+	u.welcomeMessage.Show()
+	u.toogleHasDocument(false)
+	u.selection.reset()
+	u.detail.reset()
+}
+
+func (u *UI) reloadFile() {
+	if u.currentFile == nil {
+		return
+	}
+	reader, err := storage.Reader(u.currentFile)
+	if err != nil {
+		u.showErrorDialog("Failed to reload file", err)
+		return
+	}
+	u.loadDocument(reader)
+}
+
+func (u *UI) extractSelection() ([]byte, error) {
+	uid := u.selection.selectedUID
+	n := u.document.Value(uid)
+	if n.Type != jsondocument.Array && n.Type != jsondocument.Object {
+		uid = u.document.Parent(uid)
+	}
+	byt, err := u.document.Extract(uid)
+	if err != nil {
+		return nil, err
+	}
+	return byt, nil
+}
+
+func (u *UI) addRecentFile(uri fyne.URI) {
+	files := u.app.Preferences().StringList(preferencesRecentFiles)
+	uri2 := uri.String()
+	max := u.app.Preferences().IntWithFallback(settingRecentFileCount, settingRecentFileCountDefault)
+	files = addToListWithRotation(files, uri2, max)
+	u.app.Preferences().SetStringList(preferencesRecentFiles, files)
+	u.updateRecentFilesMenu()
+}
+
+func addToListWithRotation(s []string, v string, max int) []string {
+	if max < 1 {
+		panic("max must be 1 or higher")
+	}
+	i := slices.Index(s, v)
+	if i != -1 {
+		s = slices.Delete(s, i, i+1)
+	}
+	s = slices.Insert(s, 0, v)
+	if len(s) > max {
+		s = s[0:max]
+	}
+	return s
+}
+
+func (u *UI) updateRecentFilesMenu() {
+	files := u.app.Preferences().StringList(preferencesRecentFiles)
+	if len(files) == 0 {
+		u.fileOpenRecent.Disabled = true
+	} else {
+		u.fileOpenRecent.Disabled = false
+		items := make([]*fyne.MenuItem, len(files))
+		for i, f := range files {
+			uri, err := storage.ParseURI(f)
+			if err != nil {
+				slog.Error("Failed to parse URI", "URI", f, "err", err)
+				continue
+			}
+			items[i] = fyne.NewMenuItem(uri.Path(), func() {
+				reader, err := storage.Reader(uri)
+				if err != nil {
+					dialog.ShowError(err, u.window)
+					return
+				}
+				u.loadDocument(reader)
+			})
+		}
+		u.fileOpenRecent.ChildMenu.Items = items
+	}
+	u.window.MainMenu().Refresh()
+}
+
+func (u *UI) toogleViewSelection() {
+	if u.selection.Hidden {
+		u.selection.Show()
+	} else {
+		u.selection.Hide()
+	}
+	u.viewShowSelection.Checked = !u.selection.Hidden
+	u.window.MainMenu().Refresh()
+}
+
+func (u *UI) toogleViewDetail() {
+	if u.detail.Hidden {
+		u.detail.Show()
+	} else {
+		u.detail.Hide()
+	}
+	u.viewShowDetail.Checked = !u.detail.Hidden
+	u.window.MainMenu().Refresh()
+}
+
+// addShortcutFromMenuItem is a helper for defining shortcuts.
+// It allows to add an already defined shortcut from a menu item to the canvas.
+//
+// For example:
+//
+//	window.Canvas().AddShortcut(menuItem)
+func addShortcutFromMenuItem(item *fyne.MenuItem) (fyne.Shortcut, func(fyne.Shortcut)) {
+	return item.Shortcut, func(s fyne.Shortcut) {
+		item.Action()
 	}
 }
