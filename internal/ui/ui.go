@@ -268,33 +268,39 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 	go func() {
 		doc := jsondocument.New()
 		if err := doc.Load(ctx, reader, progressInfo); err != nil {
-			d2.Hide()
+			fyne.Do(func() {
+				d2.Hide()
+			})
 			if errors.Is(err, jsondocument.ErrCallerCanceled) {
 				return
 			}
-			u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)
+			fyne.Do(func() {
+				u.showErrorDialog(fmt.Sprintf("Failed to open document: %s", reader.URI()), err)
+			})
 			return
 		}
-		u.document = doc
-		u.statusBar.set(u.document.Size())
-		u.welcomeMessage.Hide()
-		u.toogleHasDocument(true)
-		if doc.Size() > 1000 {
-			u.viewExpandAll.Disabled = true
-		} else {
-			u.viewExpandAll.Disabled = false
-		}
-		u.window.MainMenu().Refresh()
-		u.tree.Refresh()
-		uri := reader.URI()
-		if uri.Scheme() == "file" {
-			u.addRecentFile(uri)
-		}
-		u.setTitle(uri.Name())
-		u.currentFile = uri
-		u.selection.reset()
-		u.detail.reset()
-		d2.Hide()
+		fyne.Do(func() {
+			u.document = doc
+			u.statusBar.set(u.document.Size())
+			u.welcomeMessage.Hide()
+			u.toogleHasDocument(true)
+			if doc.Size() > 1000 {
+				u.viewExpandAll.Disabled = true
+			} else {
+				u.viewExpandAll.Disabled = false
+			}
+			u.window.MainMenu().Refresh()
+			u.tree.Refresh()
+			uri := reader.URI()
+			if uri.Scheme() == "file" {
+				u.addRecentFile(uri)
+			}
+			u.setTitle(uri.Name())
+			u.currentFile = uri
+			u.selection.reset()
+			u.detail.reset()
+			d2.Hide()
+		})
 	}()
 }
 
@@ -303,7 +309,7 @@ func (u *UI) toogleHasDocument(enabled bool) {
 		u.searchBar.enable()
 		u.fileExportClipboard.Disabled = false
 		u.fileExportFile.Disabled = u.selection.selectedUID == ""
-		u.fileNew.Disabled = u.selection.selectedUID == ""
+		u.fileNew.Disabled = false
 		u.fileReload.Disabled = false
 		u.goBottom.Disabled = false
 		u.goSelection.Disabled = false
@@ -411,6 +417,10 @@ func (u *UI) showSettingsDialog() {
 
 func (u *UI) makeMenu() *fyne.MainMenu {
 	// File menu
+	u.fileNew = fyne.NewMenuItem("New", u.newFile)
+	u.fileNew.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileNew))
+
 	u.fileOpenRecent = fyne.NewMenuItem("Open Recent", nil)
 	u.fileOpenRecent.ChildMenu = fyne.NewMenu("")
 
@@ -425,10 +435,6 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	fileOpenItem := fyne.NewMenuItem("Open File...", u.openFile)
 	fileOpenItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: fyne.KeyModifierControl}
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileOpenItem))
-
-	u.fileNew = fyne.NewMenuItem("New", u.newFile)
-	u.fileNew.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileNew))
 
 	u.fileExportFile = fyne.NewMenuItem("Export Selection To File...", func() {
 		byt, err := u.extractSelection()
@@ -458,7 +464,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		if err != nil {
 			u.showErrorDialog("Failed to extract selection", err)
 		}
-		u.window.Clipboard().SetContent(string(byt))
+		u.app.Clipboard().SetContent(string(byt))
 	})
 	fileMenu := fyne.NewMenu("File",
 		u.fileNew,
@@ -466,7 +472,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		fileOpenItem,
 		u.fileOpenRecent,
 		fyne.NewMenuItem("Open From Clipboard", func() {
-			r := strings.NewReader(u.window.Clipboard().Content())
+			r := strings.NewReader(u.app.Clipboard().Content())
 			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
 			u.loadDocument(reader)
 		}),

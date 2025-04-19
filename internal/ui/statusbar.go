@@ -52,8 +52,10 @@ func newStatusBar(u *UI) *statusBar {
 			if !isNewer {
 				return
 			}
-			w.updateLink.SetToolTip(fmt.Sprintf("Newer version %s available for download", latest))
-			w.updateLink.Show()
+			fyne.Do(func() {
+				w.updateLink.SetToolTip(fmt.Sprintf("Newer version %s available for download", latest))
+				w.updateLink.Show()
+			})
 		}()
 	}
 	return w

@@ -36,7 +36,7 @@ func newSelection(u *UI) *selection {
 	w.jumpToSelection.Disable()
 	w.copyKeyClipboard = ttwidget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		n := u.document.Value(w.selectedUID)
-		u.window.Clipboard().SetContent(n.Key)
+		u.app.Clipboard().SetContent(n.Key)
 	})
 	w.copyKeyClipboard.SetToolTip("Copy key to clipboard")
 	w.copyKeyClipboard.Disable()
