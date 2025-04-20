@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	fyne.io/fyne/v2 v2.6.0
-	github.com/ErikKalkoken/fyne-kx v0.4.1
+	github.com/ErikKalkoken/fyne-kx v0.5.0
 	github.com/dweymouth/fyne-tooltip v0.3.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jarcoal/httpmock v1.4.0

@@ -6,6 +6,8 @@ github.com/BurntSushi/toml v1.5.0 h1:W5quZX/G/csjUnuI8SUYlsHs9M38FC7znL0lIO+DvMg
 github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/ErikKalkoken/fyne-kx v0.4.1 h1:hn3xQVPMZ3LYlXWQs3k/w5++2NrMWS6+dtbpD/QtfNY=
 github.com/ErikKalkoken/fyne-kx v0.4.1/go.mod h1:u6ze+0ey4IDE3dTDSwI57HQBWDXJSxoUejFJF1G3Avs=
+github.com/ErikKalkoken/fyne-kx v0.5.0 h1:HcGXR1ISL1zSeZ87Fi2rXB+wM+7GGpCteUBBJzP/30A=
+github.com/ErikKalkoken/fyne-kx v0.5.0/go.mod h1:QINA4rAyddbeO1hsGXpHzFhRdbN3L3nDYbymn9zOBjo=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
