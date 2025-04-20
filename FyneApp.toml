@@ -1,21 +1,24 @@
 Website = "https://github.com/ErikKalkoken/janice"
 
 [Details]
-  Icon = "icon.png"
-  Name = "Janice"
-  ID = "io.github.erikkalkoken.janice"
-  Version = "0.7.1"
-  Build = 0
+Icon = "icon.png"
+Name = "Janice"
+ID = "io.github.erikkalkoken.janice"
+Version = "0.8.0"
+Build = 0
 
 [Release]
-  BuildName = "janice"
-  ContentRating = "oars-1.1"
-  Description = "<p>A desktop app for viewing large JSON files. Please see website for details.</p>"
-  License = "MIT"
-  Screenshots = "https://cdn.imgpile.com/f/0IrYBjJ_xl.png"
+BuildName = "janice"
+ContentRating = "oars-1.1"
+Description = "<p>A desktop app for viewing large JSON files. Please see website for details.</p>"
+License = "MIT"
+Screenshots = "https://cdn.imgpile.com/f/0IrYBjJ_xl.png"
 
 [LinuxAndBSD]
-  GenericName = "JSON viewer"
-  Categories = ["Utility"]
-  Comment = "A desktop app for viewing large JSON files"
-  Keywords = ["json", "viewer"]
+GenericName = "JSON viewer"
+Categories = ["Utility"]
+Comment = "A desktop app for viewing large JSON files"
+Keywords = ["json", "viewer"]
+
+[Migrations]
+fyneDo = true

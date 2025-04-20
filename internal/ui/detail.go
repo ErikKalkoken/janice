@@ -30,7 +30,7 @@ func newDetail(u *UI) *detail {
 	}
 	w.ExtendBaseWidget(w)
 	w.copyValueClipboard = ttwidget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		u.window.Clipboard().SetContent(w.valueRaw)
+		u.app.Clipboard().SetContent(w.valueRaw)
 	})
 	w.copyValueClipboard.SetToolTip("Copy value to clipboard")
 	w.copyValueClipboard.Disable()

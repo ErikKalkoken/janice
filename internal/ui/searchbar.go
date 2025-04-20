@@ -136,8 +136,10 @@ func (w *searchBar) doSearch() {
 			typ = jsondocument.SearchKeyword
 			search = strings.ToLower(search)
 			if search != "true" && search != "false" && search != "null" {
-				d.Hide()
-				w.u.showErrorDialog("Allowed keywords are: true, false, null", nil)
+				fyne.Do(func() {
+					d.Hide()
+					w.u.showErrorDialog("Allowed keywords are: true, false, null", nil)
+				})
 				return
 			}
 		case searchTypeString:
@@ -146,23 +148,25 @@ func (w *searchBar) doSearch() {
 			typ = jsondocument.SearchNumber
 		}
 		uid, err := w.u.document.Search(ctx, w.u.selection.selectedUID, search, typ)
-		d.Hide()
-		if errors.Is(err, jsondocument.ErrCallerCanceled) {
-			return
-		} else if errors.Is(err, jsondocument.ErrNotFound) {
-			d2 := dialog.NewInformation(
-				"No match",
-				fmt.Sprintf("No %s found matching %s", searchType, search),
-				w.u.window,
-			)
-			kxdialog.AddDialogKeyHandler(d, w.u.window)
-			d2.Show()
-			return
-		} else if err != nil {
-			w.u.showErrorDialog("Search failed", err)
-			return
-		}
-		w.u.tree.scrollTo(uid)
+		fyne.Do(func() {
+			d.Hide()
+			if errors.Is(err, jsondocument.ErrCallerCanceled) {
+				return
+			} else if errors.Is(err, jsondocument.ErrNotFound) {
+				d2 := dialog.NewInformation(
+					"No match",
+					fmt.Sprintf("No %s found matching %s", searchType, search),
+					w.u.window,
+				)
+				kxdialog.AddDialogKeyHandler(d, w.u.window)
+				d2.Show()
+				return
+			} else if err != nil {
+				w.u.showErrorDialog("Search failed", err)
+				return
+			}
+			w.u.tree.scrollTo(uid)
+		})
 	}()
 }
 

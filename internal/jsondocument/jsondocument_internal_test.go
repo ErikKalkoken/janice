@@ -8,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	"fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadFile(t *testing.T) {
 	ctx := context.Background()
-	j := New()
+	test.NewTempApp(t) // calling Fyne features requires a Fyne app to exist
 	t.Run("should return load and unmarshaled data from stream", func(t *testing.T) {
 		// given
 		data := map[string]any{"alpha": "two"}
@@ -22,6 +23,7 @@ func TestLoadFile(t *testing.T) {
 			t.Fatal(err)
 		}
 		r := MakeURIReadCloser(bytes.NewReader(dat), "test")
+		j := New()
 		// when
 		got, err := j.load(ctx, r)
 		// then
@@ -33,6 +35,7 @@ func TestLoadFile(t *testing.T) {
 	t.Run("should return error when stream can not be unmarshaled", func(t *testing.T) {
 		// given
 		r := MakeURIReadCloser(strings.NewReader("invalid JSON"), "test")
+		j := New()
 		// when
 		_, err := j.load(ctx, r)
 		// then
@@ -41,7 +44,8 @@ func TestLoadFile(t *testing.T) {
 }
 
 func TestAddNode(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
+	test.NewTempApp(t) // calling Fyne features requires a Fyne app to exist
 	t.Run("can add root node", func(t *testing.T) {
 		j := New()
 		j.initialize(10)
