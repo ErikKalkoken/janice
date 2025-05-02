@@ -128,7 +128,7 @@ func (j *JSONDocument) ChildUIDs(uid widget.TreeNodeID) []widget.TreeNodeID {
 	return ids2uids(j.ids[id])
 }
 
-// IsBranch reports wether a node is a branch.
+// IsBranch reports whether a node is a branch.
 // This can be used directly in the tree widget isBranch() function.
 func (j *JSONDocument) IsBranch(uid widget.TreeNodeID) bool {
 	id := uid2id(uid)

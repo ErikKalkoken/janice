@@ -9,7 +9,7 @@ dest="temp.Appdir"
 source="temp.Source"
 
 # get fynemeta
-wget https://github.com/ErikKalkoken/fynemeta/releases/download/v0.1.0/fynemeta-0.1.0-linux-amd64.tar.gz -O fynemeta.tar.gz
+wget https://github.com/ErikKalkoken/fynemeta/releases/download/v0.1.1/fynemeta-0.1.1-linux-amd64.tar.gz -O fynemeta.tar.gz
 tar xf fynemeta.tar.gz
 rm fynemeta.tar.gz
 
