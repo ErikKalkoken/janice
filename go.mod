@@ -2,17 +2,15 @@ module github.com/ErikKalkoken/janice
 
 go 1.24
 
-toolchain go1.24.1
-
 require (
-	fyne.io/fyne/v2 v2.6.0
-	github.com/ErikKalkoken/fyne-kx v0.5.0
+	fyne.io/fyne/v2 v2.6.1
+	github.com/ErikKalkoken/fyne-kx v0.5.1
 	github.com/dweymouth/fyne-tooltip v0.3.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jarcoal/httpmock v1.4.0
 	github.com/json-iterator/go v1.1.12
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/text v0.24.0
+	golang.org/x/text v0.25.0
 )
 
 require (
