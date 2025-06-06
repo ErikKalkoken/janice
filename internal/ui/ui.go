@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -19,13 +20,12 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	fynetooltip "github.com/dweymouth/fyne-tooltip"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
-
 	kxdialog "github.com/ErikKalkoken/fyne-kx/dialog"
 	kxtheme "github.com/ErikKalkoken/fyne-kx/theme"
 	kxwidget "github.com/ErikKalkoken/fyne-kx/widget"
+	fynetooltip "github.com/dweymouth/fyne-tooltip"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	"github.com/ErikKalkoken/janice/internal/jsondocument"
 )
@@ -143,7 +143,7 @@ func NewUI(app fyne.App) (*UI, error) {
 			u.showErrorDialog(fmt.Sprintf("Failed to load file: %s", uri), err)
 			return
 		}
-		u.loadDocument(reader)
+		u.loadDocument(reader, nil)
 	})
 	s := fyne.Size{
 		Width:  float32(app.Preferences().FloatWithFallback(preferenceLastWindowWidth, 800)),
@@ -184,7 +184,7 @@ func (u *UI) ShowAndRun(path string) {
 				u.showErrorDialog(fmt.Sprintf("Failed to open file: %s", uri), err)
 				return
 			}
-			u.loadDocument(reader)
+			u.loadDocument(reader, nil)
 		}
 	})
 	u.window.ShowAndRun()
@@ -212,7 +212,7 @@ func (u *UI) setTitle(fileName string) {
 
 // loadDocument loads a JSON file
 // Shows a loader modal while loading
-func (u *UI) loadDocument(reader fyne.URIReadCloser) {
+func (u *UI) loadDocument(reader fyne.URIReadCloser, completed func()) {
 	infoText := widget.NewLabel("")
 	pb1 := widget.NewProgressBarInfinite()
 	pb2 := widget.NewProgressBar()
@@ -262,6 +262,9 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.SetOnClosed(func() {
 		cancel()
+		if completed != nil {
+			completed()
+		}
 	})
 	kxdialog.AddDialogKeyHandler(d2, u.window)
 	d2.Show()
@@ -418,23 +421,30 @@ func (u *UI) showSettingsDialog() {
 func (u *UI) makeMenu() *fyne.MainMenu {
 	// File menu
 	u.fileNew = fyne.NewMenuItem("New", u.newFile)
-	u.fileNew.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
+	u.fileNew.Shortcut = mustMakeShortCut("fileNew", runtime.GOOS)
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileNew))
 
 	u.fileOpenRecent = fyne.NewMenuItem("Open Recent", nil)
 	u.fileOpenRecent.ChildMenu = fyne.NewMenu("")
 
-	fileSettingsItem := fyne.NewMenuItem("Settings...", u.showSettingsDialog)
-	fileSettingsItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierControl}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileSettingsItem))
+	fileSettings := fyne.NewMenuItem("Settings...", u.showSettingsDialog)
+	fileSettings.Shortcut = mustMakeShortCut("fileSettings", runtime.GOOS)
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileSettings))
 
 	u.fileReload = fyne.NewMenuItem("Reload", u.reloadFile)
-	u.fileReload.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyR, Modifier: fyne.KeyModifierAlt}
+	u.fileReload.Shortcut = mustMakeShortCut("fileReload", runtime.GOOS)
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.fileReload))
 
-	fileOpenItem := fyne.NewMenuItem("Open File...", u.openFile)
-	fileOpenItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: fyne.KeyModifierControl}
-	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileOpenItem))
+	fileOpen := fyne.NewMenuItem("Open File...", u.openFile)
+	fileOpen.Shortcut = mustMakeShortCut("fileOpen", runtime.GOOS)
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileOpen))
+
+	fileQuit := fyne.NewMenuItem("Exit", func() {
+		u.app.Quit()
+	})
+	fileQuit.IsQuit = true
+	fileQuit.Shortcut = mustMakeShortCut("fileQuit", runtime.GOOS)
+	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(fileQuit))
 
 	u.fileExportFile = fyne.NewMenuItem("Export Selection To File...", func() {
 		byt, err := u.extractSelection()
@@ -469,19 +479,20 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 	fileMenu := fyne.NewMenu("File",
 		u.fileNew,
 		fyne.NewMenuItemSeparator(),
-		fileOpenItem,
+		fileOpen,
 		u.fileOpenRecent,
 		fyne.NewMenuItem("Open From Clipboard", func() {
 			r := strings.NewReader(u.app.Clipboard().Content())
 			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
-			u.loadDocument(reader)
+			u.loadDocument(reader, nil)
 		}),
 		u.fileReload,
 		fyne.NewMenuItemSeparator(),
 		u.fileExportFile,
 		u.fileExportClipboard,
 		fyne.NewMenuItemSeparator(),
-		fileSettingsItem,
+		fileSettings,
+		fileQuit,
 	)
 
 	// View menu
@@ -509,11 +520,11 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 
 	// Go menu
 	u.goTop = fyne.NewMenuItem("Go to top", u.tree.ScrollToTop)
-	u.goTop.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyHome, Modifier: fyne.KeyModifierControl}
+	u.goTop.Shortcut = mustMakeShortCut("goTop", runtime.GOOS)
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goTop))
 
 	u.goBottom = fyne.NewMenuItem("Go to bottom", u.tree.ScrollToBottom)
-	u.goBottom.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyEnd, Modifier: fyne.KeyModifierControl}
+	u.goBottom.Shortcut = mustMakeShortCut("goBottom", runtime.GOOS)
 	u.window.Canvas().AddShortcut(addShortcutFromMenuItem(u.goBottom))
 
 	u.goSelection = fyne.NewMenuItem("Go to selection", func() {
@@ -550,7 +561,7 @@ func (u *UI) openFile() {
 		if reader == nil {
 			return
 		}
-		u.loadDocument(reader)
+		u.loadDocument(reader, nil)
 	}, u.window)
 	kxdialog.AddDialogKeyHandler(d, u.window)
 	d.Show()
@@ -581,7 +592,7 @@ func (u *UI) reloadFile() {
 		u.showErrorDialog("Failed to reload file", err)
 		return
 	}
-	u.loadDocument(reader)
+	u.loadDocument(reader, nil)
 }
 
 func (u *UI) extractSelection() ([]byte, error) {
@@ -640,7 +651,7 @@ func (u *UI) updateRecentFilesMenu() {
 					dialog.ShowError(err, u.window)
 					return
 				}
-				u.loadDocument(reader)
+				u.loadDocument(reader, nil)
 			})
 		}
 		u.fileOpenRecent.ChildMenu.Items = items
@@ -678,4 +689,61 @@ func addShortcutFromMenuItem(item *fyne.MenuItem) (fyne.Shortcut, func(fyne.Shor
 	return item.Shortcut, func(s fyne.Shortcut) {
 		item.Action()
 	}
+}
+
+func makeShortCut(name, goos string) (*desktop.CustomShortcut, error) {
+	const macOS = "darwin"
+	m := map[string]map[string]struct {
+		name     fyne.KeyName
+		modifier fyne.KeyModifier
+	}{
+		"fileNew": {
+			"":    {fyne.KeyN, fyne.KeyModifierControl},
+			macOS: {fyne.KeyN, fyne.KeyModifierSuper},
+		},
+		"fileOpen": {
+			"":    {fyne.KeyO, fyne.KeyModifierControl},
+			macOS: {fyne.KeyO, fyne.KeyModifierSuper},
+		},
+		"fileQuit": {
+			"":    {fyne.KeyQ, fyne.KeyModifierControl},
+			macOS: {fyne.KeyQ, fyne.KeyModifierSuper},
+		},
+		"fileReload": {
+			"": {fyne.KeyR, fyne.KeyModifierAlt},
+		},
+		"fileSettings": {
+			"":    {fyne.KeyComma, fyne.KeyModifierControl},
+			macOS: {fyne.KeyComma, fyne.KeyModifierSuper},
+		},
+		"goBottom": {
+			"":    {fyne.KeyEnd, fyne.KeyModifierControl},
+			macOS: {fyne.KeyDown, fyne.KeyModifierSuper},
+		},
+		"goTop": {
+			"":    {fyne.KeyHome, fyne.KeyModifierControl},
+			macOS: {fyne.KeyUp, fyne.KeyModifierSuper},
+		},
+	}
+	sc, ok := m[name]
+	if !ok {
+		return nil, fmt.Errorf("invalid shortcut name: %s", name)
+	}
+	x, ok := sc[goos]
+	if !ok {
+		y, ok := sc[""]
+		if !ok {
+			return nil, fmt.Errorf("shortcut not defined: %s", name)
+		}
+		x = y
+	}
+	return &desktop.CustomShortcut{KeyName: x.name, Modifier: x.modifier}, nil
+}
+
+func mustMakeShortCut(name, goos string) *desktop.CustomShortcut {
+	x, err := makeShortCut(name, goos)
+	if err != nil {
+		panic(err)
+	}
+	return x
 }
