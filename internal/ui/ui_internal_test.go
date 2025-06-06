@@ -2,9 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/test"
+	"github.com/ErikKalkoken/janice/internal/jsondocument"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,4 +73,18 @@ func TestMakeShortCut(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCanLoadDocument(t *testing.T) {
+	a := test.NewTempApp(t)
+	u, err := NewUI(a)
+	assert.NoError(t, err)
+	u.window.Show()
+	x := jsondocument.MakeURIReadCloser(strings.NewReader(`{"alpha": 1}`), "dummy")
+	ch := make(chan struct{})
+	u.loadDocument(x, func() {
+		close(ch)
+	})
+	<-ch
+	assert.Equal(t, 2, u.document.Size())
 }

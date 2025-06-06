@@ -143,7 +143,7 @@ func NewUI(app fyne.App) (*UI, error) {
 			u.showErrorDialog(fmt.Sprintf("Failed to load file: %s", uri), err)
 			return
 		}
-		u.loadDocument(reader)
+		u.loadDocument(reader, nil)
 	})
 	s := fyne.Size{
 		Width:  float32(app.Preferences().FloatWithFallback(preferenceLastWindowWidth, 800)),
@@ -184,7 +184,7 @@ func (u *UI) ShowAndRun(path string) {
 				u.showErrorDialog(fmt.Sprintf("Failed to open file: %s", uri), err)
 				return
 			}
-			u.loadDocument(reader)
+			u.loadDocument(reader, nil)
 		}
 	})
 	u.window.ShowAndRun()
@@ -212,7 +212,7 @@ func (u *UI) setTitle(fileName string) {
 
 // loadDocument loads a JSON file
 // Shows a loader modal while loading
-func (u *UI) loadDocument(reader fyne.URIReadCloser) {
+func (u *UI) loadDocument(reader fyne.URIReadCloser, completed func()) {
 	infoText := widget.NewLabel("")
 	pb1 := widget.NewProgressBarInfinite()
 	pb2 := widget.NewProgressBar()
@@ -262,6 +262,9 @@ func (u *UI) loadDocument(reader fyne.URIReadCloser) {
 	d2 := dialog.NewCustomWithoutButtons("Loading", c, u.window)
 	d2.SetOnClosed(func() {
 		cancel()
+		if completed != nil {
+			completed()
+		}
 	})
 	kxdialog.AddDialogKeyHandler(d2, u.window)
 	d2.Show()
@@ -481,7 +484,7 @@ func (u *UI) makeMenu() *fyne.MainMenu {
 		fyne.NewMenuItem("Open From Clipboard", func() {
 			r := strings.NewReader(u.app.Clipboard().Content())
 			reader := jsondocument.MakeURIReadCloser(r, "CLIPBOARD")
-			u.loadDocument(reader)
+			u.loadDocument(reader, nil)
 		}),
 		u.fileReload,
 		fyne.NewMenuItemSeparator(),
@@ -558,7 +561,7 @@ func (u *UI) openFile() {
 		if reader == nil {
 			return
 		}
-		u.loadDocument(reader)
+		u.loadDocument(reader, nil)
 	}, u.window)
 	kxdialog.AddDialogKeyHandler(d, u.window)
 	d.Show()
@@ -589,7 +592,7 @@ func (u *UI) reloadFile() {
 		u.showErrorDialog("Failed to reload file", err)
 		return
 	}
-	u.loadDocument(reader)
+	u.loadDocument(reader, nil)
 }
 
 func (u *UI) extractSelection() ([]byte, error) {
@@ -648,7 +651,7 @@ func (u *UI) updateRecentFilesMenu() {
 					dialog.ShowError(err, u.window)
 					return
 				}
-				u.loadDocument(reader)
+				u.loadDocument(reader, nil)
 			})
 		}
 		u.fileOpenRecent.ChildMenu.Items = items
