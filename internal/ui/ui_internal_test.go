@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"testing"
 
+	"fyne.io/fyne/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,4 +29,45 @@ func TestAddToListWithRotation(t *testing.T) {
 		l2 := addToListWithRotation(l, "bravo", 5)
 		assert.Equal(t, []string{"bravo", "alpha"}, l2)
 	})
+}
+
+func TestMakeShortCut(t *testing.T) {
+	const macOS = "darwin"
+	cases := []struct {
+		name         string
+		goos         string
+		wantKey      fyne.KeyName
+		wantModifier fyne.KeyModifier
+		wantIsError  bool
+	}{
+		{"fileNew", "", fyne.KeyN, fyne.KeyModifierControl, false},
+		{"fileOpen", "", fyne.KeyO, fyne.KeyModifierControl, false},
+		{"fileReload", "", fyne.KeyR, fyne.KeyModifierAlt, false},
+		{"fileQuit", "", fyne.KeyQ, fyne.KeyModifierControl, false},
+		{"fileSettings", "", fyne.KeyComma, fyne.KeyModifierControl, false},
+		{"goBottom", "", fyne.KeyEnd, fyne.KeyModifierControl, false},
+		{"goTop", "", fyne.KeyHome, fyne.KeyModifierControl, false},
+
+		{"fileNew", macOS, fyne.KeyN, fyne.KeyModifierSuper, false},
+		{"fileOpen", macOS, fyne.KeyO, fyne.KeyModifierSuper, false},
+		{"fileReload", macOS, fyne.KeyR, fyne.KeyModifierAlt, false},
+		{"fileSettings", macOS, fyne.KeyComma, fyne.KeyModifierSuper, false},
+		{"goBottom", macOS, fyne.KeyDown, fyne.KeyModifierSuper, false},
+		{"goTop", macOS, fyne.KeyUp, fyne.KeyModifierSuper, false},
+
+		{"invalid", "", fyne.KeyN, fyne.KeyModifierControl, true},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%s %s %v", tc.name, tc.goos, tc.wantIsError), func(t *testing.T) {
+			gotShortCut, gotErr := makeShortCut(tc.name, tc.goos)
+			if tc.wantIsError {
+				assert.Error(t, gotErr)
+			} else {
+				if assert.NoError(t, gotErr) {
+					assert.Equal(t, tc.wantKey, gotShortCut.KeyName)
+					assert.Equal(t, tc.wantModifier, gotShortCut.Modifier)
+				}
+			}
+		})
+	}
 }
