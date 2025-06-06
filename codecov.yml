@@ -1,6 +1,7 @@
 ignore:
-  - "internal/ui"
+  - "internal/ui/resource.go"
   - "tools"
+
 coverage:
   status:
     project:
@@ -9,3 +10,7 @@ coverage:
     patch:
       default:
         informational: true
+
+  range: 50..75
+  round: down
+  precision: 1
