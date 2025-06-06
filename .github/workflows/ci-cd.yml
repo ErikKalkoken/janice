@@ -57,7 +57,7 @@ jobs:
         sudo apt-get install gcc libgl1-mesa-dev xorg-dev libfuse2
 
     - name: Install Fyne tool
-      run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      run: go install fyne.io/tools/cmd/fyne@latest
 
     - name: Package Fyne app
       run: fyne package -os linux --release
@@ -103,7 +103,7 @@ jobs:
         pacman --noconfirm -S git zip mingw-w64-x86_64-toolchain
 
     - name: Install Fyne tool
-      run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      run: go install fyne.io/tools/cmd/fyne@latest
 
     - name: Package
       run: fyne package -os windows --release
@@ -142,7 +142,7 @@ jobs:
         go-version: ${{ env.GOVERSION }}
 
     - name: Install Fyne tool
-      run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      run: go install fyne.io/tools/cmd/fyne@latest
 
     - name: Package app bundles
       run: fyne package -os darwin --release
@@ -181,7 +181,7 @@ jobs:
         go-version: ${{ env.GOVERSION }}
 
     - name: Install Fyne tool
-      run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      run: go install fyne.io/tools/cmd/fyne@latest
 
     - name: Package app bundles
       run: fyne package -os darwin --release
