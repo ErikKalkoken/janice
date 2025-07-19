@@ -1,4 +1,5 @@
 # Main workflow for testing and releasing
+# spellchecker: disable
 
 name: CI/CD
 
@@ -6,76 +7,115 @@ env:
   GOVERSION: "1.23"
   NAME: "janice"
   FULLNAME: "Janice"
-  FULLNAME2: "Janice"  # for AppImage file, e.g. with spaces replaced by underscores
+  FULLNAME2: "Janice" # for AppImage file, e.g. with spaces replaced by underscores
   VERSION: "0.0.0"
 
 on: push
 
 jobs:
-
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GOVERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOVERSION }}
 
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install gcc libgl1-mesa-dev xorg-dev
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc libgl1-mesa-dev xorg-dev
 
-    - name: Install dependencies
-      run: go mod download
+      - name: Install dependencies
+        run: go mod download
 
-    - name: Test
-      run: go test -coverprofile=coverage.txt ./...
+      - name: Test
+        run: go test -coverprofile=coverage.txt ./...
 
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   package_linux:
     if: startsWith(github.ref, 'refs/tags/')
     needs: test
-    runs-on: ubuntu-22.04  # oldest available image = best AppImage compatibility
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GOVERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOVERSION }}
 
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install gcc libgl1-mesa-dev xorg-dev libfuse2
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc libgl1-mesa-dev xorg-dev libfuse2
 
-    - name: Install Fyne tool
-      run: go install fyne.io/tools/cmd/fyne@latest
+      - name: Install Fyne tool
+        run: go install fyne.io/tools/cmd/fyne@latest
 
-    - name: Package Fyne app
-      run: fyne package -os linux --release --tags migrated_fynedo
+      - name: Set version
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
-    - name: Set version
-      run: |
-        VERSION=${{ github.ref_name }}
-        echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
+      - name: Package Fyne app
+        run: |
+          run: fyne package -os linux --release --tags migrated_fynedo
+          mv ${{ env.FULLNAME }}.tar.xz ${{ env.NAME }}-${{ env.VERSION }}-linux-amd64.tar.xz
 
-    - name: Build AppImage
-      run: ./tools/build_appimage.sh
+      - name: Inspect
+        run: ls -R
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.NAME }}-linux
-        path: ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
-        if-no-files-found: error
-        overwrite: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}-linux
+          path: ${{ env.NAME }}-${{ env.VERSION }}-linux-amd64.tar.xz
+          if-no-files-found: error
+          overwrite: true
+
+  package_appimage:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: test
+    runs-on: ubuntu-22.04 # oldest available image = best AppImage compatibility
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOVERSION }}
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc libgl1-mesa-dev xorg-dev libfuse2
+
+      - name: Install Fyne tool
+        run: go install fyne.io/tools/cmd/fyne@latest
+
+      - name: Package Fyne app
+        run: fyne package -os linux --release --tags migrated_fynedo
+
+      - name: Set version
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
+
+      - name: Build AppImage
+        run: ./tools/build_appimage.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}-appimage
+          path: ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
+          if-no-files-found: error
+          overwrite: true
 
   package_windows:
     if: startsWith(github.ref, 'refs/tags/')
@@ -85,146 +125,154 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-    - uses: msys2/setup-msys2@v2
-      with:
-        path-type: inherit
-        update: true
+      - uses: msys2/setup-msys2@v2
+        with:
+          path-type: inherit
+          update: true
 
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GOVERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOVERSION }}
 
-    - name: Install Dependencies
-      run: >
-        pacman -Syu &&
-        pacman --noconfirm -S git zip mingw-w64-x86_64-toolchain
+      - name: Install Dependencies
+        run: >
+          pacman -Syu &&
+          pacman --noconfirm -S git zip mingw-w64-x86_64-toolchain
 
-    - name: Install Fyne tool
-      run: go install fyne.io/tools/cmd/fyne@latest
+      - name: Install Fyne tool
+        run: go install fyne.io/tools/cmd/fyne@latest
 
-    - name: Package
-      run: fyne package -os windows --release --tags migrated_fynedo
+      - name: Package
+        run: fyne package -os windows --release --tags migrated_fynedo
 
-    - name: Set version
-      run: |
-        VERSION=${{ github.ref_name }}
-        echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
+      - name: Set version
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
-    - name: ZIP package
-      run: zip ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip "${{ env.FULLNAME }}.exe"
+      - name: ZIP package
+        run: zip ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip "${{ env.FULLNAME }}.exe"
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.NAME }}-windows
-        path: ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip
-        if-no-files-found: error
-        overwrite: true
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}-windows
+          path: ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip
+          if-no-files-found: error
+          overwrite: true
 
   package_darwin_arm:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: macos-14
     needs: test
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GOVERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GOVERSION }}
 
-    - name: Install Fyne tool
-      run: go install fyne.io/tools/cmd/fyne@latest
+      - name: Install Fyne tool
+        run: go install fyne.io/tools/cmd/fyne@latest
 
-    - name: Package app bundles
-      run: fyne package -os darwin --release --tags migrated_fynedo
+      - name: Package app bundles
+        run: fyne package -os darwin --release --tags migrated_fynedo
 
-    - name: Set version
-      run: |
-        VERSION=${{ github.ref_name }}
-        echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
+      - name: Set version
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
-    - name: ZIP app bundle
-      run: zip --symlinks -r ${{ env.NAME }}-${{ env.VERSION }}-darwin-arm64.zip "${{ env.FULLNAME }}.app/"
+      - name: ZIP app bundle
+        run: zip --symlinks -r ${{ env.NAME }}-${{ env.VERSION }}-darwin-arm64.zip "${{ env.FULLNAME }}.app/"
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.NAME }}-macos-arm
-        path: ${{ env.NAME }}-${{ env.VERSION }}-darwin-arm64.zip
-        if-no-files-found: error
-        overwrite: true
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}-macos-arm
+          path: ${{ env.NAME }}-${{ env.VERSION }}-darwin-arm64.zip
+          if-no-files-found: error
+          overwrite: true
 
   package_darwin_intel:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: macos-13
     needs: test
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GOVERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GOVERSION }}
 
-    - name: Install Fyne tool
-      run: go install fyne.io/tools/cmd/fyne@latest
+      - name: Install Fyne tool
+        run: go install fyne.io/tools/cmd/fyne@latest
 
-    - name: Package app bundles
-      run: fyne package -os darwin --release --tags migrated_fynedo
+      - name: Package app bundles
+        run: fyne package -os darwin --release --tags migrated_fynedo
 
-    - name: Set version
-      run: |
-        VERSION=${{ github.ref_name }}
-        echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
+      - name: Set version
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
-    - name: ZIP app bundle
-      run: zip --symlinks -r ${{ env.NAME }}-${{ env.VERSION }}-darwin-intel64.zip "${{ env.FULLNAME }}.app/"
+      - name: ZIP app bundle
+        run: zip --symlinks -r ${{ env.NAME }}-${{ env.VERSION }}-darwin-intel64.zip "${{ env.FULLNAME }}.app/"
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.NAME }}-macos-intel
-        path: ${{ env.NAME }}-${{ env.VERSION }}-darwin-intel64.zip
-        if-no-files-found: error
-        overwrite: true
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}-macos-intel
+          path: ${{ env.NAME }}-${{ env.VERSION }}-darwin-intel64.zip
+          if-no-files-found: error
+          overwrite: true
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [package_linux, package_darwin_arm, package_darwin_intel, package_windows]
+    needs:
+      [
+        package_appimage,
+        package_darwin_arm,
+        package_darwin_intel,
+        package_linux,
+        package_windows,
+      ]
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/download-artifact@v4
-      with:
-        merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
 
-    - name: Make version string
-      run: |
-        VERSION=${{ github.ref_name }}
-        echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
+      - name: Make version string
+        run: |
+          VERSION=${{ github.ref_name }}
+          echo "VERSION=${VERSION:1}" >> $GITHUB_ENV
 
-    - name: Create release
-      uses: softprops/action-gh-release@v2
-      with:
-        fail_on_unmatched_files: true
-        files: |
-          ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip
-          ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
-          ${{ env.NAME }}-${{ env.VERSION }}-darwin-arm64.zip
-          ${{ env.NAME }}-${{ env.VERSION }}-darwin-intel64.zip
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            ${{ env.NAME }}-${{ env.VERSION }}-windows-x64.zip
+            ${{ env.FULLNAME2 }}-${{ env.VERSION }}-x86_64.AppImage
+            ${{ env.NAME }}-${{ env.VERSION }}-linux-amd64.tar.xz
+            ${{ env.NAME }}-${{ env.VERSION }}-darwin-arm64.zip
+            ${{ env.NAME }}-${{ env.VERSION }}-darwin-intel64.zip

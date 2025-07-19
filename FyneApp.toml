@@ -4,8 +4,8 @@ Website = "https://github.com/ErikKalkoken/janice"
   Icon = "icon.png"
   Name = "Janice"
   ID = "io.github.erikkalkoken.janice"
-  Version = "0.9.0"
-  Build = 3
+  Version = "0.10.0"
+  Build = 0
 
 [Release]
   BuildName = "janice"
