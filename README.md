@@ -49,6 +49,13 @@ To run Janice just download and unzip the latest release to your computer. Janic
 
 ### Linux
 
+We are providing two variants for installing on Linux desktop:
+
+- AppImage: The AppImage variant allows you to run the app directly from the executable without requiring installation or root access
+- Tarball: The tar file requires installation, but also allows you to integrate the app into your desktop environment. The tarball also has wider compatibility among different Linux versions.
+
+#### AppImage
+
 > [!NOTE]
 > The app is shipped in the [AppImage](https://appimage.org/) format, so it can be used without requiring installation and run on many different Linux distributions.
 
@@ -57,6 +64,16 @@ To run Janice just download and unzip the latest release to your computer. Janic
 
 > [!TIP]
 > Should you get the following error: `AppImages require FUSE to run.`, you need to first install FUSE on your system. Thi s is a library required by all AppImages to function. Please see [this page](https://docs.appimage.org/user-guide/troubleshooting/fuse.html#the-appimage-tells-me-it-needs-fuse-to-run) for details.
+
+#### Tarball
+
+1. Download the latest tar file from the releases page
+1. Decompress the tar file, for example with: `tar xf janice-0.12.3-linux-amd64.tar.xz`
+1. Run `make user-install` to install the app for the current user or run `sudo make install` to install the app on the system
+
+You should now have a shortcut in your desktop environment's launcher for starting the app.
+
+To uninstall the app again run either: `make user-uninstall` or `sudo make uninstall` depending on how you installed it.
 
 ### Windows
 

@@ -5,4 +5,4 @@ appimage:
 	./tools/build_appimage.sh
 
 release:
-	fyne package -os linux --release
+	fyne package -os linux --release --tags migrated_fynedo
