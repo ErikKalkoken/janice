@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErikKalkoken&project=janice&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 # Janice
 
 A desktop app for viewing large JSON files.
