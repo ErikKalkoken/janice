@@ -81,7 +81,7 @@ To uninstall the app again run either: `make user-uninstall` or `sudo make unins
 1. Unzip the file into a directory of your choice and run the .exe file to start the app.
 
 > [!TIP]
-> Windows defender (and similar programs) may report Janice incorrectly as containing a trojan. This is usually a false positive and cause by a [known issue](https://github.com/microsoft/go/issues/1255) with programs build with the Go programming language. Each Janice release is build from scratch on a fresh Windows container on Github, so it is highly unlikely to be infected. If this happens to you, please exclude Janice's executable from Windows defender (or similar programs) to proceed.
+> Windows defender (and similar programs) may report Janice incorrectly as containing a trojan. This is usually a false positive and caused by a [known issue](https://github.com/microsoft/go/issues/1255) with programs build with the Go programming language. Each Janice release is build from scratch on a fresh Windows container on Github, so it is highly unlikely to be infected. If this happens to you, please exclude Janice's executable from Windows defender (or similar programs) to proceed.
 
 ### Mac OS
 
